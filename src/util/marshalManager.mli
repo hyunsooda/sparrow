@@ -10,5 +10,5 @@
 (***********************************************************************)
 (** Marshaling *)
 
-val output : string -> 'a -> unit
-val input : string -> 'a
+val output : ?dir:string -> string -> 'a -> unit
+val input : ?dir:string -> string -> 'a

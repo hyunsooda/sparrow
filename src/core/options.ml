@@ -59,11 +59,37 @@ let nd = ref false
 let dz = ref false
 let show_all_query = ref false
 
+(* Timer *)
+let print_height = ref false
+let print_time = ref false
+let timer_deadline = ref 0
+let timer_iter = ref 0
+let optimistic = ref false
+let predictor = ref false
+let coarsen_trigger = ref ""
+let timer_wv = ref ""
+let timer_unit = ref 300
+let timer_alpha = ref 50
+let timer_dump = ref false
+let timer_extract = ref false 
+let timer_extract_init = ref false 
+let timer_debug = ref false 
+let timer_static_rank = ref false
+let timer_oracle_rank = ref false
+let timer_clf = ref ""
+let timer_dir = ref ""
 
 (* Marshaling *)
 let marshal_in = ref false
 let marshal_out = ref false
 let marshal_dir = ref "marshal"
+let marshal_in_global = ref false
+let marshal_in_dug = ref false
+let marshal_in_worklist = ref false
+let marshal_out_global = ref false
+let marshal_out_dug = ref false
+let marshal_out_worklist = ref false
+let marshal_out_alarm = ref false
 
 (* Debug *)
 let debug = ref false
@@ -108,9 +134,30 @@ let opts =
   ("-nobar", (Arg.Set nobar), "No progress bar");
   ("-show_all_query", (Arg.Set show_all_query), "Show all queries");
   ("-optil", (Arg.Set optil), "Optimize IL (default)");
-  ("-no_optil", (Arg.Clear optil), "Do not optimize IL");
+  ("-timer_deadline", (Arg.Int (fun x -> timer_deadline := x)), "Timer in second");
+  ("-timer_iter", (Arg.Int (fun x -> timer_iter := x)), "Timer in iteration");
+  ("-timer_unit", (Arg.Int (fun x -> timer_unit := x)), "Time unit");
+  ("-timer_alpha", (Arg.Int (fun x -> timer_alpha := x)), "Time unit");
+  ("-timer_dump", (Arg.Set timer_dump), "Timer dump");
+  ("-timer_extract", (Arg.Set timer_extract), "Timer extract");
+  ("-timer_extract_init", (Arg.Set timer_extract_init), "Timer extract init");
+  ("-timer_debug", (Arg.Set timer_debug), "Timer debug");
+  ("-timer_static_rank", (Arg.Set timer_static_rank), "Static ranking");
+  ("-timer_oracle_rank", (Arg.Set timer_oracle_rank), "Static ranking");
+  ("-timer_clf", (Arg.String (fun s -> timer_clf := s)), "Timer clf");
+  ("-timer_dir", (Arg.String (fun s -> timer_dir := s)), "Timer dir");
+  ("-predictor", (Arg.Set predictor), "Predictor");
+  ("-coarsen_trigger", (Arg.String (fun s -> coarsen_trigger := s)), "Trigers for Coarsening");
+  ("-timer_wv", (Arg.String (fun s -> timer_wv := s)), "Weight vector for timer");
   ("-marshal_in", (Arg.Set marshal_in), "Read analysis results from marshaled data");
   ("-marshal_out", (Arg.Set marshal_out), "Write analysis results to marshaled data");
   ("-marshal_dir", (Arg.String (fun s -> marshal_dir := s)), "Directory where the marshaled data exists (default: marshal/)");
+  ("-marshal_in_global", (Arg.Set marshal_in_global), "Marshal");
+  ("-marshal_in_dug", (Arg.Set marshal_in_dug), "Marshal");
+  ("-marshal_in_worklist", (Arg.Set marshal_in_worklist), "Marshal");
+  ("-marshal_out_global", (Arg.Set marshal_out_global), "Marshal");
+  ("-marshal_out_dug", (Arg.Set marshal_out_dug), "Marshal");
+  ("-marshal_out_worklist", (Arg.Set marshal_out_worklist), "Marshal");
+  ("-marshal_out_alarm", (Arg.Set marshal_out_alarm), "Marshal");
   ("-int_overflow", (Arg.Set int_overflow), "Consider integer overflow");
   ]

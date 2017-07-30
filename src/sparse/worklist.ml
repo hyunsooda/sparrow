@@ -19,9 +19,19 @@ sig
   type t
   val init : DUGraph.t -> t
   val pick : t -> (BasicDom.Node.t * t) option
+  val push_plain : BasicDom.Node.t -> t -> t
+  val push_plain_set : BasicDom.Node.t BatSet.t -> t -> t
+  val push_decay : BasicDom.Node.t -> t -> t
   val push : BasicDom.Node.t -> BasicDom.Node.t -> t -> t
   val push_set : BasicDom.Node.t -> BasicDom.Node.t BatSet.t -> t -> t
+  val remove : BasicDom.Node.t -> t -> t
+  val remove_set : BasicDom.Node.t BatSet.t -> t -> t
+  val flush : t -> t
+  val cardinal : t -> int
   val is_loopheader : BasicDom.Node.t -> t -> bool
+  val fold : (BasicDom.Node.t -> 'a -> 'a) -> t -> 'a -> 'a
+  val nodesof : t -> BasicDom.Node.t BatSet.t
+  val visited : t -> BasicDom.Node.t BatSet.t
 end
 
 module NGraph = struct
@@ -178,6 +188,8 @@ module Make (DUGraph : Dug.S) = struct
       let lhs = trans_set (fun v -> BatMap.find v i2n) lhs in
       let ho = trans_map trans_k (fun _ v -> v) ho in
       Profiler.finish_event "Worklist.trans";
+      Profiler.report stdout;
+      print_endline "";
       { order = wo; headorder = ho; loopheads = lhs }
   end
 
@@ -198,6 +210,7 @@ module Make (DUGraph : Dug.S) = struct
   type t = {
     set : S.t;
     order : Workorder.t;
+    visited : DUGraph.node BatSet.t;
   }
   let compare_order succ idx order =
     try
@@ -218,7 +231,31 @@ module Make (DUGraph : Dug.S) = struct
       else o in
     let o = BatMap.find n wl.order.Workorder.order in
     let new_o = change_order n o is_inneredge in
-    { wl with set = S.add (new_o, n) wl.set }
+    { wl with set = S.add (new_o, n) wl.set; visited = BatSet.add n wl.visited }
+
+  let queue_decay is_inneredge n wl =
+  (* change order if,
+     - the n node has a loophead order, and
+     - an inneredge to the n node is updated
+  *)
+    let rec change_order n o is_inneredge =
+      let is_loophead = snd o in
+      if is_inneredge && is_loophead then
+        try (BatMap.find n wl.order.Workorder.headorder, is_loophead) with Not_found -> o
+      else o in
+    let o = BatMap.find n wl.order.Workorder.order in
+    let (new_o, b) = change_order n o is_inneredge in
+    { wl with set = S.add ((new_o + 8000000,b), n) wl.set; visited = BatSet.add n wl.visited }
+
+  let push_plain : Node.t -> t -> t
+  = fun idx ws ->
+    queue false idx ws
+
+  let push_plain_set set ws = BatSet.fold (queue false) set ws
+
+  let push_decay : Node.t -> t -> t
+  = fun idx ws ->
+    queue_decay false idx ws
 
   let push : Node.t -> Node.t -> t -> t
   = fun idx succ ws ->
@@ -231,8 +268,14 @@ module Make (DUGraph : Dug.S) = struct
       let bInnerLoop = compare_order succ idx works.order in
       queue bInnerLoop succ works
     ) succs ws
+  let remove_set set wl = { wl with set = S.filter (fun (_,n) -> not (BatSet.mem n set)) wl.set }
+  let remove node wl = remove_set (BatSet.singleton node) wl
+  let flush : t -> t
+  = fun ws -> { ws with set = S.empty }
+  let cardinal : t -> int
+  = fun ws -> S.cardinal ws.set
 
-  let init dug = { set = S.empty; order = Workorder.perform dug }
+  let init dug = { set = S.empty; order = Workorder.perform dug; visited = BatSet.empty }
 
   let is_loopheader idx ws = Workorder.is_loopheader idx ws.order
 
@@ -242,4 +285,8 @@ module Make (DUGraph : Dug.S) = struct
       let ws = { ws with set } in
       Some (n, ws)
     with Not_found -> None
+
+  let nodesof ws = S.fold (fun x -> BatSet.add (snd x)) ws.set BatSet.empty
+  let fold f ws a = S.fold (fun (_,node) a -> f node a) ws.set a
+  let visited ws = ws.visited
 end

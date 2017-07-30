@@ -30,7 +30,7 @@ module Loc : sig
   type t = GVar of string * Cil.typ | LVar of Proc.t * string * Cil.typ | Allocsite of Allocsite.t
   | Field of t * field * Cil.typ
   and field = string
-  include AbsDom.SET with type t := t
+  include AbsDom.HASHABLE_SET with type t := t
   val null : t
   val dummy : t
   val is_var : t -> bool

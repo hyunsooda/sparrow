@@ -24,3 +24,7 @@ module Make (Sem : AbsSem.S) : S
   and type Dom.PowA.t = Sem.Dom.PowA.t
   and type Dom.Access.t = Sem.Dom.Access.t
   and type Dom.Access.Info.t = Sem.Dom.Access.Info.t
+  and type Spec.DUGraph.t = Sem.Spec.DUGraph.t
+  and type Spec.Worklist.t = Sem.Spec.Worklist.t
+  and type Spec.Dom.Access.t = Sem.Spec.Dom.Access.t
+  and type Spec.t = Sem.Spec.t

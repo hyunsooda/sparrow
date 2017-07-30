@@ -20,9 +20,11 @@ type query = {
   desc : string
 }
 type part_unit = Cil.location
+val compare_query : query -> query -> int
 val sort_partition : (part_unit * query list) list -> (part_unit * query list) list
 val string_of_alarminfo : Itv.t -> Itv.t -> string
 val string_of_query : query -> string
 val partition : query list -> (part_unit, query list) BatMap.t
 val get : query list -> status -> query list
+val display_alarms : string -> (part_unit, query list) BatMap.t -> unit
 val print : query list -> unit

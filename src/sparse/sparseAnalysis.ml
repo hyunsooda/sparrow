@@ -17,12 +17,25 @@ open Dug
 let total_iterations = ref 0
 let g_clock = ref 0.0
 let l_clock = ref 0.0
+let g_timer = ref 0.0
+let widen_start = ref 0.0
+let l_timer = ref 0.0
+let predict_start = ref 0.0
+
+let reach_node = ref PowNode.empty
+let nb_nodes = ref 0
 
 module type S =
 sig
   module Dom : InstrumentedMem.S
-  module Table : MapDom.CPO with type t = MapDom.MakeCPO(BasicDom.Node)(Dom).t and type A.t = BasicDom.Node.t and type B.t = Dom.t
-  module Spec : Spec.S with type Dom.t = Dom.t and type Dom.A.t = Dom.A.t and type Dom.PowA.t = Dom.PowA.t
+  module Table : MapDom.CPO with type t = MapDom.MakeCPO(BasicDom.Node)(Dom).t
+    and type A.t = BasicDom.Node.t and type B.t = Dom.t
+  module DUGraph : Dug.S with type PowLoc.t = Dom.PowA.t
+  module Worklist : Worklist.S with type DUGraph.t = DUGraph.t
+  module Spec : Spec.S with type Dom.t = Dom.t and type Dom.A.t = Dom.A.t
+    and type Dom.PowA.t = Dom.PowA.t and type Dom.Access.t = Dom.Access.t
+    and type Table.t = Table.t and type DUGraph.t = DUGraph.t
+    and type Worklist.t = Worklist.t
   val perform : Spec.t -> Global.t -> Global.t * Table.t * Table.t
 end
 
@@ -31,11 +44,11 @@ struct
   module Dom = Sem.Dom
   module AccessAnalysis = AccessAnalysis.Make (Sem)
   module Access = AccessAnalysis.Access
-  module DUGraph = Dug.Make (Dom)
-  module SsaDug = SsaDug.Make (DUGraph) (Access)
-  module Worklist = Worklist.Make (DUGraph)
-  module Table = MapDom.MakeCPO (Node) (Sem.Dom)
   module Spec = Sem.Spec
+  module DUGraph = Spec.DUGraph
+  module SsaDug = SsaDug.Make (DUGraph) (Access)
+  module Worklist = Spec.Worklist
+  module Table = Spec.Table
   module PowLoc = Sem.Dom.PowA
 
   let needwidening : DUGraph.node -> Worklist.t -> bool
@@ -44,6 +57,11 @@ struct
   let def_locs_cache = Hashtbl.create 251
   let get_def_locs : Node.t -> DUGraph.t -> Access.PowLoc.t
   = fun idx dug ->
+    (* when coarsening, the set of def_locs changes *)
+    if !Options.timer_deadline > 0 then
+      let union_locs succ = PowLoc.union (DUGraph.get_abslocs idx succ dug) in
+      DUGraph.fold_succ union_locs dug idx PowLoc.empty
+    else
     try Hashtbl.find def_locs_cache idx with Not_found ->
     let def_locs =
       let union_locs succ = PowLoc.union (DUGraph.get_abslocs idx succ dug) in
@@ -61,10 +79,14 @@ struct
       let l_time = Format.sprintf "%.2f" (Sys.time() -. !l_clock) in
       my_prerr_string ("\r#iters: " ^ string_of_int !total_iterations
                         ^ " took " ^ g_time
-                        ^ "s  ("  ^ l_time ^ "s / last 10000 iters)");
+                        ^ "s  ("  ^ l_time ^ "s / last 10000 iters), " ^ (string_of_int (PowNode.cardinal !reach_node) ^ " / " ^ (string_of_int !nb_nodes)));
       flush stderr;
       l_clock := Sys.time ();
     end
+
+  let print_time global table =
+    if !total_iterations mod 100 = 0 then
+      print_endline (global.file.Cil.fileName ^ ", " ^ (string_of_int !total_iterations) ^ ", " ^ (string_of_float (Sys.time () -. !widen_start)))
 
   let propagate dug idx (works,inputof,outputof) (unstables,new_output,global)=
     let (works, inputof) =
@@ -118,7 +140,8 @@ struct
     -> (Worklist.t * Global.t * Table.t * Table.t)
     -> (Worklist.t * Global.t * Table.t * Table.t)
   = fun spec dug idx (works, global, inputof, outputof) ->
-    print_iteration ();
+    reach_node := PowNode.add idx !reach_node;
+    (if !Options.print_time then print_time global outputof);
     let old_output = Table.find idx outputof in
     (Table.find idx inputof, global)
     |> opt !Options.debug (prdbg_input idx)
@@ -154,33 +177,74 @@ struct
       let works = Worklist.push_set idx (BatSet.of_list (DUGraph.succ idx dug)) works in
       (works, global, inputof, Table.add idx new_output outputof)
 
-  let rec iterate f : DUGraph.t -> (Worklist.t * Global.t * Table.t * Table.t)
+  let rec get_todos dug todos ws = 
+    if BatSet.is_empty ws then todos
+    else 
+      let (w, ws) = BatSet.pop ws in
+      if BatSet.mem w todos then get_todos dug todos ws
+      else get_todos dug (BatSet.add w todos) (BatSet.union (DUGraph.succ w dug |> BatSet.of_list) ws)
+
+  let post dug works global inputof outputof =
+    let nodes = DUGraph.nodesof dug in
+    prerr_endline ("# nodes : " ^ (string_of_int (BatSet.cardinal nodes)));
+    let ws = Worklist.nodesof works in
+    prerr_endline ("# worklist : " ^ (string_of_int (BatSet.cardinal ws)));
+(*    let todos = get_todos dug BatSet.empty ws in
+    let (inputof, todos) = Table.foldi (fun node _ (inputof, todos) -> 
+                  if BatSet.exists (fun w -> DUGraph.reachable w node dug) ws then 
+                    (Table.add node 
+                     (Sem.project_pre global.mem) 
+                     inputof, 
+                    BatSet.add node todos)
+                  else (inputof, todos)) inputof (inputof, BatSet.empty)
+    in*)
+(*    let inputof = BatSet.fold (fun todo ->
+    let inputof = BatSet.fold (fun todo ->
+                    Table.add todo (Sem.project_pre global.mem)) todos inputof in
+    prerr_endline ("# todo  : " ^ (string_of_int (BatSet.cardinal todos)));*)
+    (works, global, inputof, outputof) 
+
+  let rec iterate f : Spec.t -> Access.t -> DUGraph.t -> (Worklist.t * Global.t * Table.t * Table.t) 
      -> (Worklist.t * Global.t * Table.t * Table.t)
-  =fun dug (works, global, inputof, outputof) ->
+  =fun spec access dug (works, global, inputof, outputof) ->
+    print_iteration ();
+    let (spec, dug, works, inputof) = 
+      match spec.Spec.coarsening_fs with 
+        Some f -> f spec global access dug works inputof
+      | None -> (spec, dug, works, inputof) 
+    in
+(*    (if (Sys.time () -. !l_timer) > 50.0 then 
+      let queries = match spec.inspect_alarm with Some f -> f global spec inputof | None -> [] in
+      let unproven = Report.partition (Report.get queries Report.UnProven) in
+      print_endline ((string_of_float (Sys.time () -. !widen_start)) ^ ", " ^ (string_of_int (BatMap.cardinal unproven)));
+      l_timer := Sys.time ()
+    );*)
     match Worklist.pick works with
     | None -> (works, global, inputof, outputof)
-    | Some (idx, rest) ->
-      (rest, global, inputof, outputof)
-      |> f dug idx
-      |> iterate f dug
+    | Some (idx, rest) -> 
+      (rest, global, inputof, outputof) 
+      |> f spec dug idx
+      |> iterate f spec access dug
 
-  let widening : Spec.t -> DUGraph.t -> (Worklist.t * Global.t * Table.t * Table.t)
+  let widening : Spec.t -> Access.t -> DUGraph.t -> (Worklist.t * Global.t * Table.t * Table.t)
       -> (Worklist.t * Global.t * Table.t * Table.t)
-  =fun spec dug (worklist, global, inputof, outputof) ->
+  =fun spec access dug (worklist, global, inputof, outputof) ->
     total_iterations := 0;
+    widen_start := Sys.time ();
+    l_timer := Sys.time ();
     worklist
     |> Worklist.push_set InterCfg.start_node (DUGraph.nodesof dug)
-    |> (fun init_worklist -> iterate (analyze_node spec) dug (init_worklist, global, inputof, outputof))
+    |> (fun init_worklist -> iterate analyze_node spec access dug (init_worklist, global, inputof, outputof))
     |> (fun x -> my_prerr_endline ("\n#iteration in widening : " ^ string_of_int !total_iterations); x)
-
-  let narrowing ?(initnodes=BatSet.empty) : Spec.t -> DUGraph.t -> (Worklist.t * Global.t * Table.t * Table.t)
+ 
+  let narrowing ?(initnodes=BatSet.empty) : Spec.t -> Access.t -> DUGraph.t -> (Worklist.t * Global.t * Table.t * Table.t) 
       -> (Worklist.t * Global.t * Table.t * Table.t)
-  =fun spec dug (worklist, global, inputof, outputof) ->
+  =fun spec access dug (worklist, global, inputof, outputof) ->
     total_iterations := 0;
     worklist
     |> Worklist.push_set InterCfg.start_node (if (BatSet.is_empty initnodes) then DUGraph.nodesof dug else initnodes)
-    |> (fun init_worklist -> iterate (analyze_node_with_otable (Dom.narrow, fun x y -> Dom.le y x) spec)
-        dug (init_worklist, global, inputof, outputof))
+    |> (fun init_worklist -> iterate (analyze_node_with_otable (Dom.narrow, fun x y -> Dom.le y x)) spec
+        access dug (init_worklist, global, inputof, outputof))
     |> (fun x -> my_prerr_endline ("#iteration in narrowing : " ^ string_of_int !total_iterations); x)
 
   let print_dug (access,global,dug) =
@@ -232,13 +296,17 @@ struct
   let initialize : Spec.t -> Global.t -> DUGraph.t -> Access.t -> Table.t
   = fun spec global dug access ->
     Table.add InterCfg.start_node (Sem.initial spec.Spec.locset) Table.empty
-    |> cond (!Options.pfs < 100) (bind_fi_locs global spec.Spec.premem dug access) id
+    |> cond (!Options.pfs < 100 (*|| !Options.timer_deadline > 0*)) (bind_fi_locs global spec.Spec.premem dug access) id
 
-  let finalize spec global dug access (worklist, global, inputof, outputof) =
-    let inputof =
-      if !Options.pfs < 100 then bind_unanalyzed_node global spec.Spec.premem dug access inputof
+  let finalize spec global dug access (worklist, global, inputof, outputof) = 
+    let inputof = 
+      if !Options.pfs < 100 (*|| !Options.timer_deadline > 0*) then bind_unanalyzed_node global spec.Spec.premem dug access inputof
       else inputof
     in
+    (if !Options.timer_deadline > 0 then 
+      match spec.Spec.timer_finalize with 
+      | Some f -> f spec global dug inputof
+      | None -> ());
     (worklist, global, inputof, outputof)
 
   let print_spec : Spec.t -> unit
@@ -250,13 +318,37 @@ struct
   =fun spec global ->
     print_spec spec;
     let access = StepManager.stepf false "Access Analysis" (AccessAnalysis.perform global spec.Spec.locset (Sem.run Strong spec)) spec.Spec.premem in
-    let dug = StepManager.stepf false "Def-use graph construction" SsaDug.make (global, access, spec.Spec.locset_fs) in
+    (match spec.Spec.extract_timer_data with
+     | Some f -> f spec global access !Options.timer_extract_init
+     | None -> ());
+    let filename = Filename.basename global.file.Cil.fileName in
+    let dug = (* for experiment *)
+      if (!Options.marshal_in || !Options.marshal_in_dug)
+        && Sys.file_exists (!Options.marshal_dir ^ "/" ^ filename ^ ".dug") then 
+        MarshalManager.input (filename ^ ".dug")
+      else
+        StepManager.stepf false "Def-use graph construction" SsaDug.make (global, access, spec.Spec.locset_fs) 
+    in
     print_dug (access,global,dug);
-    let worklist = StepManager.stepf false "Workorder computation" Worklist.init dug in
-    (worklist, global, initialize spec global dug access, Table.empty)
-    |> StepManager.stepf false "Fixpoint iteration with widening" (widening spec dug)
+    let worklist = 
+      if (!Options.marshal_in || !Options.marshal_in_worklist)
+        && Sys.file_exists (!Options.marshal_dir ^ "/" ^ filename ^ ".worklist") then 
+        MarshalManager.input (filename ^ ".worklist")
+      else
+        StepManager.stepf false "Workorder computation" Worklist.init dug 
+    in  
+    (if !Options.marshal_out || (!Options.marshal_out_dug && !Options.marshal_out_worklist)
+     then 
+    begin
+      MarshalManager.output (filename^".dug") dug;
+      MarshalManager.output (filename^".worklist") worklist
+    end
+    );
+    
+    (worklist, global, initialize spec global dug access, Table.empty) 
+    |> StepManager.stepf false "Fixpoint iteration with widening" (widening spec access dug)
     |> finalize spec global dug access
-    |> StepManager.stepf_opt !Options.narrow false "Fixpoint iteration with narrowing" (narrowing spec dug)
+    |> StepManager.stepf_opt !Options.narrow false "Fixpoint iteration with narrowing" (narrowing spec access dug)
     |> (fun (_,global,inputof,outputof) -> (global, inputof, outputof))
 end
 

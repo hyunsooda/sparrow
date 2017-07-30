@@ -64,12 +64,39 @@ val oct_debug : bool ref
 val print_premem : bool ref
 val verbose : int ref
 
-
 (** {2 Marshaling } *)
 
 val marshal_in : bool ref
 val marshal_out : bool ref
 val marshal_dir : string ref
+val marshal_in_global : bool ref
+val marshal_in_dug : bool ref
+val marshal_in_worklist : bool ref
+val marshal_out_global : bool ref
+val marshal_out_dug : bool ref
+val marshal_out_worklist : bool ref
+val marshal_out_alarm : bool ref
+
+(** {2 Timer (experimental) } *)
+
+val timer_deadline : int ref
+val timer_iter : int ref
+val timer_unit : int ref
+val timer_alpha : int ref
+val timer_dump : bool ref
+val timer_extract : bool ref
+val timer_extract_init : bool ref
+val timer_debug : bool ref
+val timer_static_rank : bool ref
+val timer_oracle_rank : bool ref
+val timer_clf : string ref
+val timer_dir : string ref
+val print_height : bool ref
+val print_time : bool ref
+val optimistic : bool ref
+val coarsen_trigger : string ref
+val timer_wv : string ref
+val predictor : bool ref
 
 (** {2 Options lists } *)
 

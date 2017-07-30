@@ -92,6 +92,14 @@ struct
     | _, _ -> Pervasives.compare (tag_of_t x) (tag_of_t y)
   and tag_of_t = function GVar _ -> 0 | LVar _ -> 1 | Allocsite _ -> 2 | Field _ -> 3
 
+  let hash = function
+    | GVar (g, _) -> Hashtbl.hash g
+    | LVar (p, l, _) -> Hashtbl.hash (p,l)
+    | Allocsite a -> Hashtbl.hash a
+    | Field (l, f, _) -> Hashtbl.hash (l,f)
+   
+  let equal x y = compare x y = 0
+
   let typ = function GVar (_, t) | LVar (_, _, t) | Field (_, _, t) -> Some t | _ -> None
 
   let rec to_string = function
