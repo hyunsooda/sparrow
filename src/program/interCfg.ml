@@ -91,7 +91,7 @@ let remove_function : pid -> t -> t
 
 let cfgof : t -> pid -> IntraCfg.t 
 =fun g pid -> 
-  try BatMap.find pid g.cfgs with Not_found -> prerr_endline ("InterCfg.cfgof "^pid); raise Not_found
+  try BatMap.find pid g.cfgs with Not_found -> prerr_endline ("Not found: InterCfg.cfgof "^pid); raise Not_found
 
 let cmdof : t -> Node.t -> IntraCfg.cmd
 =fun g (pid,node) -> IntraCfg.find_cmd node (cfgof g pid)
@@ -104,6 +104,10 @@ let nodes_of_pid : t -> pid -> Node.t list
 =fun g pid -> List.map (Node.make pid) (IntraCfg.nodesof (cfgof g pid))
 
 let fold_cfgs f g a = BatMap.foldi f g.cfgs a
+let fold_node f g a = 
+  fold_cfgs (fun pid -> 
+      IntraCfg.fold_node (fun node -> f (Node.make pid node))) g a
+
 let map_cfgs f g = {g with cfgs = BatMap.map f g.cfgs}
 
 let nodesof : t -> Node.t list

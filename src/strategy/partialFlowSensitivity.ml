@@ -533,6 +533,8 @@ let extract2 : InterCfg.t -> Mem.t -> Global.t -> InterCfg.Node.t -> feature -> 
     let e = simplify_exp e in
     (match lv,e with
      | (Var x,NoOffset), Lval (Var y,NoOffset) -> (* x := y *)
+      begin
+        try
        let l_x = PowLoc.choose locs_lv in
        let l_y = PowLoc.choose locs_e in
          feature 
@@ -540,7 +542,9 @@ let extract2 : InterCfg.t -> Mem.t -> Global.t -> InterCfg.Node.t -> feature -> 
          |> (if PowLoc.mem l_y feature.return_from_alloc then add_return_from_alloc2 l_x else id)
          |> (if PowLoc.mem l_x feature.pass_to_realloc then add_pass_to_realloc2 l_y else id)
          |> (if PowLoc.mem l_y feature.return_from_realloc then add_return_from_realloc2 l_x else id)
-     | _ -> feature
+        with _ -> feature
+      end
+    | _ -> feature
     )
   | _ -> feature
 

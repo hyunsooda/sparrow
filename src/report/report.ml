@@ -50,16 +50,16 @@ let partition : query list -> (part_unit, query list) BatMap.t
       BatMap.add q.loc (q::p_als) m
   ) queries BatMap.empty
 
+let compare_query a b = 
+  if Pervasives.compare a.loc.file b.loc.file = 0 then 
+    if Pervasives.compare a.loc.line b.loc.line = 0 then 
+      Pervasives.compare a.exp b.exp 
+    else Pervasives.compare a.loc.line b.loc.line
+  else Pervasives.compare a.loc.file b.loc.file
+
 let sort_queries : query list -> query list = 
 fun queries ->
-  List.sort (fun a b -> 
-    if Pervasives.compare a.loc.file b.loc.file = 0 then 
-    begin
-      if Pervasives.compare a.loc.line b.loc.line = 0 then 
-        Pervasives.compare a.exp b.exp 
-      else Pervasives.compare a.loc.line b.loc.line
-    end
-    else Pervasives.compare a.loc.file b.loc.file) queries 
+  List.sort compare_query queries 
 
 let sort_partition : (part_unit * query list) list -> (part_unit * query list) list = 
 fun queries ->

@@ -15,6 +15,7 @@ sig
   type node = BasicDom.Node.t
   module Loc : AbsDom.SET
   module PowLoc : PowDom.CPO with type elt = Loc.t
+  type edge = node * PowLoc.t * node 
 
   val create            : ?size : int -> unit -> t 
   val nb_node           : t -> int
@@ -23,6 +24,7 @@ sig
 
   val succ              : node -> t -> node list
   val pred              : node -> t -> node list
+  val pred_e            : node -> t -> edge list
 
   val add_edge          : node -> node -> t -> t
   val remove_node       : node -> t -> t
@@ -30,6 +32,7 @@ sig
   val mem_duset         : Loc.t -> PowLoc.t -> bool
   val add_absloc        : node -> Loc.t -> node -> t -> t
   val add_abslocs       : node -> PowLoc.t -> node -> t -> t
+  val remove_abslocs    : node -> PowLoc.t -> node -> t -> t
 
 (** {2 Iterator } *)
 

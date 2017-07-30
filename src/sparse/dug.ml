@@ -22,6 +22,7 @@ sig
   module Loc : AbsDom.SET
   module PowLoc : PowDom.CPO with type elt = Loc.t
 
+  type edge = node * PowLoc.t * node
 
   val create            : ?size : int -> unit -> t 
   val nb_node           : t -> int
@@ -30,13 +31,14 @@ sig
 
   val succ              : node -> t -> node list
   val pred              : node -> t -> node list
-
+  val pred_e            : node -> t -> edge list
   val add_edge          : node -> node -> t -> t
   val remove_node       : node -> t -> t
   val get_abslocs       : node -> node -> t -> PowLoc.t 
   val mem_duset         : Loc.t -> PowLoc.t -> bool
   val add_absloc        : node -> Loc.t -> node -> t -> t
   val add_abslocs       : node -> PowLoc.t -> node -> t -> t
+  val remove_abslocs    : node -> PowLoc.t -> node -> t -> t
 
 (** {2 Iterator } *)
 
@@ -58,8 +60,13 @@ struct
   module Loc = Dom.A
   type loc = Loc.t
   type locset = PowLoc.t
+  type edge = node * PowLoc.t * node 
+
   module G = 
   struct
+    (* Do not use Graph.Imperative.Digraph.ConcreteBidirectionalLabeled.
+       The module allows multiple edges from a src to a dst so it is not
+       effective in our case *)
     module I = Graph.Imperative.Digraph.ConcreteBidirectional (BasicDom.Node)
     type t = { graph : I.t; label : ((node * node), locset) Hashtbl.t }
     let create ~size () = { graph = I.create ~size (); label = Hashtbl.create (2 * size) }
@@ -97,6 +104,7 @@ struct
   
   let succ n dug = try G.succ dug n with _ -> []
   let pred n dug = try G.pred dug n with _ -> []
+  let pred_e n dug = try G.pred_e dug n with _ -> []
   let nb_node dug = G.nb_vertex dug
 
   let remove_node : node -> t -> t 
@@ -124,7 +132,22 @@ struct
   =fun src xs dst dug ->
     if PowLoc.is_empty xs then dug else
     G.modify_edge_def xs dug src dst (PowLoc.union xs)
-  
+
+  let remove_absloc : node -> Loc.t -> node -> t -> t
+  =fun src x dst dug ->
+    G.modify_edge_def PowLoc.empty dug src dst (PowLoc.remove x)
+
+  let remove_abslocs : node -> PowLoc.t -> node -> t -> t
+  =fun src xs dst dug ->
+    if PowLoc.is_empty xs then dug 
+    else
+      try 
+        let old_label = G.find_label dug src dst in
+        let new_label = PowLoc.diff old_label xs in
+        if PowLoc.is_empty new_label then G.remove_edge dug src dst
+        else G.add_edge_e dug (src,new_label,dst)
+      with _ -> dug 
+
   let fold_node = G.fold_vertex
   let fold_edges = G.fold_edges
   let iter_edges = G.iter_edges
@@ -134,12 +157,6 @@ struct
     fold_edges (fun src dst size ->
       PowLoc.cardinal (get_abslocs src dst dug) + size
     ) dug 0
-
-  let succ_e : node -> t -> (node * locset) list 
-  =fun n g -> List.map (fun s -> (s, get_abslocs n s g)) (succ n g)
-
-  let pred_e : node -> t -> (node * locset) list 
-  =fun n g -> List.map (fun p -> (p, get_abslocs p n g)) (pred n g)
 
   let to_dot : t -> string
   =fun dug -> 

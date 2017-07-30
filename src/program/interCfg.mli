@@ -44,6 +44,8 @@ val exitof : t -> pid -> node
 val callof : node -> t -> node
 val returnof : node -> t -> node 
 
+val is_entry : node -> bool
+val is_exit : node -> bool
 val is_callnode : node -> t -> bool
 val is_returnnode : node -> t -> bool
 val is_inside_loop : node -> t -> bool
@@ -62,7 +64,7 @@ val unreachable_node : t -> NodeSet.t
 
 
 val fold_cfgs : (Proc.t -> IntraCfg.t -> 'a -> 'a) -> t -> 'a -> 'a
-
+val fold_node : (Node.t -> 'a -> 'a) -> t -> 'a -> 'a 
 
 val nodes_of_pid : t -> pid -> Node.t list
 

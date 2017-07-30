@@ -25,10 +25,15 @@ let transform : Global.t -> Global.t
  
 let init_analysis : Cil.file -> Global.t
 = fun file ->
-  file
-  |> StepManager.stepf true "Translation to graphs" Global.init 
-  |> StepManager.stepf true "Pre-analysis" PreAnalysis.perform
-  |> transform
+  let filename = Filename.basename file.Cil.fileName in
+  if (!Options.marshal_in || !Options.marshal_in_global) && Sys.file_exists (!Options.marshal_dir ^ "/" ^ filename ^ ".global") then 
+    MarshalManager.input (filename ^ ".global")
+  else
+    file
+    |> StepManager.stepf true "Translation to graphs" Global.init 
+    |> StepManager.stepf true "Pre-analysis" PreAnalysis.perform
+    |> transform
+    |> opt !Options.marshal_out_global (fun global -> MarshalManager.output (filename ^ ".global") global; global)
 
 let print_pgm_info : Global.t -> Global.t 
 = fun global ->

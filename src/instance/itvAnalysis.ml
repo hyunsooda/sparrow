@@ -23,6 +23,8 @@ open Report
 module Analysis = SparseAnalysis.Make(ItvSem)
 module Table = Analysis.Table
 module Spec = Analysis.Spec
+module DUGraph = Analysis.DUGraph
+module Worklist = Analysis.Worklist
 
 let print_abslocs_info locs = 
   let lvars = BatSet.filter Loc.is_lvar locs in
@@ -320,18 +322,64 @@ let get_locset mem =
     |> BatSet.fold (fun a -> PowLoc.add (Loc.of_allocsite a)) (Val.allocsites_of_val v)
   ) mem PowLoc.empty 
 
+let inspect_alarm_simple : Global.t -> Spec.t -> Table.t -> Report.query list
+= fun global _ inputof ->
+  let nodes = InterCfg.nodesof global.icfg in
+  list_fold (fun node (qs,k) ->
+    let mem = Table.find node inputof in
+    let cmd = InterCfg.cmdof global.icfg node in
+    let aexps = AlarmExp.collect cmd in 
+    (list_fold (fun aexp ->
+      if mem = Mem.bot then id (* dead code *)
+      else inspect_aexp_bo node aexp mem) aexps qs, k+1)
+  ) nodes ([],0)
+  |> fst
+
+let inspect_pre_alarm : Global.t -> Report.query list
+= fun global ->
+  let nodes = InterCfg.nodesof global.icfg in
+  list_fold (fun node qs ->
+    let cmd = InterCfg.cmdof global.icfg node in
+    let aexps = AlarmExp.collect cmd in 
+    list_fold (fun aexp -> inspect_aexp_bo node aexp global.mem) aexps qs
+  ) nodes []
+
 let do_analysis : Global.t -> Global.t * Table.t * Table.t * Report.query list 
 = fun global -> 
   let _ = prerr_memory_usage () in
   let locset = get_locset global.mem in
   let locset_fs = PartialFlowSensitivity.select global locset in
+(*  let locset_fs = 
+    if !Options.timer_deadline > 0 then
+      let coarsen = Timer.precise_locs global.mem in
+      PowLoc.iter (fun k -> Timer.Hashtbl.replace Timer.locset_fi_hash k k) coarsen;
+      PowLoc.diff locset_fs coarsen
+    else locset_fs
+  in*)
   let unsound_lib = UnsoundLib.collect global in
   let unsound_update = (!Options.bugfinder >= 2) in
   let unsound_bitwise = (!Options.bugfinder >= 1) in
   let spec = { Spec.empty with 
     Spec.locset; Spec.locset_fs; premem = global.mem; Spec.unsound_lib; 
-    Spec.unsound_update; Spec.unsound_bitwise; } in
+    Spec.unsound_update; Spec.unsound_bitwise; 
+    Spec.inspect_alarm = Some inspect_alarm_simple;
+    Spec.pre_alarm = inspect_pre_alarm global;
+    Spec.coarsening_fs = 
+      if !Options.timer_deadline > 0 then Some Timer.coarsening_fs
+      else None;
+    Spec.timer_finalize = 
+      if !Options.timer_deadline > 0 then Some Timer.finalize
+      else None;
+    Spec.extract_timer_data =
+      if !Options.timer_extract then Some Timer.extract_data
+      else None;
+  } in
+  prerr_endline ("Coarsening Triger : " ^ !Options.coarsen_trigger);
+(*   (if !Options.timer_extract then Timer.extract_data spec global !Options.timer_extract_init); *)
   cond !Options.marshal_in marshal_in (Analysis.perform spec) global
   |> opt !Options.marshal_out marshal_out
   |> StepManager.stepf true "Generate Alarm Report" (fun (global,inputof,outputof) -> 
       (global,inputof,outputof,inspect_alarm global spec inputof))
+  |> opt !Options.marshal_out_alarm (fun (g,i,o,a) -> 
+      let filename = Filename.basename global.file.Cil.fileName in
+      MarshalManager.output (filename ^ ".alarm") a; (g,i,o,a))
