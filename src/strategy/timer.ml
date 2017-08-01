@@ -806,8 +806,7 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         (* locs not related to FI-alarms *)
         prdbg_endline ("extract type 1 data of Idx " ^ string_of_int idx);
         let locs_of_fi_alarms = dependency_of_query_set global dug access alarm_fi feature_prev static_feature inputof_prev inputof_idx 1 in
-(*        let pos_locs = PowLoc.diff spec.Spec.locset locs_of_fi_alarms in*)
-        let pos_locs = PowLoc.bot in
+        let pos_locs = PowLoc.diff spec.Spec.locset locs_of_fi_alarms in
         prerr_endline "type 1 data";
         prerr_endline (PowLoc.to_string pos_locs);
         PowLoc.iter (fun x ->
