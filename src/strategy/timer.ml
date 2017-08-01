@@ -753,7 +753,10 @@ let dependency_of_query global dug access q mem degree =
             let access = Access.find_node p access in
             let defs_pred = Access.Info.defof access in
             let inter = PowLoc.inter defs_pred uses in
-            if PowLoc.is_empty inter then works
+            if PowLoc.is_empty inter then 
+              if InterCfg.cmdof global.icfg p = IntraCfg.Cmd.Cskip then (* phi *)
+                (p, uses)::works
+              else works
             else (p, Access.Info.useof access)::works) t
         |> (fun works -> loop (degree - 1) works visited results)
   in
@@ -768,9 +771,9 @@ let dependency_of_query_set global dug access qset feature static_feature inputo
     let _ = prdbg_endline ("query: "^(Report.string_of_query q)) in
     prdbg_endline ("node: "^(Node.to_string q.node));
     prdbg_endline ("cmd: "^(InterCfg.cmdof global.icfg q.node |> IntraCfg.Cmd.to_string));
-    let _ = prdbg_endline ("idx mem: "^(Mem.to_string mem_idx)) in
+(*    let _ = prdbg_endline ("idx mem: "^(Mem.to_string mem_idx)) in
     let _ = prdbg_endline ("prev mem: "^(Mem.to_string mem_prev)) in
-    let _ = prdbg_endline ("dep: "^(PowLoc.to_string set)) in
+*)    let _ = prdbg_endline ("dep: "^(PowLoc.to_string set)) in
     PowLoc.iter (fun x -> 
       (if Mem.mem x mem_prev (*&& Random.int 10 = 0*) then
        begin
@@ -1003,6 +1006,8 @@ let coarsening_fs : Spec.t -> Global.t -> Access.t -> DUGraph.t -> Worklist.t ->
 
 let finalize spec global dug inputof =
   let alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof |> flip Report.get Report.UnProven in
+(*   let new_alarms_part = Report.partition alarms in *)
+(*   Report.display_alarms ("Alarms at "^string_of_int !timer.threshold) new_alarms_part; *)
   timer_dump global dug inputof empty_feature alarms !timer.threshold
 
 let cost () = 
