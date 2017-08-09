@@ -482,24 +482,32 @@ let clf_strategy global feature static_feature =
       if predict py_module clf k feature static_feature then PowLoc.add k
       else id) locset_hash PowLoc.empty 
 (* TODO *)
-let threshold_list = 
+let threshold_list () = 
   match coarsening with 
-  | Dug -> [0; 10; 50; 80; 100; 110; 120; 130]
+  | Dug when !Options.timer_threshold_abs = "" -> [0; 10; 50; 80; 100; 110; 120; 130]
+  | Dug -> 
+    Str.split (Str.regexp "[ \t]+") (!Options.timer_threshold_time)
+    |> List.map int_of_string
   | Worklist -> [0; 10; 30; 60; 100; 110; 120; 130]
-let rec threshold i = 
-  !Options.timer_deadline * (try List.nth threshold_list i with _ -> 10000000) / 100
 
-let threshold_list_loc = [0; 10; 50; 80; 100]
+let rec threshold i = 
+  !Options.timer_deadline * (try List.nth (threshold_list ()) i with _ -> 10000000) / 100
+
+let threshold_list_loc () = 
+  if !Options.timer_threshold_abs = "" then [0; 10; 50; 80; 100]
+  else 
+    Str.split (Str.regexp "[ \t]+") (!Options.timer_threshold_abs)
+    |> List.map int_of_string
 
 let rank_strategy global spec feature static_feature = 
   let num_locset = PowLoc.cardinal spec.Spec.locset in
   let top = 
     match coarsening with 
     | Dug -> 
-        (try List.nth threshold_list_loc !timer.time_stamp with _ -> 100) * num_locset / 100
-          - (try List.nth threshold_list_loc (!timer.time_stamp -1) with _ -> 100) * num_locset / 100
+        (try List.nth (threshold_list_loc ()) !timer.time_stamp with _ -> 100) * num_locset / 100
+          - (try List.nth (threshold_list_loc ()) (!timer.time_stamp -1) with _ -> 100) * num_locset / 100
     | Worklist -> 
-        (try List.nth threshold_list !timer.time_stamp with _ -> 100) * num_locset / 100 
+        (try List.nth (threshold_list ()) !timer.time_stamp with _ -> 100) * num_locset / 100 
   in
   let ranking =
     if !Options.timer_oracle_rank then
@@ -810,6 +818,7 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         MarshalManager.input ~dir (filename ^ ".coarsen." ^ surfix ^ "." ^ string_of_int prev)
 (*          |> PowLoc.join coarsen  *)
       in
+      let coarsen_score =  try MarshalManager.input ~dir (filename ^ ".coarsen.score." ^ surfix ^ "." ^ string_of_int prev) with _ -> 0 in
       if next <= !Options.timer_deadline then
         let _ = output_string oc ("# Idx : " ^(string_of_int idx) ^ "\n") in
         output_string oc ("# Coarsen : "^(PowLoc.cardinal coarsen |> string_of_int)^"\n");
@@ -853,20 +862,14 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         output_string oc ("# Intersect between Coarsen and Neg : "^(string_of_int size_inter_neg)^" ("^(string_of_int (size_inter_neg * 100 / size_coarsen))^"%)\n");
         let density_pos = float_of_int (AlarmSet.cardinal (AlarmSet.inter alarm_prev alarm_fs)) /. float_of_int (AlarmSet.cardinal alarm_prev) in
         let density_neg = float_of_int (AlarmSet.cardinal (AlarmSet.inter alarm_idx alarm_fs)) /. float_of_int (AlarmSet.cardinal alarm_idx) in
+        let coarsen_score_pos = (PowLoc.cardinal inter_pos) * 100 / (PowLoc.cardinal coarsen) in
+        output_string oc ("# Score previous iter : " ^ string_of_int coarsen_score ^ ", Score this iter : " ^ string_of_int coarsen_score_pos^"\n");
         let pos_locs =
-(*           if (float_of_int (PowLoc.cardinal inter_pos)) /. (float_of_int (PowLoc.cardinal coarsen)) > 0.80 then PowLoc.bot *)
-(*           if density_pos > 0.9 then PowLoc.bot *)
-(*           else  *)
           if initial then pos_locs
-          else if (float_of_int (PowLoc.cardinal inter_pos)) /. (float_of_int (PowLoc.cardinal coarsen)) > 0.85 then PowLoc.bot
+          else if coarsen_score >= coarsen_score_pos && coarsen_score_pos >= 80 then PowLoc.bot
           else PowLoc.diff pos_locs coarsen
         in
-        let neg_locs = 
-(*           if (float_of_int (PowLoc.cardinal inter_neg)) /. (float_of_int (PowLoc.cardinal coarsen)) <= 0.05 then PowLoc.bot *)
-(*           if density_neg > 0.9 then PowLoc.bot *)
-(*           else  *)
-            neg_locs
-        in
+        MarshalManager.output ~dir (filename ^ ".coarsen.score." ^ surfix ^ "." ^ string_of_int prev) coarsen_score_pos;
         let conflict = PowLoc.inter pos_locs neg_locs in
         output_string oc ("# Summary at "^(string_of_int idx)^"\n");
         output_string oc ("# positive : "^(string_of_int (PowLoc.cardinal pos_locs))^"\n");
