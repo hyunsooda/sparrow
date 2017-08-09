@@ -853,12 +853,14 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         output_string oc ("# Intersect between Coarsen and Neg : "^(string_of_int size_inter_neg)^" ("^(string_of_int (size_inter_neg * 100 / size_coarsen))^"%)\n");
         let density_pos = float_of_int (AlarmSet.cardinal (AlarmSet.inter alarm_prev alarm_fs)) /. float_of_int (AlarmSet.cardinal alarm_prev) in
         let density_neg = float_of_int (AlarmSet.cardinal (AlarmSet.inter alarm_idx alarm_fs)) /. float_of_int (AlarmSet.cardinal alarm_idx) in
-(*         let pos_locs =  *)
+        let pos_locs =
 (*           if (float_of_int (PowLoc.cardinal inter_pos)) /. (float_of_int (PowLoc.cardinal coarsen)) > 0.80 then PowLoc.bot *)
 (*           if density_pos > 0.9 then PowLoc.bot *)
 (*           else  *)
-(*             PowLoc.diff pos_locs coarsen *)
-(*         in *)
+          if initial then pos_locs
+          else if (float_of_int (PowLoc.cardinal inter_pos)) /. (float_of_int (PowLoc.cardinal coarsen)) > 0.85 then PowLoc.bot
+          else PowLoc.diff pos_locs coarsen
+        in
         let neg_locs = 
 (*           if (float_of_int (PowLoc.cardinal inter_neg)) /. (float_of_int (PowLoc.cardinal coarsen)) <= 0.05 then PowLoc.bot *)
 (*           if density_neg > 0.9 then PowLoc.bot *)
