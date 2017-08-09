@@ -96,6 +96,8 @@ val optimistic : bool ref
 val coarsen_trigger : string ref
 val timer_wv : string ref
 val predictor : bool ref
+val timer_threshold_time : string ref
+val timer_threshold_abs : string ref
 
 (** {2 Options lists } *)
 
