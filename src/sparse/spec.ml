@@ -30,7 +30,7 @@ sig
     coarsening_fs : (t -> Global.t -> Dom.Access.t -> DUGraph.t -> Worklist.t -> Table.t -> 
                      t * DUGraph.t * Worklist.t * Table.t) option;
     timer_finalize : (t -> Global.t -> DUGraph.t -> Table.t -> unit) option;
-    extract_timer_data : (t -> Global.t -> Dom.Access.t -> bool -> unit) option;
+    extract_timer_data : (t -> Global.t -> Dom.Access.t -> int -> unit) option;
   }
   val empty : t
 end
@@ -57,7 +57,7 @@ struct
     coarsening_fs : (t -> Global.t -> Dom.Access.t -> DUGraph.t -> Worklist.t -> Table.t -> 
                      t * DUGraph.t * Worklist.t * Table.t) option;
     timer_finalize : (t -> Global.t -> DUGraph.t -> Table.t -> unit) option;
-    extract_timer_data : (t -> Global.t -> Dom.Access.t -> bool -> unit) option;
+    extract_timer_data : (t -> Global.t -> Dom.Access.t -> int -> unit) option;
   }
 
   let empty = {

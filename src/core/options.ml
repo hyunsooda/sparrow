@@ -72,7 +72,7 @@ let timer_unit = ref 300
 let timer_alpha = ref 50
 let timer_dump = ref false
 let timer_extract = ref false 
-let timer_extract_init = ref false 
+let timer_iteration = ref 0
 let timer_debug = ref false 
 let timer_static_rank = ref false
 let timer_oracle_rank = ref false
@@ -142,7 +142,7 @@ let opts =
   ("-timer_alpha", (Arg.Int (fun x -> timer_alpha := x)), "Time unit");
   ("-timer_dump", (Arg.Set timer_dump), "Timer dump");
   ("-timer_extract", (Arg.Set timer_extract), "Timer extract");
-  ("-timer_extract_init", (Arg.Set timer_extract_init), "Timer extract init");
+  ("-timer_iteration", (Arg.Int (fun x -> timer_iteration:=x)), "Timer extract init");
   ("-timer_debug", (Arg.Set timer_debug), "Timer debug");
   ("-timer_static_rank", (Arg.Set timer_static_rank), "Static ranking");
   ("-timer_oracle_rank", (Arg.Set timer_oracle_rank), "Static ranking");

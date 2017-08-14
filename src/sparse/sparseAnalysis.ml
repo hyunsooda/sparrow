@@ -319,7 +319,7 @@ struct
     print_spec spec;
     let access = StepManager.stepf false "Access Analysis" (AccessAnalysis.perform global spec.Spec.locset (Sem.run Strong spec)) spec.Spec.premem in
     (match spec.Spec.extract_timer_data with
-     | Some f -> f spec global access !Options.timer_extract_init
+     | Some f -> f spec global access !Options.timer_iteration
      | None -> ());
     let filename = Filename.basename global.file.Cil.fileName in
     let dug = (* for experiment *)

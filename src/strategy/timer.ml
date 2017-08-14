@@ -738,13 +738,6 @@ let coarsening_worklist access locset_coarsen dug worklist inputof spec =
     in
     (dug,worklist,inputof)
 
-let target_edge icfg (src, _, dst) =
-  (InterCfg.cmdof icfg src <> IntraCfg.Cmd.Cskip)
-  || not (InterCfg.is_callnode src icfg) || not (InterCfg.is_callnode dst icfg)
-  || not (InterCfg.is_returnnode src icfg) || not (InterCfg.is_returnnode dst icfg)
-  || not (InterCfg.is_entry src) || not (InterCfg.is_entry dst)
-  || not (InterCfg.is_exit src) || not (InterCfg.is_exit dst)
-
 let intra_edge icfg src dst =
   not ((InterCfg.is_callnode src icfg) && (InterCfg.is_entry dst))
   || not ((InterCfg.is_exit src) && (InterCfg.is_returnnode dst icfg))
@@ -799,8 +792,8 @@ let dependency_of_query_set global dug access qset feature static_feature inputo
 
 module Data = Set.Make(Loc)
 
-let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm_fi alarms_list static_feature initial =
-  output_string oc ("# Iteration begins\n");
+let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm_fi alarms_list static_feature iteration =
+  output_string oc ("# Iteration "^(string_of_int iteration)^" begins\n");
   let dir = !Options.timer_dir in
   let (pos_data, neg_data, _) = List.fold_left (fun (pos_data, neg_data, coarsen) i ->
     try 
@@ -818,63 +811,58 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         MarshalManager.input ~dir (filename ^ ".coarsen." ^ surfix ^ "." ^ string_of_int prev)
 (*          |> PowLoc.join coarsen  *)
       in
+      let size_coarsen = PowLoc.cardinal coarsen in
       let coarsen_score =  try MarshalManager.input ~dir (filename ^ ".coarsen.score." ^ surfix ^ "." ^ string_of_int prev) with _ -> 0 in
       if next <= !Options.timer_deadline then
-        let _ = output_string oc ("# Idx : " ^(string_of_int idx) ^ "\n") in
-        output_string oc ("# Coarsen : "^(PowLoc.cardinal coarsen |> string_of_int)^"\n");
-        output_string oc ("# Update w to raise alarms in A_{i} - bar{A} at i + 1. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
+        let _ = output_string oc ("#\t\tIdx : " ^(string_of_int idx) ^ "\n") in
+        output_string oc ("#\t\t\tType 1 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
         (* locs not related to FI-alarms *)
-        prdbg_endline ("extract type 1 data of Idx " ^ string_of_int idx);
         let locs_of_fi_alarms = dependency_of_query_set global dug access alarm_fi feature_prev static_feature inputof_prev inputof_idx 1 in
         let pos_locs = PowLoc.diff spec.Spec.locset locs_of_fi_alarms in
         prdbg_endline "type 1 data";
         prdbg_endline (PowLoc.to_string pos_locs);
-        PowLoc.iter (fun x ->
-          output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs;
+(*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs; *)
         (* 2. Update w to coarsen variables that are related to the FS alarms earlier *)
-        prdbg_endline ("extract type 2 data of Idx " ^ string_of_int idx);
-        output_string oc ("# Update w to coarsen variables that are related to the FS alarms earlier."^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
+        output_string oc ("#\t\t\tType 2 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
         let inter = AlarmSet.inter alarm_fs (AlarmSet.diff alarm_next alarm_idx) in
+        output_string oc ("#\t\t\t\tnumber of alarm next: "^(string_of_int (AlarmSet.cardinal alarm_next))^"\n");
+        output_string oc ("#\t\t\t\tnumber of alarm idx: "^(string_of_int (AlarmSet.cardinal alarm_idx))^"\n");
+        output_string oc ("#\t\t\t\tnumber of alarm diff & fs: "^(string_of_int (AlarmSet.cardinal inter))^"\n");
         (* locs related to FS-alarms *)
         let locs_of_fs_alarms = dependency_of_query_set global dug access inter feature_prev static_feature inputof_prev inputof_idx 1 in
         let pos_locs = PowLoc.join pos_locs locs_of_fs_alarms in
-        PowLoc.iter (fun x ->
-          output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs;
+(*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs; *)
         (* 3. Update w to coarsen variable *)
-        output_string oc ("# push back "^(string_of_int idx)^" -> " ^ (string_of_int next)^"\n");
-        output_string oc ("# number of alarm prev: "^(string_of_int (AlarmSet.cardinal alarm_prev))^"\n");
-        output_string oc ("# number of alarm idx: "^(string_of_int (AlarmSet.cardinal alarm_idx))^"\n");
-        prdbg_endline ("extract type 3 data of Idx " ^ string_of_int idx);
+        output_string oc ("#\t\t\tType 3 Data. "^(string_of_int idx)^" -> " ^ (string_of_int next)^"\n");
+        output_string oc ("#\t\t\t\tnumber of alarm prev: "^(string_of_int (AlarmSet.cardinal alarm_prev))^"\n");
+        output_string oc ("#\t\t\t\tnumber of alarm idx: "^(string_of_int (AlarmSet.cardinal alarm_idx))^"\n");
         let diff = AlarmSet.diff (AlarmSet.diff alarm_idx alarm_prev) alarm_fs in
-        output_string oc ("# number of alarm diff: "^(string_of_int (AlarmSet.cardinal diff))^"\n");
+        output_string oc ("#\t\t\t\tnumber of alarm diff & non-fs: "^(string_of_int (AlarmSet.cardinal diff))^"\n");
         let locs_of_alarms = dependency_of_query_set global dug access diff feature_prev static_feature inputof_prev inputof_idx  1 in
         let neg_locs = locs_of_alarms in
-        PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 0\n")) neg_locs;
+(*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 0\n")) neg_locs; *)
         let inter_pos = PowLoc.inter pos_locs coarsen in
         let inter_neg = PowLoc.inter neg_locs coarsen in
-        let size_coarsen = PowLoc.cardinal coarsen in
         output_string oc ("# Pos : "^(PowLoc.cardinal pos_locs |> string_of_int)^"\n");
-        output_string oc ("# Neg : "^(PowLoc.cardinal neg_locs |> string_of_int)^"\n");
-        output_string oc ("# Coarsen : "^(string_of_int size_coarsen)^"\n");
+        output_string oc ("#\t\t\t\tNeg : "^(PowLoc.cardinal neg_locs |> string_of_int)^"\n");
+        output_string oc ("#\t\t\t\tCoarsen : "^(string_of_int size_coarsen)^"\n");
         let size_inter_pos = PowLoc.cardinal inter_pos in
         let size_inter_neg = PowLoc.cardinal inter_neg in
-        output_string oc ("# Intersect between Coarsen and Pos : "^(string_of_int size_inter_pos)^" ("^(string_of_int (size_inter_pos * 100 / size_coarsen))^"%)\n");
-        output_string oc ("# Intersect between Coarsen and Neg : "^(string_of_int size_inter_neg)^" ("^(string_of_int (size_inter_neg * 100 / size_coarsen))^"%)\n");
-        let density_pos = float_of_int (AlarmSet.cardinal (AlarmSet.inter alarm_prev alarm_fs)) /. float_of_int (AlarmSet.cardinal alarm_prev) in
-        let density_neg = float_of_int (AlarmSet.cardinal (AlarmSet.inter alarm_idx alarm_fs)) /. float_of_int (AlarmSet.cardinal alarm_idx) in
+        output_string oc ("#\t\t\t\tIntersect between Coarsen and Pos : "^(string_of_int size_inter_pos)^" ("^(string_of_int (size_inter_pos * 100 / size_coarsen))^"%)\n");
+        output_string oc ("#\t\t\t\tIntersect between Coarsen and Neg : "^(string_of_int size_inter_neg)^" ("^(string_of_int (size_inter_neg * 100 / size_coarsen))^"%)\n");
         let coarsen_score_pos = (PowLoc.cardinal inter_pos) * 100 / (PowLoc.cardinal coarsen) in
         output_string oc ("# Score previous iter : " ^ string_of_int coarsen_score ^ ", Score this iter : " ^ string_of_int coarsen_score_pos^"\n");
         let pos_locs =
-          if initial then pos_locs
+          if iteration = 0 then pos_locs
           else if coarsen_score >= coarsen_score_pos && coarsen_score_pos >= 80 then PowLoc.bot
           else PowLoc.diff pos_locs coarsen
         in
         MarshalManager.output ~dir (filename ^ ".coarsen.score." ^ surfix ^ "." ^ string_of_int prev) coarsen_score_pos;
         let conflict = PowLoc.inter pos_locs neg_locs in
-        output_string oc ("# Summary at "^(string_of_int idx)^"\n");
-        output_string oc ("# positive : "^(string_of_int (PowLoc.cardinal pos_locs))^"\n");
-        output_string oc ("# negative : "^(string_of_int (PowLoc.cardinal neg_locs))^"\n");
-        output_string oc ("# conflict : "^(string_of_int (PowLoc.cardinal conflict))^"\n");
+        output_string oc ("#\t\t\tSummary at "^(string_of_int idx)^"\n");
+        output_string oc ("#\t\t\t\tpositive : "^(string_of_int (PowLoc.cardinal pos_locs))^"\n");
+        output_string oc ("#\t\t\t\tnegative : "^(string_of_int (PowLoc.cardinal neg_locs))^"\n");
+        output_string oc ("#\t\t\t\tconflict : "^(string_of_int (PowLoc.cardinal conflict))^"\n");
         let pos_data = PowLoc.fold (fun x pos_data -> 
 (*            if PowLoc.mem x conflict then pos_data
             else*) (i, x, feature_prev)::pos_data) pos_locs pos_data in
@@ -884,8 +872,7 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         (pos_data, neg_data, coarsen)
       else 
         (* 4. *)
-        let _ = output_string oc "# pull. If t > deadline then Update w to raise alarm in A_{i} at i - 1\n" in
-        output_string oc ("# "^(string_of_int next)^" -> " ^ (string_of_int idx)^"\n");
+        let _ = output_string oc ("#\t\t\tType 4 Data. "^(string_of_int next)^" -> " ^ (string_of_int idx)^"\n") in
         prdbg_endline ("extract type 4 data");
         let inter = AlarmSet.diff alarm_next alarm_idx in
         let dep_locs = dependency_of_query_set global dug access inter feature_prev static_feature inputof_prev inputof_idx  1 in
@@ -897,7 +884,7 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
     with _ -> (pos_data, neg_data, coarsen)
   ) ([], [], PowLoc.bot) lst
   in
-  output_string oc ("# Iteration completes\n");
+  output_string oc ("# Iteration "^(string_of_int iteration)^" completes\n");
   output_string oc ("# Summary\n");
   let conflict = 
     BatSet.intersect 
@@ -909,7 +896,7 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
   output_string oc ("# conflict : "^(string_of_int (BatSet.cardinal conflict))^"\n");
   (pos_data, neg_data)
 
-let extract_data spec global access initial  = 
+let extract_data spec global access iteration  = 
   let filename = Filename.basename global.file.Cil.fileName in
   let surfix = string_of_int (!Options.timer_unit) ^ "." 
              ^ string_of_int (!Options.timer_alpha) ^ "." 
@@ -929,7 +916,7 @@ let extract_data spec global access initial  =
   let lst = BatList.range 1 `To 7 in
   let static_feature = MarshalManager.input ~dir (filename ^ ".static_feature") in
   let (pos_data, neg_data) = 
-      extract_data_normal spec global access oc filename surfix lst alarm_fs alarm_fi alarms_list static_feature initial
+      extract_data_normal spec global access oc filename surfix lst alarm_fs alarm_fi alarms_list static_feature iteration
   in
   close_out oc;
   let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".tr_data." ^ surfix ^ ".dat") in
