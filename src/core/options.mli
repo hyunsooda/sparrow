@@ -84,7 +84,7 @@ val timer_unit : int ref
 val timer_alpha : int ref
 val timer_dump : bool ref
 val timer_extract : bool ref
-val timer_extract_init : bool ref
+val timer_iteration : int ref
 val timer_debug : bool ref
 val timer_static_rank : bool ref
 val timer_oracle_rank : bool ref
