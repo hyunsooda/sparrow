@@ -819,9 +819,12 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         output_string oc ("#\t\t\tType 1 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
         (* locs not related to FI-alarms *)
         let locs_of_fi_alarms = dependency_of_query_set global dug access alarm_fi feature_prev static_feature inputof_prev inputof_idx 1 in
-        let pos_locs = PowLoc.diff spec.Spec.locset locs_of_fi_alarms in
-        prdbg_endline "type 1 data";
-        prdbg_endline (PowLoc.to_string pos_locs);
+        let pos_locs1 = PowLoc.diff spec.Spec.locset locs_of_fi_alarms in
+        let inter_pos1 = PowLoc.inter pos_locs1 coarsen in
+        output_string oc ("#\t\t\t\tPos1 : "^(PowLoc.cardinal pos_locs1 |> string_of_int)^"\n");
+        output_string oc ("#\t\t\t\tCoarsen : "^(string_of_int size_coarsen)^"\n");
+        let size_inter_pos = PowLoc.cardinal inter_pos1 in
+        output_string oc ("#\t\t\t\tIntersect between Coarsen and Pos1 : "^(string_of_int size_inter_pos)^" ("^(string_of_int (size_inter_pos * 100 / size_coarsen))^"%)\n");
 (*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs; *)
         (* 2. Update w to coarsen variables that are related to the FS alarms earlier *)
         output_string oc ("#\t\t\tType 2 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
@@ -830,9 +833,13 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         output_string oc ("#\t\t\t\tnumber of alarm idx: "^(string_of_int (AlarmSet.cardinal alarm_idx))^"\n");
         output_string oc ("#\t\t\t\tnumber of alarm diff & fs: "^(string_of_int (AlarmSet.cardinal inter))^"\n");
         (* locs related to FS-alarms *)
-        let locs_of_fs_alarms = dependency_of_query_set global dug access inter feature_prev static_feature inputof_prev inputof_idx 1 in
-        let pos_locs = PowLoc.join pos_locs locs_of_fs_alarms in
+        let pos_locs2 = dependency_of_query_set global dug access inter feature_prev static_feature inputof_prev inputof_idx 1 in
 (*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs; *)
+        let inter_pos2 = PowLoc.inter pos_locs2 coarsen in
+        let size_inter_pos2 = PowLoc.cardinal inter_pos2 in
+        output_string oc ("#\t\t\t\tPos2 : "^(PowLoc.cardinal pos_locs2 |> string_of_int)^"\n");
+        output_string oc ("#\t\t\t\tIntersect between Coarsen and Pos2 : "^(string_of_int size_inter_pos2)^" ("^(string_of_int (size_inter_pos2 * 100 / size_coarsen))^"%)\n");
+        let pos_locs = PowLoc.join pos_locs1 pos_locs2 in
         (* 3. Update w to coarsen variable *)
         output_string oc ("#\t\t\tType 3 Data. "^(string_of_int idx)^" -> " ^ (string_of_int next)^"\n");
         output_string oc ("#\t\t\t\tnumber of alarm prev: "^(string_of_int (AlarmSet.cardinal alarm_prev))^"\n");
@@ -843,26 +850,26 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         let neg_locs = locs_of_alarms in
 (*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 0\n")) neg_locs; *)
         let inter_pos = PowLoc.inter pos_locs coarsen in
-        let inter_neg = PowLoc.inter neg_locs coarsen in
-        output_string oc ("# Pos : "^(PowLoc.cardinal pos_locs |> string_of_int)^"\n");
-        output_string oc ("#\t\t\t\tNeg : "^(PowLoc.cardinal neg_locs |> string_of_int)^"\n");
-        output_string oc ("#\t\t\t\tCoarsen : "^(string_of_int size_coarsen)^"\n");
+        output_string oc ("#\t\t\t\tPos : "^(PowLoc.cardinal pos_locs |> string_of_int)^"\n");
         let size_inter_pos = PowLoc.cardinal inter_pos in
-        let size_inter_neg = PowLoc.cardinal inter_neg in
         output_string oc ("#\t\t\t\tIntersect between Coarsen and Pos : "^(string_of_int size_inter_pos)^" ("^(string_of_int (size_inter_pos * 100 / size_coarsen))^"%)\n");
-        output_string oc ("#\t\t\t\tIntersect between Coarsen and Neg : "^(string_of_int size_inter_neg)^" ("^(string_of_int (size_inter_neg * 100 / size_coarsen))^"%)\n");
         let coarsen_score_pos_new = (PowLoc.cardinal inter_pos) * 100 / (PowLoc.cardinal coarsen) in
-        let coarsen_score_neg_new = (PowLoc.cardinal inter_neg) * 100 / (PowLoc.cardinal coarsen) in
         output_string oc ("#\t\t\t\tPos Score previous iter : " ^ string_of_int coarsen_score_pos ^ ", this iter : " ^ string_of_int coarsen_score_pos_new^"\n");
-        output_string oc ("#\t\t\t\tNeg Score previous iter : " ^ string_of_int coarsen_score_neg ^ ", this iter : " ^ string_of_int coarsen_score_neg_new^"\n");
-        let neg_locs =
-          if coarsen_score_neg <= coarsen_score_neg_new && coarsen_score_neg <= 10 then PowLoc.bot
-          else neg_locs
-        in
         let pos_locs =
           if iteration = 0 then pos_locs
           else if coarsen_score_pos >= coarsen_score_pos_new && coarsen_score_pos >= 80 then PowLoc.bot
           else PowLoc.diff pos_locs coarsen
+        in
+        let inter_neg = PowLoc.inter neg_locs coarsen in
+        output_string oc ("#\t\t\t\tNeg : "^(PowLoc.cardinal neg_locs |> string_of_int)^"\n");
+        output_string oc ("#\t\t\t\tCoarsen : "^(string_of_int size_coarsen)^"\n");
+        let size_inter_neg = PowLoc.cardinal inter_neg in
+        output_string oc ("#\t\t\t\tIntersect between Coarsen and Neg : "^(string_of_int size_inter_neg)^" ("^(string_of_int (size_inter_neg * 100 / size_coarsen))^"%)\n");
+        let coarsen_score_neg_new = (PowLoc.cardinal inter_neg) * 100 / (PowLoc.cardinal coarsen) in
+        output_string oc ("#\t\t\t\tNeg Score previous iter : " ^ string_of_int coarsen_score_neg ^ ", this iter : " ^ string_of_int coarsen_score_neg_new^"\n");
+        let neg_locs =
+          if coarsen_score_neg <= coarsen_score_neg_new && coarsen_score_neg <= 10 then PowLoc.bot
+          else neg_locs
         in
         MarshalManager.output ~dir (filename ^ ".coarsen.score." ^ surfix ^ "." ^ string_of_int prev) (coarsen_score_pos_new, coarsen_score_neg_new);
         let conflict = PowLoc.inter pos_locs neg_locs in
