@@ -864,11 +864,11 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
         output_string oc ("#\t\t\t\tnegative : "^(string_of_int (PowLoc.cardinal neg_locs))^"\n");
         output_string oc ("#\t\t\t\tconflict : "^(string_of_int (PowLoc.cardinal conflict))^"\n");
         let pos_data = PowLoc.fold (fun x pos_data -> 
-(*            if PowLoc.mem x conflict then pos_data
-            else*) (i, x, feature_prev)::pos_data) pos_locs pos_data in
+            if PowLoc.mem x conflict then pos_data
+            else (i, x, feature_prev)::pos_data) pos_locs pos_data in
         let neg_data = PowLoc.fold (fun x neg_data -> 
-(*            if PowLoc.mem x conflict then neg_data
-            else*) (i, x, feature_prev)::neg_data) neg_locs neg_data in
+            if PowLoc.mem x conflict then neg_data
+            else (i, x, feature_prev)::neg_data) neg_locs neg_data in
         (pos_data, neg_data, coarsen)
       else 
         (* 4. *)
