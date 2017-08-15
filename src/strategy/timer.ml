@@ -613,11 +613,7 @@ let diff_alarms alarms1 alarms2 =
 
 let timer_dump global dug inputof feature new_alarms locset_coarsen time = 
   let filename = Filename.basename global.file.Cil.fileName in
-  let surfix = string_of_int (!Options.timer_unit) ^ "." 
-             ^ string_of_int (!Options.timer_alpha) ^ "." 
-             ^ string_of_int (!Options.timer_deadline) ^ "."
-             ^ string_of_int time
-  in
+  let surfix = string_of_int time in
   let dir = !Options.timer_dir in
   MarshalManager.output ~dir (filename ^ ".feature." ^ surfix) feature;
   MarshalManager.output ~dir (filename ^ ".inputof." ^ surfix) inputof;
@@ -792,7 +788,7 @@ let dependency_of_query_set global dug access qset feature static_feature inputo
 
 module Data = Set.Make(Loc)
 
-let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm_fi alarms_list static_feature iteration =
+let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi alarms_list static_feature iteration =
   output_string oc ("# Iteration "^(string_of_int iteration)^" begins\n");
   let dir = !Options.timer_dir in
   let (pos_data, neg_data, _) = List.fold_left (fun (pos_data, neg_data, coarsen) i ->
@@ -800,20 +796,20 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
       let idx = threshold i in
       let prev = threshold (i-1) in
       let next = threshold (i+1) in
-      let alarm_idx = MarshalManager.input ~dir (filename ^ ".alarm."^ surfix ^ "." ^ string_of_int idx) |> AlarmSet.of_list in
-      let alarm_prev = MarshalManager.input ~dir (filename ^ ".alarm."^ surfix ^ "." ^ string_of_int prev) |> AlarmSet.of_list in
-      let alarm_next = try MarshalManager.input ~dir (filename ^ ".alarm."^ surfix ^ "." ^ string_of_int next) |> AlarmSet.of_list with _ -> AlarmSet.empty in
-      let inputof_prev = MarshalManager.input ~dir (filename ^ ".inputof." ^ surfix ^ "." ^ string_of_int prev) in
-      let inputof_idx = MarshalManager.input ~dir (filename ^ ".inputof." ^ surfix ^ "." ^ string_of_int idx) in
-      let dug = MarshalManager.input ~dir (filename ^ ".dug." ^ surfix ^ "." ^ string_of_int prev) in
-      let feature_prev = MarshalManager.input ~dir (filename ^ ".feature."^ surfix ^ "." ^ string_of_int prev) in
+      let alarm_idx = MarshalManager.input ~dir (filename ^ ".alarm." ^ string_of_int idx) |> AlarmSet.of_list in
+      let alarm_prev = MarshalManager.input ~dir (filename ^ ".alarm." ^ string_of_int prev) |> AlarmSet.of_list in
+      let alarm_next = try MarshalManager.input ~dir (filename ^ ".alarm." ^ string_of_int next) |> AlarmSet.of_list with _ -> AlarmSet.empty in
+      let inputof_prev = MarshalManager.input ~dir (filename ^ ".inputof." ^ string_of_int prev) in
+      let inputof_idx = MarshalManager.input ~dir (filename ^ ".inputof." ^ string_of_int idx) in
+      let dug = MarshalManager.input ~dir (filename ^ ".dug." ^ string_of_int prev) in
+      let feature_prev = MarshalManager.input ~dir (filename ^ ".feature." ^ string_of_int prev) in
       let coarsen = 
-        MarshalManager.input ~dir (filename ^ ".coarsen." ^ surfix ^ "." ^ string_of_int prev)
+        MarshalManager.input ~dir (filename ^ ".coarsen." ^ string_of_int prev)
 (*          |> PowLoc.join coarsen  *)
       in
       let size_coarsen = PowLoc.cardinal coarsen in
       let (coarsen_score_pos1, coarsen_score_pos2, coarsen_score_neg) =
-        try MarshalManager.input ~dir (filename ^ ".coarsen.score." ^ surfix ^ "." ^ string_of_int prev) with _ -> (0, 0, 100) in
+        try MarshalManager.input ~dir (filename ^ ".coarsen.score." ^ string_of_int prev) with _ -> (0, 0, 100) in
       if next <= !Options.timer_deadline then
         let _ = output_string oc ("#\t\tIdx : " ^(string_of_int idx) ^ "\n") in
         output_string oc ("#\t\t\tType 1 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
@@ -874,7 +870,7 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
           if coarsen_score_neg <= coarsen_score_neg_new && coarsen_score_neg <= 10 then PowLoc.bot
           else neg_locs
         in
-        MarshalManager.output ~dir (filename ^ ".coarsen.score." ^ surfix ^ "." ^ string_of_int prev) (coarsen_score_pos1_new, coarsen_score_pos2_new, coarsen_score_neg_new);
+        MarshalManager.output ~dir (filename ^ ".coarsen.score." ^ string_of_int prev) (coarsen_score_pos1_new, coarsen_score_pos2_new, coarsen_score_neg_new);
         let conflict = PowLoc.inter pos_locs neg_locs in
         output_string oc ("#\t\t\tSummary at "^(string_of_int idx)^"\n");
         output_string oc ("#\t\t\t\tpositive : "^(string_of_int (PowLoc.cardinal pos_locs))^"\n");
@@ -915,17 +911,13 @@ let extract_data_normal spec global access oc filename surfix lst alarm_fs alarm
 
 let extract_data spec global access iteration  = 
   let filename = Filename.basename global.file.Cil.fileName in
-  let surfix = string_of_int (!Options.timer_unit) ^ "." 
-             ^ string_of_int (!Options.timer_alpha) ^ "." 
-             ^ string_of_int (!Options.timer_deadline)
-  in
   let dir = !Options.timer_dir in
-  let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".tr_data." ^ surfix ^ ".dat.raw") in
+  let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".tr_data.dat.raw") in
   let alarm_fs = MarshalManager.input (filename ^ ".alarm") |> flip Report.get Report.UnProven |> AlarmSet.of_list in
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
   let alarms_list = List.fold_left (fun l i -> 
                     try 
-                      let a = MarshalManager.input ~dir (filename ^ ".alarm."^ surfix ^ "." ^ (string_of_int (threshold i))) |> AlarmSet.of_list in
+                      let a = MarshalManager.input ~dir (filename ^ ".alarm." ^ (string_of_int (threshold i))) |> AlarmSet.of_list in
                       a::l
                     with _ -> l) [] (BatList.range 1 `To 6)
   in
@@ -933,10 +925,10 @@ let extract_data spec global access iteration  =
   let lst = BatList.range 1 `To 7 in
   let static_feature = MarshalManager.input ~dir (filename ^ ".static_feature") in
   let (pos_data, neg_data) = 
-      extract_data_normal spec global access oc filename surfix lst alarm_fs alarm_fi alarms_list static_feature iteration
+      extract_data_normal spec global access oc filename lst alarm_fs alarm_fi alarms_list static_feature iteration
   in
   close_out oc;
-  let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".tr_data." ^ surfix ^ ".dat") in
+  let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".tr_data.dat") in
   output_string oc "# Iteration\n";
   List.iter (fun (_, x, feature) -> 
     output_string oc (string_of_raw_feature x feature static_feature ^ " : 1\n")) pos_data;
@@ -946,8 +938,8 @@ let extract_data spec global access iteration  =
       try
       let idx = threshold i in
       let prev = threshold (i-1) in
-      let alarm_idx = MarshalManager.input ~dir (filename ^ ".alarm."^ surfix ^ "." ^ string_of_int idx) |> AlarmSet.of_list in
-      let alarm_prev = if i-1 = 0 then AlarmSet.empty else MarshalManager.input ~dir (filename ^ ".alarm."^ surfix ^ "." ^ string_of_int prev) |> AlarmSet.of_list in
+      let alarm_idx = MarshalManager.input ~dir (filename ^ ".alarm." ^ string_of_int idx) |> AlarmSet.of_list in
+      let alarm_prev = if i-1 = 0 then AlarmSet.empty else MarshalManager.input ~dir (filename ^ ".alarm." ^ string_of_int prev) |> AlarmSet.of_list in
       let new_alarm = AlarmSet.diff alarm_idx alarm_prev in
       let inter = AlarmSet.inter alarm_fs new_alarm in
       if idx <= !Options.timer_deadline then 
