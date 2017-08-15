@@ -939,20 +939,9 @@ let extract_data spec global access iteration  =
   let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".tr_data." ^ surfix ^ ".dat") in
   output_string oc "# Iteration\n";
   List.iter (fun (_, x, feature) -> 
-(*      if PowLoc.mem x conflict then () else *)
     output_string oc (string_of_raw_feature x feature static_feature ^ " : 1\n")) pos_data;
   List.iter (fun (_, x, feature) -> 
-(*      if PowLoc.mem x conflict then () else *)
     output_string oc (string_of_raw_feature x feature static_feature ^ " : 0\n")) neg_data;
-  let oracle = List.fold_left (fun oracle (idx, x, feature) -> 
-    let prev = threshold (idx - 1) in
-    BatMap.add (prev, Loc.to_string x) 1.0 oracle) BatMap.empty pos_data in
-  let oracle = List.fold_left (fun oracle (idx, x, feature) -> 
-    let prev = threshold (idx - 1) in
-    BatMap.add (prev, Loc.to_string x) 0.0 oracle) oracle neg_data in
-  close_out oc;
-  MarshalManager.output ~dir (filename^".oracle") oracle;
-
   let score = List.fold_left (fun score i ->
       try
       let idx = threshold i in
