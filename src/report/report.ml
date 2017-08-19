@@ -92,24 +92,29 @@ let string_of_query q =
    | _ -> "") ^ "  " ^
   q.desc ^ " " ^ status_to_string (get_status [q])
 
-let display_alarms title alarms_part =
+let display_alarms ?(verbose=1) title alarms_part =
   prerr_endline "";
   prerr_endline ("= " ^ title ^ " =");
   let alarms_part = BatMap.bindings alarms_part in
   let alarms_part = sort_partition alarms_part in
   List.iteri (fun k (part_unit, qs) ->
-    prerr_string (string_of_int (k + 1) ^ ". " ^ CilHelper.s_location part_unit ^ " ");
-    prerr_string (string_of_set id (list2set (List.map (fun q -> InterCfg.Node.get_pid q.node) qs)));
-    prerr_string (" " ^ status_to_string (get_status qs));
-    prerr_newline ();
-    List.iter (fun q ->
-      prerr_string ( "  " ^ AlarmExp.to_string q.exp ^ " @");
-      prerr_string (InterCfg.Node.to_string q.node);
-      prerr_string ( ":  " ^ q.desc ^ " " ^ status_to_string (get_status [q]));
-      (match q.allocsite with Some a ->
-        prerr_endline ( ", allocsite: " ^ Allocsite.to_string a)
-       | _ -> prerr_newline ())
-    ) qs
+    if verbose > 0 then
+      begin
+      prerr_string (string_of_int (k + 1) ^ ". " ^ CilHelper.s_location part_unit ^ " ");
+      prerr_string (string_of_set id (list2set (List.map (fun q -> InterCfg.Node.get_pid q.node) qs)));
+      prerr_string (" " ^ status_to_string (get_status qs));
+      prerr_newline ();
+      List.iter (fun q ->
+        prerr_string ( "  " ^ AlarmExp.to_string q.exp ^ " @");
+        prerr_string (InterCfg.Node.to_string q.node);
+        prerr_string ( ":  " ^ q.desc ^ " " ^ status_to_string (get_status [q]));
+        (match q.allocsite with Some a ->
+          prerr_endline ( ", allocsite: " ^ Allocsite.to_string a)
+         | _ -> prerr_newline ())
+      ) qs
+      end
+    else
+      prerr_endline (string_of_int (k + 1) ^ ". " ^ CilHelper.s_location part_unit ^ " ");
   ) alarms_part
 
 let print : query list -> unit
