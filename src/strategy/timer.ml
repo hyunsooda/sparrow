@@ -37,6 +37,10 @@ type t = {
   static_feature : PartialFlowSensitivity.feature;
   dynamic_feature : DynamicFeature.feature;
   alarm_history : (int, Report.query list) BatMap.t;
+  locset : PowLoc.t;
+  num_of_locset : int;
+  prepare : int;
+  deadline : int;
 }
 
 let empty = {
@@ -47,6 +51,10 @@ let empty = {
   static_feature = PartialFlowSensitivity.empty_feature;
   dynamic_feature = DynamicFeature.empty_feature;
   alarm_history = BatMap.empty;
+  locset = PowLoc.empty;
+  num_of_locset = 0;
+  prepare = 0;
+  deadline = 0;
 }
 
 let timer = ref empty
@@ -170,13 +178,20 @@ let timer_dump global dug inputof feature new_alarms locset_coarsen time =
 let initialize spec global dug = 
   let widen_start = Sys.time () in
   let static_feature = PartialFlowSensitivity.extract_feature global spec.Spec.locset_fs in
-  timer := { 
-    !timer with widen_start; static_feature; threshold = threshold !timer.time_stamp; (*!Options.timer_unit;*) 
-  };
   let filename = Filename.basename global.file.Cil.fileName in
   let dir = !Options.timer_dir in
-  MarshalManager.output ~dir (filename ^ ".static_feature") !timer.static_feature;
-  DynamicFeature.initialize_cache spec.Spec.locset_fs spec.Spec.premem
+  MarshalManager.output ~dir (filename ^ ".static_feature") static_feature;
+  (* for efficiency *)
+  DynamicFeature.initialize_cache spec.Spec.locset_fs spec.Spec.premem;
+  let prepare = (* int_of_float (Sys.time () -. widen_start)*) 0 in
+  let deadline = !Options.timer_deadline - prepare in
+  timer := { 
+    !timer with widen_start; static_feature; locset = spec.Spec.locset_fs;
+    num_of_locset = PowLoc.cardinal spec.Spec.locset_fs;
+    prepare; deadline;
+  };
+  timer := { !timer with threshold = threshold !timer.time_stamp; }; (* threshold uses prepare and deadline *)
+  ()
 
 (* compute coarsening targets *)
 let filter locset_coarsen node dug =
