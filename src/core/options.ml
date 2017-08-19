@@ -79,6 +79,8 @@ let timer_clf = ref ""
 let timer_dir = ref ""
 let timer_threshold_time = ref ""
 let timer_threshold_abs = ref ""
+let timer_initial_coarsening = ref false
+let timer_stat = ref false
 
 (* Marshaling *)
 let marshal_in = ref false
@@ -144,6 +146,8 @@ let opts =
   ("-timer_debug", (Arg.Set timer_debug), "Timer debug");
   ("-timer_static_rank", (Arg.Set timer_static_rank), "Static ranking");
   ("-timer_oracle_rank", (Arg.Set timer_oracle_rank), "Static ranking");
+  ("-timer_initial_coarsening", (Arg.Set timer_initial_coarsening), "Initial coarsening");
+  ("-timer_stat", (Arg.Set timer_stat), "Print statistics");
   ("-timer_clf", (Arg.String (fun s -> timer_clf := s)), "Timer clf");
   ("-timer_dir", (Arg.String (fun s -> timer_dir := s)), "Timer dir");
   ("-timer_threshold_time", (Arg.String (fun s -> timer_threshold_time := s)), "Timer threshold time");

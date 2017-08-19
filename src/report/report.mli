@@ -26,5 +26,5 @@ val string_of_alarminfo : Itv.t -> Itv.t -> string
 val string_of_query : query -> string
 val partition : query list -> (part_unit, query list) BatMap.t
 val get : query list -> status -> query list
-val display_alarms : string -> (part_unit, query list) BatMap.t -> unit
+val display_alarms : ?verbose:int -> string -> (part_unit, query list) BatMap.t -> unit
 val print : query list -> unit

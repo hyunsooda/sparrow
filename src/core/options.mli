@@ -98,6 +98,8 @@ val timer_wv : string ref
 val predictor : bool ref
 val timer_threshold_time : string ref
 val timer_threshold_abs : string ref
+val timer_initial_coarsening : bool ref
+val timer_stat : bool ref
 
 (** {2 Options lists } *)
 
