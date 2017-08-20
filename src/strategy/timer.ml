@@ -323,6 +323,26 @@ let initialize spec global access dug worklist inputof =
 
 module Data = Set.Make(Loc)
 
+let extract_type1 spec oc prev next coarsen size_coarsen coarsen_score_pos1 global dug access alarm_fi feature_prev inputof_prev inputof_idx iteration =
+  output_string oc ("#\t\t\tType 1 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
+  (* locs not related to FI-alarms *)
+  let locs_of_fi_alarms = Dependency.dependency_of_query_set global dug access alarm_fi feature_prev inputof_prev inputof_idx in
+  let pos_locs1 = PowLoc.diff spec.Spec.locset locs_of_fi_alarms in
+  let inter_pos1 = PowLoc.inter pos_locs1 coarsen in
+  output_string oc ("#\t\t\t\tPos1 : "^(PowLoc.cardinal pos_locs1 |> string_of_int)^"\n");
+  output_string oc ("#\t\t\t\tCoarsen : "^(string_of_int size_coarsen)^"\n");
+  let size_inter_pos = PowLoc.cardinal inter_pos1 in
+  output_string oc ("#\t\t\t\tIntersect between Coarsen and Pos1 : "^(string_of_int size_inter_pos)^" ("^(string_of_int (size_inter_pos * 100 / size_coarsen))^"%)\n");
+  let coarsen_score_pos1_new = (PowLoc.cardinal inter_pos1) * 100 / (PowLoc.cardinal coarsen) in
+  output_string oc ("#\t\t\t\tPos1 Score previous iter : " ^ string_of_int coarsen_score_pos1 ^ ", this iter : " ^ string_of_int coarsen_score_pos1_new^"\n");
+  let pos_locs1 =
+    if iteration = 0 then pos_locs1
+    else if coarsen_score_pos1 >= coarsen_score_pos1_new (*&& coarsen_score_pos1 >= 80*) then PowLoc.bot
+    else PowLoc.diff pos_locs1 coarsen
+  in
+(*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs; *)
+  (pos_locs1, coarsen_score_pos1_new)
+
 let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi alarms_list static_feature iteration =
   let filename = Filename.basename global.file.Cil.fileName in
   output_string oc ("# Iteration "^(string_of_int iteration)^" of "^ filename ^" begins\n");
@@ -349,23 +369,11 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         try MarshalManager.input ~dir (filename ^ ".coarsen.score." ^ string_of_int prev) with _ -> (0, 0, 100) in
       if next <= 5 then (* FIXME *)
         let _ = output_string oc ("#\t\tIdx : " ^(string_of_int idx) ^ "\n") in
-        output_string oc ("#\t\t\tType 1 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
-        (* locs not related to FI-alarms *)
-        let locs_of_fi_alarms = Dependency.dependency_of_query_set global dug access alarm_fi feature_prev inputof_prev inputof_idx in
-        let pos_locs1 = PowLoc.diff spec.Spec.locset locs_of_fi_alarms in
-        let inter_pos1 = PowLoc.inter pos_locs1 coarsen in
-        output_string oc ("#\t\t\t\tPos1 : "^(PowLoc.cardinal pos_locs1 |> string_of_int)^"\n");
-        output_string oc ("#\t\t\t\tCoarsen : "^(string_of_int size_coarsen)^"\n");
-        let size_inter_pos = PowLoc.cardinal inter_pos1 in
-        output_string oc ("#\t\t\t\tIntersect between Coarsen and Pos1 : "^(string_of_int size_inter_pos)^" ("^(string_of_int (size_inter_pos * 100 / size_coarsen))^"%)\n");
-        let coarsen_score_pos1_new = (PowLoc.cardinal inter_pos1) * 100 / (PowLoc.cardinal coarsen) in
-        output_string oc ("#\t\t\t\tPos1 Score previous iter : " ^ string_of_int coarsen_score_pos1 ^ ", this iter : " ^ string_of_int coarsen_score_pos1_new^"\n");
-        let pos_locs1 =
-          if iteration = 0 then pos_locs1
-          else if coarsen_score_pos1 >= coarsen_score_pos1_new (*&& coarsen_score_pos1 >= 80*) then PowLoc.bot
-          else PowLoc.diff pos_locs1 coarsen
+        let (pos_locs1, coarsen_score_pos1_new) = 
+          if !Options.timer_initial_coarsening then (PowLoc.bot, 0)
+          else
+            extract_type1 spec oc prev next coarsen size_coarsen coarsen_score_pos1 global dug access alarm_fi feature_prev inputof_prev inputof_idx iteration
         in
-(*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs; *)
         (* 2. Update w to coarsen variables that are related to the FS alarms earlier *)
         output_string oc ("#\t\t\tType 2 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
         prdbg_endline ("Type 2 Data at " ^ string_of_int idx);
