@@ -327,13 +327,15 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
   let filename = Filename.basename global.file.Cil.fileName in
   output_string oc ("# Iteration "^(string_of_int iteration)^" of "^ filename ^" begins\n");
   let dir = !Options.timer_dir in
+  let final_idx = List.length alarms_list in
+  let alarm_final = MarshalManager.input ~dir (filename ^ ".alarm." ^ (string_of_int final_idx)) |> AlarmSet.of_list in
   let (pos_data, neg_data, _) = List.fold_left (fun (pos_data, neg_data, coarsen) i ->
     try 
       let (prev, idx, next) = (i, i + 1, i + 2) in
       prerr_endline ("Extract Data at " ^ string_of_int idx);
       let alarm_idx = MarshalManager.input ~dir (filename ^ ".alarm." ^ string_of_int idx) |> AlarmSet.of_list in
       let alarm_prev = MarshalManager.input ~dir (filename ^ ".alarm." ^ string_of_int prev) |> AlarmSet.of_list in
-      let alarm_next = try MarshalManager.input ~dir (filename ^ ".alarm." ^ string_of_int next) |> AlarmSet.of_list with _ -> AlarmSet.empty in
+      let alarm_next = try MarshalManager.input ~dir (filename ^ ".alarm." ^ string_of_int next) |> AlarmSet.of_list with _ -> alarm_final in
       let inputof_prev = MarshalManager.input ~dir (filename ^ ".inputof." ^ string_of_int prev) in
       let inputof_idx = MarshalManager.input ~dir (filename ^ ".inputof." ^ string_of_int idx) in
       let dug = MarshalManager.input ~dir (filename ^ ".dug." ^ string_of_int prev) in
@@ -345,7 +347,7 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
       let size_coarsen = PowLoc.cardinal coarsen in
       let (coarsen_score_pos1, coarsen_score_pos2, coarsen_score_neg) =
         try MarshalManager.input ~dir (filename ^ ".coarsen.score." ^ string_of_int prev) with _ -> (0, 0, 100) in
-      if next <= 4 then (* FIXME *)
+      if next <= 5 then (* FIXME *)
         let _ = output_string oc ("#\t\tIdx : " ^(string_of_int idx) ^ "\n") in
         output_string oc ("#\t\t\tType 1 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
         (* locs not related to FI-alarms *)
@@ -460,6 +462,9 @@ let extract_data spec global access iteration  =
       with _ -> l) [] lst
   in
   let static_feature = MarshalManager.input ~dir (filename ^ ".static_feature") in
+  let final_idx = List.length alarms_list in
+  let lst = BatList.range 1 `To final_idx in
+  let alarm_final = MarshalManager.input ~dir (filename ^ ".alarm." ^ (string_of_int final_idx)) |> AlarmSet.of_list in
   let (pos_data, neg_data) = 
       extract_data_normal spec global access oc filename lst alarm_fs alarm_fi alarms_list static_feature iteration
   in
@@ -480,8 +485,6 @@ let extract_data spec global access iteration  =
       BatMap.add (prev, Loc.to_string x) (-1.0) oracle) oracle neg_data in
       MarshalManager.output ~dir (filename^".oracle") oracle
   end;
-  let final_idx = List.length (threshold_list ()) - 1 in
-  let alarm_final = MarshalManager.input ~dir (filename ^ ".alarm." ^ (string_of_int final_idx)) |> AlarmSet.of_list in
   let score = List.fold_left (fun score i ->
       try
         let (prev, idx) = (i - 1, i) in
