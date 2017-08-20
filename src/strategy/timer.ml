@@ -415,10 +415,10 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         output_string oc ("#\t\t\t\tconflict : "^(string_of_int (PowLoc.cardinal conflict))^"\n");
         let pos_data = PowLoc.fold (fun x pos_data -> 
             if PowLoc.mem x conflict then pos_data
-            else (i, x, feature_prev)::pos_data) pos_locs pos_data in
+            else (prev, x, feature_prev)::pos_data) pos_locs pos_data in
         let neg_data = PowLoc.fold (fun x neg_data -> 
 (*            if PowLoc.mem x conflict then neg_data
-            else*) (i, x, feature_prev)::neg_data) neg_locs neg_data in
+            else*) (prev, x, feature_prev)::neg_data) neg_locs neg_data in
         (pos_data, neg_data, coarsen)
       else 
         (* 4. *)
@@ -428,7 +428,7 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         let dep_locs = Dependency.dependency_of_query_set global dug access inter feature_prev inputof_prev inputof_idx in
         let pos_data = PowLoc.fold (fun x pos_data -> 
             output_string oc (DynamicFeature.string_of_raw_feature x feature_prev static_feature ^ " : 1\n");
-            (i, x, feature_prev)::pos_data) dep_locs pos_data 
+            (prev, x, feature_prev)::pos_data) dep_locs pos_data 
         in
         (pos_data, neg_data, coarsen)
     with _ -> (pos_data, neg_data, coarsen)
@@ -472,12 +472,12 @@ let extract_data spec global access iteration  =
     output_string oc (DynamicFeature.string_of_raw_feature x feature static_feature ^ " : 0\n")) neg_data;
   if !Options.timer_oracle_rank then
   begin
-    let oracle = List.fold_left (fun oracle (idx, x, feature) ->
-      let prev = threshold (idx - 1) in
-      BatMap.add (prev, Loc.to_string x) 1.0 oracle) BatMap.empty pos_data in
-    let oracle = List.fold_left (fun oracle (idx, x, feature) ->
-      let prev = threshold (idx - 1) in
-      BatMap.add (prev, Loc.to_string x) 0.0 oracle) oracle neg_data in
+    let filename = Filename.basename global.file.Cil.fileName in
+    let oracle = try MarshalManager.input ~dir:!Options.timer_dir (filename^".oracle") with _ -> prerr_endline "Can't find the oracle"; BatMap.empty in
+    let oracle = List.fold_left (fun oracle (prev, x, feature) ->
+      BatMap.add (prev, Loc.to_string x) 1.0 oracle) oracle pos_data in
+    let oracle = List.fold_left (fun oracle (prev, x, feature) ->
+      BatMap.add (prev, Loc.to_string x) (-1.0) oracle) oracle neg_data in
       MarshalManager.output ~dir (filename^".oracle") oracle
   end;
   let final_idx = List.length (threshold_list ()) - 1 in
