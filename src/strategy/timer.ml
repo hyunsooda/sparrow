@@ -285,45 +285,31 @@ let print_stat spec global access dug =
 
 let initialize spec global access dug worklist inputof = 
   let widen_start = Sys.time () in
-  let locset_of_fi_alarms = spec.Spec.locset_fs in
-  let static_feature = PartialFlowSensitivity.extract_feature global locset_of_fi_alarms in
-  let filename = Filename.basename global.file.Cil.fileName in
-  let dir = !Options.timer_dir in
-  MarshalManager.output ~dir (filename ^ ".static_feature") static_feature;
-  (* for efficiency *)
-  DynamicFeature.initialize_cache locset_of_fi_alarms spec.Spec.premem;
-  let prepare = (* int_of_float (Sys.time () -. widen_start)*) 0 in
-  let deadline = !Options.timer_deadline - prepare in
-  timer := {
-    !timer with widen_start; static_feature; locset = locset_of_fi_alarms;
-    num_of_locset = PowLoc.cardinal locset_of_fi_alarms;
-    prepare; deadline; };
-  timer := { !timer with threshold = threshold !timer.time_stamp; }; (* threshold uses prepare and deadline *)
-  (spec, dug, worklist, inputof)
-
-let initialize_new spec global access dug worklist inputof = 
-  let widen_start = Sys.time () in
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
-  let locset_of_fi_alarms = (* target of this optimization problem *)
-      AlarmSet.fold (fun q locs ->
-        Dependency.dependency_of_query global dug access q global.mem
-        |> PowLoc.join locs) alarm_fi PowLoc.empty
+  let target_locset = (* target of this optimization problem *)
+    if !Options.timer_initial_coarsening then
+        AlarmSet.fold (fun q locs ->
+          Dependency.dependency_of_query global dug access q global.mem
+          |> PowLoc.join locs) alarm_fi PowLoc.empty
+    else
+      spec.Spec.locset_fs
   in
   prerr_endline ("\n== locset took " ^ string_of_float (Sys.time () -. widen_start)); 
-  let static_feature = PartialFlowSensitivity.extract_feature global locset_of_fi_alarms in
+  let static_feature = PartialFlowSensitivity.extract_feature global target_locset in
   let filename = Filename.basename global.file.Cil.fileName in
   let dir = !Options.timer_dir in
   MarshalManager.output ~dir (filename ^ ".static_feature") static_feature;
-  let locset_coarsen = PowLoc.diff spec.Spec.locset locset_of_fi_alarms in
+  let locset_coarsen = PowLoc.diff spec.Spec.locset target_locset in
+  (if !Options.timer_stat then print_stat spec global access dug);
   prerr_endline ("\n== feature took " ^ string_of_float (Sys.time () -. widen_start)); 
   (* for efficiency *)
-  DynamicFeature.initialize_cache locset_of_fi_alarms spec.Spec.premem;
+  DynamicFeature.initialize_cache target_locset spec.Spec.premem;
   let (spec, dug, worklist, inputof) = coarsening global access locset_coarsen dug worklist inputof spec in
   let prepare = int_of_float (Sys.time () -. widen_start) in
   let deadline = !Options.timer_deadline - prepare in
   timer := {
-    !timer with widen_start; static_feature; locset = locset_of_fi_alarms;
-    num_of_locset = PowLoc.cardinal locset_of_fi_alarms;
+    !timer with widen_start; static_feature; locset = target_locset;
+    num_of_locset = PowLoc.cardinal target_locset;
     prepare; deadline; };
   timer := { !timer with threshold = threshold !timer.time_stamp; }; (* threshold uses prepare and deadline *)
   prerr_endline ("\n== Timer: Coarsening #0 took " ^ string_of_float (Sys.time () -. widen_start)); 
@@ -567,7 +553,7 @@ let coarsening_fs spec global access dug worklist inputof =
       prerr_endline ("#Node on Dug            : " ^ string_of_int (DUGraph.nb_node dug));
       prerr_endline ("#Worklist               : " ^ (string_of_int num_of_works) ^ " -> "^(string_of_int (Worklist.cardinal worklist)));
 (*       prdbg_endline ("Coarsened Locs : \n\t"^PowLoc.to_string locset_coarsen); *)
-      (if !Options.timer_debug then Report.display_alarms ("Alarms at "^string_of_int !timer.time_stamp) new_alarms_part);
+      (if !Options.timer_debug then Report.display_alarms ~verbose:0 ("Alarms at "^string_of_int !timer.time_stamp) new_alarms_part);
       prerr_endline ("== Timer: Coarsening took " ^ string_of_float (Sys.time () -. t0));
       prerr_endline ("== Timer: Coarsening completes at " ^ string_of_float (Sys.time () -. !timer.widen_start));
       Profiler.report stdout;
@@ -583,6 +569,9 @@ let coarsening_fs spec global access dug worklist inputof =
 
 let finalize spec global dug inputof =
   let alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof |> flip Report.get Report.UnProven in
-(*   let new_alarms_part = Report.partition alarms in *)
-(*   Report.display_alarms ("Alarms at "^string_of_int !timer.threshold) new_alarms_part; *)
-  timer_dump global dug inputof DynamicFeature.empty_feature alarms PowLoc.empty (List.length (threshold_list ()) - 1)
+  if !Options.timer_debug then
+    begin
+      let new_alarms_part = Report.partition alarms in
+      Report.display_alarms ~verbose:0 ("Alarms at "^string_of_int !timer.time_stamp) new_alarms_part
+    end;
+  timer_dump global dug inputof DynamicFeature.empty_feature alarms PowLoc.empty !timer.time_stamp
