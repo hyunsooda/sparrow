@@ -146,10 +146,7 @@ let rank_strategy global spec feature timer =
     else
       let (py_module, clf) = load_classifier global in 
       Hashtbl.fold (fun k _ l ->
-          if PowLoc.mem k timer.dynamic_feature.DynamicFeature.non_bot then
-            (k, predict_proba py_module clf k feature timer.static_feature)::l
-          else
-            (k, 0.0)::l) DynamicFeature.locset_hash []
+            (k, predict_proba py_module clf k feature timer.static_feature)::l) DynamicFeature.locset_hash []
       |> List.sort (fun (_, x) (_, y) -> if x > y then -1 else if x = y then 0 else 1)
       |> opt !Options.timer_counter_example (counter_example global)
   in
@@ -393,12 +390,16 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         (* 2. Update w to coarsen variables that are related to the FS alarms earlier *)
         output_string oc ("#\t\t\tType 2 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
         prdbg_endline ("Type 2 Data at " ^ string_of_int idx);
-        let inter = AlarmSet.inter alarm_fs (AlarmSet.diff alarm_next alarm_idx) in
+(*         let inter = AlarmSet.inter alarm_fs (AlarmSet.diff alarm_next alarm_idx) in *)
+        let inter = AlarmSet.inter alarm_fs alarm_next in
         output_string oc ("#\t\t\t\tnumber of alarm next: "^(string_of_int (AlarmSet.cardinal alarm_next))^"\n");
         output_string oc ("#\t\t\t\tnumber of alarm idx: "^(string_of_int (AlarmSet.cardinal alarm_idx))^"\n");
         output_string oc ("#\t\t\t\tnumber of alarm diff & fs: "^(string_of_int (AlarmSet.cardinal inter))^"\n");
         (* locs related to FS-alarms *)
-        let pos_locs2 = Dependency.dependency_of_query_set global dug access inter feature_prev inputof_prev inputof_idx in
+        let pos_locs2 = 
+          Dependency.dependency_of_query_set global dug access inter feature_prev inputof_prev inputof_idx
+          |> PowLoc.filter (fun x -> Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
+        in
 (*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs; *)
         let inter_pos2 = PowLoc.inter pos_locs2 coarsen in
         let size_inter_pos2 = PowLoc.cardinal inter_pos2 in
@@ -407,9 +408,8 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         let coarsen_score_pos2_new = (PowLoc.cardinal inter_pos2) * 100 / (PowLoc.cardinal coarsen) in
         output_string oc ("#\t\t\t\tPos2 Score previous iter : " ^ string_of_int coarsen_score_pos2 ^ ", this iter : " ^ string_of_int coarsen_score_pos2_new^"\n");
         let pos_locs2 =
-          if iteration = 0 then pos_locs2
-          else if coarsen_score_pos2 >= coarsen_score_pos2_new then PowLoc.bot
-          else PowLoc.diff pos_locs2 coarsen
+          if coarsen_score_pos2 >= coarsen_score_pos2_new then PowLoc.bot
+          else (*PowLoc.diff pos_locs2 coarsen*) pos_locs2
         in
         let pos_locs = PowLoc.join pos_locs1 pos_locs2 in
         (* 3. Update w to coarsen variable *)
@@ -417,9 +417,12 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         output_string oc ("#\t\t\t\tnumber of alarm prev: "^(string_of_int (AlarmSet.cardinal alarm_prev))^"\n");
         output_string oc ("#\t\t\t\tnumber of alarm idx: "^(string_of_int (AlarmSet.cardinal alarm_idx))^"\n");
         prdbg_endline ("Type 3 Data at " ^ string_of_int idx);
-        let diff = AlarmSet.diff (AlarmSet.diff alarm_idx alarm_prev) alarm_fs in
+(*         let diff = AlarmSet.diff (AlarmSet.diff alarm_idx alarm_prev) alarm_fs in *)
+        let diff = AlarmSet.diff alarm_final alarm_fs in
         output_string oc ("#\t\t\t\tnumber of alarm diff & non-fs: "^(string_of_int (AlarmSet.cardinal diff))^"\n");
-        let locs_of_alarms = Dependency.dependency_of_query_set global dug access diff feature_prev inputof_prev inputof_idx in
+        let locs_of_alarms = Dependency.dependency_of_query_set global dug access diff feature_prev inputof_prev inputof_idx
+          |> PowLoc.filter (fun x -> Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
+        in
         let neg_locs = locs_of_alarms in
 (*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 0\n")) neg_locs; *)
         let inter_neg = PowLoc.inter neg_locs coarsen in
@@ -430,7 +433,7 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         let coarsen_score_neg_new = (PowLoc.cardinal inter_neg) * 100 / (PowLoc.cardinal coarsen) in
         output_string oc ("#\t\t\t\tNeg Score previous iter : " ^ string_of_int coarsen_score_neg ^ ", this iter : " ^ string_of_int coarsen_score_neg_new^"\n");
         let neg_locs =
-          if coarsen_score_neg <= coarsen_score_neg_new && coarsen_score_neg <= 10 then PowLoc.bot
+          if coarsen_score_neg <= coarsen_score_neg_new then PowLoc.bot
           else neg_locs
         in
         MarshalManager.output ~dir (filename ^ ".coarsen.score." ^ string_of_int prev) (coarsen_score_pos1_new, coarsen_score_pos2_new, coarsen_score_neg_new);
@@ -443,8 +446,8 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
             if PowLoc.mem x conflict then pos_data
             else (prev, x, feature_prev)::pos_data) pos_locs pos_data in
         let neg_data = PowLoc.fold (fun x neg_data -> 
-(*            if PowLoc.mem x conflict then neg_data
-            else*) (prev, x, feature_prev)::neg_data) neg_locs neg_data in
+            if PowLoc.mem x conflict then neg_data
+            else (prev, x, feature_prev)::neg_data) neg_locs neg_data in
         (pos_data, neg_data, coarsen)
       else 
         (* 4. *)
