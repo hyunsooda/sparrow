@@ -10,6 +10,7 @@
 (***********************************************************************)
 
 open BasicDom
+open Global
 open ItvDom
 open Report
 open Vocab
@@ -53,6 +54,8 @@ type feature = {
   precise_pre               : PowLoc.t;
   (* syntactic features *)
   temp_var                  : PowLoc.t;
+  (* not a feature *)
+  non_bot                       : PowLoc.t;
 }
 
 let empty_feature = {
@@ -84,6 +87,7 @@ let empty_feature = {
   precise_pre               = PowLoc.empty;
   (* syntacitc *)
   temp_var                  = PowLoc.empty;
+  non_bot                       = PowLoc.empty;
 }
 
 let print_feature feat =
@@ -330,7 +334,9 @@ let add_temp_var k v feat =
     { feat with neg_itv = PowLoc.add k feat.neg_itv }
   else feat
 
-let extract spec elapsed_time alarms new_alarms old_inputof inputof old_feature = 
+let add_not_bot k feat = { feat with non_bot = PowLoc.add k feat.non_bot }
+
+let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_feature = 
 (*  let t0 = Sys.time () in*)
   let total_alarms = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> Report.partition in
   let num_of_total_alarms = BatMap.cardinal total_alarms in
@@ -365,7 +371,9 @@ let extract spec elapsed_time alarms new_alarms old_inputof inputof old_feature 
      ) new_alarms
 (*  |> (fun x -> prerr_endline ("\n-- until alarm features " ^ string_of_float (Sys.time () -. t0)); x)*)
   |> Table.fold (fun node new_mem feat ->
-      if (InterCfg.is_entry node) || (InterCfg.is_exit node) then 
+      if (InterCfg.is_entry node) || (InterCfg.is_exit node)
+        || (InterCfg.is_callnode node global.icfg) || (InterCfg.is_returnnode node global.icfg)
+      then 
         let old_mem = Table.find node old_inputof in
         Mem.fold (fun k v feat ->
 (*            if Hashtbl.mem locset_hash k then*)
@@ -385,6 +393,7 @@ let extract spec elapsed_time alarms new_alarms old_inputof inputof old_feature 
               |> (add_left_open_offset k v)
               |> (add_unstable k (Mem.find k old_mem) v )
               |> (add_eq_fi k v)
+              |> (add_not_bot k)
 (*            else feat*)
           ) new_mem feat
       else feat) inputof

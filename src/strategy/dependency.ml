@@ -102,11 +102,12 @@ let dependency_of_query_set global dug access qset feature inputof_prev inputof_
     let _ = prdbg_endline ("prev mem: "^(Mem.to_string mem_prev)) in
 *)    let _ = prdbg_endline ("dep: "^(PowLoc.to_string set)) in
     PowLoc.iter (fun x -> 
-      (if Mem.mem x mem_prev (*&& Random.int 10 = 0*) then
-       begin
+(*      (if Mem.mem x mem_prev (*&& Random.int 10 = 0*) then
+       begin*)
+         prdbg_endline ("loc : " ^(Loc.to_string x));
          prdbg_endline ("FS val : "^(Val.to_string (Mem.find x mem_prev)));
          prdbg_endline ("FI val : "^(try Val.to_string (Mem.find x global.mem) with _ -> "Notfound"))
-       end)) set
+(*       end*)) set
       else ());
     set
 (*    PowLoc.filter (fun x -> Mem.mem x mem_prev) set*)

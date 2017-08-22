@@ -106,6 +106,17 @@ let threshold_list_loc () =
     Str.split (Str.regexp "[ \t]+") (!Options.timer_threshold_abs)
     |> List.map int_of_string
 
+let counter_example global lst =
+    let filename = Filename.basename global.file.Cil.fileName in
+    let oracle = try MarshalManager.input ~dir:!Options.timer_dir (filename^".oracle") with _ -> prerr_endline "Can't find the oracle"; BatMap.empty in
+    prerr_endline "== counter examples";
+    List.iter (fun (x, w) ->
+        let answer = try BatMap.find (!timer.time_stamp, Loc.to_string x) oracle with _ -> w in
+        if abs_float (answer -. w) >= 0.5 then
+          prerr_endline ("ce : " ^ Loc.to_string x ^ " : " ^ string_of_float w ^", answer : " ^ string_of_float answer)
+        else ()
+    ) lst; lst
+
 let rank_strategy global spec feature timer = 
   let top = 
     match coarsening_target with 
@@ -134,9 +145,13 @@ let rank_strategy global spec feature timer =
       |> List.sort (fun (_, x) (_, y) -> if x < y then -1 else if x = y then 0 else 1)
     else
       let (py_module, clf) = load_classifier global in 
-      Hashtbl.fold (fun k _ l -> 
-          (k, predict_proba py_module clf k feature timer.static_feature)::l) DynamicFeature.locset_hash []
+      Hashtbl.fold (fun k _ l ->
+          if PowLoc.mem k timer.dynamic_feature.DynamicFeature.non_bot then
+            (k, predict_proba py_module clf k feature timer.static_feature)::l
+          else
+            (k, 0.0)::l) DynamicFeature.locset_hash []
       |> List.sort (fun (_, x) (_, y) -> if x > y then -1 else if x = y then 0 else 1)
+      |> opt !Options.timer_counter_example (counter_example global)
   in
   ranking
   |> opt !Options.timer_debug 
@@ -291,6 +306,7 @@ let initialize spec global access dug worklist inputof =
         AlarmSet.fold (fun q locs ->
           Dependency.dependency_of_query global dug access q global.mem
           |> PowLoc.join locs) alarm_fi PowLoc.empty
+        |> PowLoc.filter (fun x -> Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
     else
       spec.Spec.locset_fs
   in
@@ -483,14 +499,14 @@ let extract_data spec global access iteration  =
     output_string oc (DynamicFeature.string_of_raw_feature x feature static_feature ^ " : 1\n")) pos_data;
   List.iter (fun (_, x, feature) -> 
     output_string oc (DynamicFeature.string_of_raw_feature x feature static_feature ^ " : 0\n")) neg_data;
-  if !Options.timer_oracle_rank then
+  if !Options.timer_oracle_rank || !Options.timer_counter_example then
   begin
     let filename = Filename.basename global.file.Cil.fileName in
     let oracle = try MarshalManager.input ~dir:!Options.timer_dir (filename^".oracle") with _ -> prerr_endline "Can't find the oracle"; BatMap.empty in
     let oracle = List.fold_left (fun oracle (prev, x, feature) ->
       BatMap.add (prev, Loc.to_string x) 1.0 oracle) oracle pos_data in
     let oracle = List.fold_left (fun oracle (prev, x, feature) ->
-      BatMap.add (prev, Loc.to_string x) (-1.0) oracle) oracle neg_data in
+      BatMap.add (prev, Loc.to_string x) (0.0) oracle) oracle neg_data in
       MarshalManager.output ~dir (filename^".oracle") oracle
   end;
   let score = List.fold_left (fun score i ->
@@ -540,7 +556,7 @@ let coarsening_fs spec global access dug worklist inputof =
       let new_alarms = get_new_alarms alarms in
       let alarms_part = Report.partition alarms in
       let new_alarms_part = Report.partition new_alarms in
-      let dynamic_feature = DynamicFeature.extract spec elapsed alarms_part new_alarms_part !timer.old_inputof inputof !timer.dynamic_feature in
+      let dynamic_feature = DynamicFeature.extract spec global elapsed alarms_part new_alarms_part !timer.old_inputof inputof !timer.dynamic_feature in
       prerr_endline ("\n== Timer: feature extraction took " ^ string_of_float (Sys.time () -. t0));
       let t1 = Sys.time () in
       (* fixted portion *)
