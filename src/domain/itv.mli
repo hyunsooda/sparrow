@@ -23,7 +23,10 @@ include AbsDom.LAT
 val is_bot      : t -> bool
 val is_const    : t -> bool
 val is_finite   : t -> bool
-val open_left  : t -> bool
+val is_zero     : t -> bool
+val is_positive : t -> bool
+val is_negative : t -> bool
+val open_left   : t -> bool
 val open_right  : t -> bool
 val close_left  : t -> bool
 
