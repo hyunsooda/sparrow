@@ -100,22 +100,24 @@ struct
         (fun _ local acc -> PowLoc.union acc local) access PowLoc.empty in
     Access.add_program_local local access
 
-  let init_defs_of : Access.t -> Access.t
-  =fun access ->
+  let init_defs_of global access =
     Access.fold (fun node info access ->
-      PowLoc.fold (fun loc access ->
-        let old_nodes = Access.find_def_nodes loc access in
-        Access.add_def_nodes loc (PowNode.add node old_nodes) access
-      ) (Access.Info.defof info) access
+      if InterCfg.cmdof global.icfg node = IntraCfg.Cmd.Cskip then access
+      else
+        PowLoc.fold (fun loc access ->
+          let old_nodes = Access.find_def_nodes loc access in
+          Access.add_def_nodes loc (PowNode.add node old_nodes) access
+          ) (Access.Info.defof info) access
     ) access access
 
-  let init_uses_of : Access.t -> Access.t
-  =fun access ->
+  let init_uses_of global access =
     Access.fold (fun node info access ->
-      PowLoc.fold (fun loc access ->
-        let old_nodes = Access.find_use_nodes loc access in
-        Access.add_use_nodes loc (PowNode.add node old_nodes) access
-      ) (Access.Info.useof info) access
+      if InterCfg.cmdof global.icfg node = IntraCfg.Cmd.Cskip then access
+      else
+        PowLoc.fold (fun loc access ->
+          let old_nodes = Access.find_use_nodes loc access in
+          Access.add_use_nodes loc (PowNode.add node old_nodes) access
+          ) (Access.Info.useof info) access
     ) access access
 
   let perform : Global.t -> Access.PowLoc.t -> (Node.t -> Dom.t * Global.t -> Dom.t * Global.t) -> Dom.t -> Access.t
@@ -127,6 +129,6 @@ struct
     |> init_access_proc_local
     |> init_access_proc_reach_wo_local pids global.callgraph
     |> init_access_program_local
-    |> init_defs_of
-    |> init_uses_of
+    |> init_defs_of global
+    |> init_uses_of global
 end
