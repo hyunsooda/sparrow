@@ -50,15 +50,16 @@ type feature = {
   large_array_set_val_widen : PowLoc.t;
   large_array_set_val_field : PowLoc.t;
   unstable                  : PowLoc.t;
+  bot                       : PowLoc.t;
   (* static semantic features, move to static features in the long run *)
   finite_itv_pre            : PowLoc.t;
+  finite_size_pre            : PowLoc.t;
+  finite_offset_pre            : PowLoc.t;
   singleton_ptr_set_pre      : PowLoc.t;
   singleton_array_set_pre    : PowLoc.t;
   singleton_array_set_val_pre: PowLoc.t;
   (* syntactic features *)
   temp_var                  : PowLoc.t;
-  (* not a feature *)
-  non_bot                       : PowLoc.t;
 }
 
 let empty_feature = {
@@ -88,12 +89,14 @@ let empty_feature = {
   unstable                  = PowLoc.empty;
   (* static semantic *)
   finite_itv_pre            = PowLoc.empty;
+  finite_size_pre            = PowLoc.empty;
+  finite_offset_pre            = PowLoc.empty;
   singleton_ptr_set_pre      = PowLoc.empty;
   singleton_array_set_pre    = PowLoc.empty;
   singleton_array_set_val_pre= PowLoc.empty;
   (* syntacitc *)
   temp_var                  = PowLoc.empty;
-  non_bot                   = PowLoc.empty;
+  bot                   = PowLoc.empty;
 }
 
 let print_feature feat =
@@ -128,35 +131,37 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.large_array_set_val_widen);
    b2f (PowLoc.mem x feat.large_array_set_val_field);
    b2f (PowLoc.mem x feat.unstable);
-   b2f (PowLoc.mem x feat.non_bot);
+   b2f (PowLoc.mem x feat.bot);   (* 20 *)
    b2f (PowLoc.mem x feat.finite_itv_pre);
+   b2f (PowLoc.mem x feat.finite_size_pre);
+   b2f (PowLoc.mem x feat.finite_offset_pre);
    b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_val_pre);
    b2f (PowLoc.mem x static_feature.Pfs.gvars);
    b2f (PowLoc.mem x static_feature.Pfs.lvars);
    b2f (PowLoc.mem x static_feature.Pfs.lvars_in_G);
-   b2f (PowLoc.mem x static_feature.Pfs.fields);
+   b2f (PowLoc.mem x static_feature.Pfs.fields); (* 30 *)
    b2f (PowLoc.mem x static_feature.Pfs.ptr_type);
    b2f (PowLoc.mem x static_feature.Pfs.allocsites);
    b2f (PowLoc.mem x static_feature.Pfs.static_array);
    b2f (PowLoc.mem x static_feature.Pfs.ext_allocsites);
    b2f (PowLoc.mem x static_feature.Pfs.single_defs);
-   b2f (PowLoc.mem x static_feature.Pfs.assign_const); (* 30 *)
+   b2f (PowLoc.mem x static_feature.Pfs.assign_const);
    b2f (PowLoc.mem x static_feature.Pfs.assign_sizeof);
    b2f (PowLoc.mem x static_feature.Pfs.prune_simple);
    b2f (PowLoc.mem x static_feature.Pfs.prune_by_const);
-   b2f (PowLoc.mem x static_feature.Pfs.prune_by_var);
+   b2f (PowLoc.mem x static_feature.Pfs.prune_by_var); (* 40 *)
    b2f (PowLoc.mem x static_feature.Pfs.prune_by_not);
    b2f (PowLoc.mem x static_feature.Pfs.pass_to_alloc);
    b2f (PowLoc.mem x static_feature.Pfs.pass_to_alloc2);
    b2f (PowLoc.mem x static_feature.Pfs.pass_to_alloc_clos);
    b2f (PowLoc.mem x static_feature.Pfs.pass_to_realloc);
-   b2f (PowLoc.mem x static_feature.Pfs.pass_to_realloc2); (* 40 *)
+   b2f (PowLoc.mem x static_feature.Pfs.pass_to_realloc2);
    b2f (PowLoc.mem x static_feature.Pfs.pass_to_realloc_clos);
    b2f (PowLoc.mem x static_feature.Pfs.pass_to_buf);
    b2f (PowLoc.mem x static_feature.Pfs.return_from_alloc);
-   b2f (PowLoc.mem x static_feature.Pfs.return_from_alloc2);
+   b2f (PowLoc.mem x static_feature.Pfs.return_from_alloc2); (* 50 *)
    b2f (PowLoc.mem x static_feature.Pfs.return_from_alloc_clos);
    b2f (PowLoc.mem x static_feature.Pfs.return_from_realloc);
    b2f (PowLoc.mem x static_feature.Pfs.return_from_realloc2);
@@ -166,17 +171,17 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x static_feature.Pfs.incptr_itself_by_one);
    b2f (PowLoc.mem x static_feature.Pfs.inc);
    b2f (PowLoc.mem x static_feature.Pfs.dec);
-   b2f (PowLoc.mem x static_feature.Pfs.dec_itself);
+   b2f (PowLoc.mem x static_feature.Pfs.dec_itself); (* 60 *)
    b2f (PowLoc.mem x static_feature.Pfs.dec_itself_by_const);
    b2f (PowLoc.mem x static_feature.Pfs.mul_itself_by_const);
    b2f (PowLoc.mem x static_feature.Pfs.mul_itself_by_var);
    b2f (PowLoc.mem x static_feature.Pfs.used_as_array_index);
    b2f (PowLoc.mem x static_feature.Pfs.used_as_array_buf);
-   b2f (PowLoc.mem x static_feature.Pfs.mod_in_rec_fun); (* 60 *)
+   b2f (PowLoc.mem x static_feature.Pfs.mod_in_rec_fun); 
    b2f (PowLoc.mem x static_feature.Pfs.read_in_rec_fun);
    b2f (PowLoc.mem x static_feature.Pfs.return_from_ext_fun);
    b2f (PowLoc.mem x static_feature.Pfs.mod_inside_loops);
-   b2f (PowLoc.mem x static_feature.Pfs.used_inside_loops); (* 64 *)
+   b2f (PowLoc.mem x static_feature.Pfs.used_inside_loops); (* 70 *)
    ]
   in
   raw
@@ -319,12 +324,28 @@ let add_large_array_set_val_field feat =
 
 
 let add_finite_itv_pre feat =
-  { feat with finite_itv_pre =
-    if PowLoc.is_empty feat.finite_itv_pre then
+  if PowLoc.is_empty feat.finite_itv_pre then
+    { feat with finite_itv_pre =
       Hashtbl.fold (fun k v set ->
         if Val.itv_of_val v |> Itv.is_finite then PowLoc.add k set
-        else set) premem_hash PowLoc.empty
-    else feat.finite_itv_pre }
+        else set) premem_hash PowLoc.empty }
+  else feat
+
+let add_finite_size_pre feat = 
+  if PowLoc.is_empty feat.finite_size_pre then
+    { feat with finite_size_pre =
+      Hashtbl.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_finite then PowLoc.add k set
+        else set) premem_hash PowLoc.empty }
+  else feat
+
+let add_finite_offset_pre feat = 
+  if PowLoc.is_empty feat.finite_offset_pre then
+    { feat with finite_offset_pre =
+      Hashtbl.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_finite then PowLoc.add k set
+        else set) premem_hash PowLoc.empty }
+  else feat
 
 let add_singleton_ptr_set_pre feat =
   { feat with singleton_ptr_set_pre =
@@ -381,7 +402,9 @@ let add_temp_var k v feat =
     { feat with neg_itv = PowLoc.add k feat.neg_itv }
   else feat
 
-let add_not_bot k feat = { feat with non_bot = PowLoc.add k feat.non_bot }
+let add_bot k v feat = 
+  if Val.bot = v then { feat with bot = PowLoc.add k feat.bot }
+  else feat
 
 let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_feature = 
 (*  let t0 = Sys.time () in*)
@@ -440,14 +463,15 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
               |> (add_left_open_offset k v)
               |> (add_unstable k (Mem.find k old_mem) v )
               |> (add_eq_fi k v)
-              |> (add_not_bot k)
+              |> (add_bot k v)
 (*            else feat*)
           ) new_mem feat
       else feat) inputof
   |> add_finite_itv_pre
+  |> add_finite_size_pre
+  |> add_finite_offset_pre
   |> add_large_array_set_val_field
   |> add_singleton_ptr_set_pre
   |> add_singleton_array_set_pre
   |> add_singleton_array_set_val_pre
-
 (*  |> (fun x -> prerr_endline ("\n-- until semantic features " ^ string_of_float (Sys.time () -. t0)); x)*)
