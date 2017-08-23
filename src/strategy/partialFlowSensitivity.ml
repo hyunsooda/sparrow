@@ -449,7 +449,7 @@ let extract_call_ext_fun node pid (lvo,fe,el) mem global feature =
   match lvo,fe with
   | Some lv, Cil.Lval (Cil.Var f, Cil.NoOffset) when is_undef f.vname global -> 
     PowLoc.fold add_return_from_ext_fun 
-      (Access.Info.useof (AccessSem.accessof global node sem_fun mem))
+      (Access.Info.defof (AccessSem.accessof global node sem_fun mem))
       feature
   | _ -> feature
 
