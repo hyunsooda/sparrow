@@ -290,13 +290,23 @@ let is_finite (x:t) : bool =
     | V (Int _, Int _) -> true
     | _ -> false
 
-let is_negative (x:t) : bool =
+let is_zero x =
   if is_bot x then false else
     match x with
-    | V (MInf,  _) -> true
-    | V (Int x, Int _) -> x < 0
+    | V (Int 0, Int 0) -> true
     | _ -> false
 
+let is_positive x =
+  if is_bot x then false else
+    match x with
+    | V (Int x, _) -> x > 0
+    | _ -> false
+
+let is_negative x =
+  if is_bot x then false else
+    match x with
+    | V (_, Int x) -> x < 0
+    | _ -> false
 
 let height (x:t) : int =
   let h_bound = 1000 in

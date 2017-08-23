@@ -305,6 +305,9 @@ let add_prune_by_not loc feat =
 let add_prune_simple loc feat = 
   { feat with prune_simple = PowLoc.add loc feat.prune_simple }
 
+let add_static_array loc feat = 
+  { feat with static_array = PowLoc.add loc feat.static_array }
+
 let add_pass_to_alloc loc feat = 
   { feat with pass_to_alloc = PowLoc.add loc feat.pass_to_alloc }
 
@@ -419,12 +422,17 @@ let extract_assume node pid e mem global feature =
       | _ -> id) 
     end)
 
-let extract_alloc node pid (lv,e) mem global feature =
+let extract_salloc pid lv mem feature =
+  let locs_lv = eval_lv pid lv mem in 
+  PowLoc.fold add_static_array locs_lv feature
+
+let extract_alloc node pid (lv,e) is_static mem global feature =
   let locs_lv = eval_lv pid lv mem in 
   let locs_e = Access.Info.useof (AccessSem.accessof global node sem_fun mem) in
   feature 
   |> (PowLoc.fold add_pass_to_alloc locs_e)
   |> (PowLoc.fold add_return_from_alloc locs_lv)
+  |> opt is_static (PowLoc.fold add_static_array locs_lv)
 
 let extract_call_realloc node pid (lvo,fe,el) mem global feature = 
   match lvo, (simplify_exp fe) with
@@ -507,7 +515,9 @@ let extract1 : InterCfg.t -> Mem.t -> Global.t -> InterCfg.Node.t -> feature -> 
       (match cmd with
       | Cset (lv,e,_) -> extract_set pid (lv,e) mem global
       | Cassume (e,_) -> extract_assume node pid e mem global
-      | Calloc (lv,IntraCfg.Cmd.Array e,_,_) -> extract_alloc node pid (lv,e) mem global
+      | Calloc (lv,IntraCfg.Cmd.Array e,is_static,_) -> 
+          extract_alloc node pid (lv,e) is_static mem global
+      | Csalloc (lv,_,_) -> extract_salloc pid lv mem
       | Ccall (lvo, fe, el, _) -> extract_call node pid (lvo,fe,el) mem global
       | _ -> id) 
     |> (extract_used_index pid mem cmd)
