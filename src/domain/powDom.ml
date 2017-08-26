@@ -47,6 +47,7 @@ sig
   val exists : (elt -> bool) -> t -> bool
   val of_list : elt list -> t
   val elements : t -> elt list
+  val pop : t -> (elt * t)
 end
 
 module type LAT =
@@ -134,6 +135,7 @@ struct
   let for_all = BatSet.for_all
   let exists = BatSet.exists
   let of_list = BatSet.of_list
+  let pop = BatSet.pop
 
   let pp fmt x =
     let rec pp_elt fmt x =
@@ -269,6 +271,12 @@ struct
     | _ -> false
 
   let of_list s = V (PowCPO.of_list s)
+
+  let pop = function
+    | V s -> 
+        let (e, s) = PowCPO.pop s in
+        (e, V s)
+    | _ -> raise (Failure "Error: pop")
 
   let pp fmt = function
     | V s -> PowCPO.pp fmt s

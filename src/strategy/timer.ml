@@ -279,16 +279,16 @@ let coarsening global access locset_coarsen dug worklist inputof spec =
 let print_stat spec global access dug =
   let alarm_fs = MarshalManager.input (global.file.Cil.fileName ^ ".alarm") |> flip Report.get Report.UnProven |> AlarmSet.of_list in
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
-  let locset_of_fi =
-        AlarmSet.fold (fun q locs ->
+  let locset_of_fi = Dependency.dependency_of_query_set_new global dug access alarm_fi in
+(*        AlarmSet.fold (fun q locs ->
           Dependency.dependency_of_query global dug access q global.mem
           |> PowLoc.join locs) alarm_fi PowLoc.empty
-  in
-  let locset_of_fs =
-        AlarmSet.fold (fun q locs ->
+  in*)
+  let locset_of_fs = Dependency.dependency_of_query_set_new global dug access alarm_fs in
+(*        AlarmSet.fold (fun q locs ->
           Dependency.dependency_of_query global dug access q global.mem
           |> PowLoc.join locs) alarm_fs PowLoc.empty
-  in
+  in*)
   prerr_endline (" == Timer Stat ==");
   prerr_endline (" # Total AbsLoc : " ^ string_of_int (PowLoc.cardinal spec.Spec.locset_fs));
   prerr_endline (" # FI AbsLoc : " ^ string_of_int (PowLoc.cardinal locset_of_fi));
@@ -300,9 +300,11 @@ let initialize spec global access dug worklist inputof =
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
   let target_locset = (* target of this optimization problem *)
     if !Options.timer_initial_coarsening then
-        AlarmSet.fold (fun q locs ->
-          Dependency.dependency_of_query global dug access q global.mem
-          |> PowLoc.join locs) alarm_fi PowLoc.empty
+(*        AlarmSet.fold (fun q locs ->
+          let s = Dependency.dependency_of_query global dug access q global.mem in
+          prerr_endline ("set: "^string_of_int (PowLoc.cardinal s));
+          PowLoc.join locs s) alarm_fi PowLoc.empty*)
+        Dependency.dependency_of_query_set_new global dug access alarm_fi
         |> PowLoc.filter (fun x -> Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
     else
       spec.Spec.locset_fs
@@ -339,7 +341,8 @@ module Data = Set.Make(Loc)
 let extract_type1 spec oc prev next coarsen size_coarsen coarsen_score_pos1 global dug access alarm_fi feature_prev inputof_prev inputof_idx iteration =
   output_string oc ("#\t\t\tType 1 Data. "^(string_of_int next)^" -> " ^ (string_of_int prev)^"\n");
   (* locs not related to FI-alarms *)
-  let locs_of_fi_alarms = Dependency.dependency_of_query_set global dug access alarm_fi feature_prev inputof_prev inputof_idx in
+(*   let locs_of_fi_alarms = Dependency.dependency_of_query_set global dug access alarm_fi feature_prev inputof_prev inputof_idx in *)
+  let locs_of_fi_alarms = Dependency.dependency_of_query_set_new global dug access alarm_fi in
   let pos_locs1 = PowLoc.diff spec.Spec.locset locs_of_fi_alarms in
   let inter_pos1 = PowLoc.inter pos_locs1 coarsen in
   output_string oc ("#\t\t\t\tPos1 : "^(PowLoc.cardinal pos_locs1 |> string_of_int)^"\n");
@@ -355,6 +358,20 @@ let extract_type1 spec oc prev next coarsen size_coarsen coarsen_score_pos1 glob
   in
 (*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs; *)
   (pos_locs1, coarsen_score_pos1_new)
+
+let debug_info global inputof_prev qset dep_locs =
+  if !Options.timer_debug then
+    begin
+      AlarmSet.iter (fun q ->
+        prdbg_endline ("query: "^(Report.string_of_query q));
+        prdbg_endline ("node: "^(Node.to_string q.node));
+        prdbg_endline ("cmd: "^(InterCfg.cmdof global.icfg q.node |> IntraCfg.Cmd.to_string));
+      ) qset;
+      PowLoc.iter (fun x ->
+        prdbg_endline ("loc : " ^(Loc.to_string x));
+(*         prdbg_endline ("FS val : "^(Val.to_string (Mem.find x mem_prev))); *)
+        prdbg_endline ("FI val : "^(try Val.to_string (Mem.find x global.mem) with _ -> "Notfound"))) dep_locs
+    end
 
 let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi alarms_list static_feature iteration =
   let filename = Filename.basename global.file.Cil.fileName in
@@ -396,10 +413,12 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         output_string oc ("#\t\t\t\tnumber of alarm idx: "^(string_of_int (AlarmSet.cardinal alarm_idx))^"\n");
         output_string oc ("#\t\t\t\tnumber of alarm diff & fs: "^(string_of_int (AlarmSet.cardinal inter))^"\n");
         (* locs related to FS-alarms *)
-        let pos_locs2 = 
+        let pos_locs2 = Dependency.dependency_of_query_set_new global dug access inter in
+        debug_info global inputof_prev inter pos_locs2;
+(*
           Dependency.dependency_of_query_set global dug access inter feature_prev inputof_prev inputof_idx
           |> PowLoc.filter (fun x -> Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
-        in
+*)
 (*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 1\n")) pos_locs; *)
         let inter_pos2 = PowLoc.inter pos_locs2 coarsen in
         let size_inter_pos2 = PowLoc.cardinal inter_pos2 in
@@ -420,9 +439,13 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
 (*         let diff = AlarmSet.diff (AlarmSet.diff alarm_idx alarm_prev) alarm_fs in *)
         let diff = AlarmSet.diff alarm_final alarm_fs in
         output_string oc ("#\t\t\t\tnumber of alarm diff & non-fs: "^(string_of_int (AlarmSet.cardinal diff))^"\n");
+        let locs_of_alarms = Dependency.dependency_of_query_set_new global dug access diff in
+        debug_info global inputof_prev diff locs_of_alarms;
+(*
         let locs_of_alarms = Dependency.dependency_of_query_set global dug access diff feature_prev inputof_prev inputof_idx
           |> PowLoc.filter (fun x -> Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
         in
+*)
         let neg_locs = locs_of_alarms in
 (*         PowLoc.iter (fun x -> output_string oc (string_of_raw_feature x feature_prev static_feature^ " : 0\n")) neg_locs; *)
         let inter_neg = PowLoc.inter neg_locs coarsen in
@@ -454,7 +477,8 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         let _ = output_string oc ("#\t\t\tType 4 Data. "^(string_of_int next)^" -> " ^ (string_of_int idx)^"\n") in
         prdbg_endline ("extract type 4 data");
         let inter = AlarmSet.diff alarm_next alarm_idx in
-        let dep_locs = Dependency.dependency_of_query_set global dug access inter feature_prev inputof_prev inputof_idx in
+        let dep_locs = Dependency.dependency_of_query_set_new global dug access inter in
+        debug_info global inputof_prev inter dep_locs;
         let pos_data = PowLoc.fold (fun x pos_data -> 
             output_string oc (DynamicFeature.string_of_raw_feature x feature_prev static_feature ^ " : 1\n");
             (prev, x, feature_prev)::pos_data) dep_locs pos_data 

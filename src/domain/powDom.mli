@@ -44,6 +44,7 @@ sig
   val exists : (elt -> bool) -> t -> bool
   val of_list : elt list -> t
   val elements : t -> elt list
+  val pop : t -> (elt * t)
 end
 
 module type LAT =
