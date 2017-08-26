@@ -14,6 +14,7 @@ open Cil
 open Global
 open Report
 open ItvDom
+open Vocab
 
 module Analysis = SparseAnalysis.Make(ItvSem)
 module Table = Analysis.Table
@@ -65,35 +66,96 @@ let locs_of_alarm_exp q mem =
 
 let intra_edge icfg src dst =
   not ((InterCfg.is_callnode src icfg) && (InterCfg.is_entry dst))
-  || not ((InterCfg.is_exit src) && (InterCfg.is_returnnode dst icfg))
+  && not ((InterCfg.is_exit src) && (InterCfg.is_returnnode dst icfg))
 
-let dependency_of_query global dug access q mem =
-  let rec loop works visited results = 
-    match works with
-    | [] -> results
-    | (node, uses)::t -> 
-      let visited = PowNode.add node visited in
-      let results = PowLoc.union results uses in
+module DepTable = BatMap.Make(struct type t = Node.t [@@deriving compare] end)
+module DepWork = BatSet.Make(struct type t = Node.t * PowLoc.t [@@deriving compare] end)
+let string_of_table t =
+  DepTable.iter (fun k v ->
+    prerr_endline (Node.to_string k ^ " -> " ^ PowLoc.to_string v)) t
+
+let string_of_works t =
+  DepWork.iter (fun (n, ploc) ->
+    prerr_endline (Node.to_string n ^ ", " ^ PowLoc.to_string ploc)) t
+module ReachDef = BatSet.Make(struct type t = Node.t * Loc.t [@@deriving compare] end)
+
+let dependency_of_query_set_new global dug access qset =
+(*   prerr_endline (Report.string_of_query q); *)
+  let rec loop works results =
+(*
+    prerr_endline ("|work|: " ^ string_of_int (DepWork.cardinal works));
+    prerr_endline ("result: " ^ string_of_int (PowLoc.cardinal results));
+    prerr_endline ("table: ");
+    string_of_table table;
+    prerr_endline ("work: ");
+    string_of_works works;
+*)
+    if ReachDef.is_empty works (*|| PowLoc.cardinal results > 100 *) then results
+    else
+      let ((node, use) as w, works) = ReachDef.pop works in
+(*       let _ = prerr_endline ("pick work : " ^ Node.to_string node ^ ", " ^ Loc.to_string use) in *)
       DUGraph.pred node dug
-      |> List.filter (fun p -> (intra_edge global.icfg p node) && not (PowNode.mem p visited))
-      |> List.fold_left (fun works p ->
-          let access = Access.find_node p access in
-          let defs_pred = Access.Info.defof access in
-          let inter = PowLoc.inter defs_pred uses in
-          if PowLoc.is_empty inter then 
-            if InterCfg.cmdof global.icfg p = IntraCfg.Cmd.Cskip then (* phi *)
-              (p, uses)::works
-            else works
-          else (p, Access.Info.useof access)::works) t
-      |> (fun works -> loop works visited results)
+      |> List.fold_left (fun (works, results) p ->
+(*           prerr_endline ("p : " ^ Node.to_string p); *)
+          let locs_on_edge = DUGraph.get_abslocs p node dug in
+(*           prerr_endline (PowLoc.to_string locs_on_edge); *)
+          if PowLoc.mem use locs_on_edge then
+            if ReachDef.mem (p, use) results then 
+(*               let _ = prerr_endline "qwer" in *)
+              (works, results)
+            else
+              let access = Access.find_node p access in
+              let defs_pred = Access.Info.defof access in
+              if PowLoc.mem use defs_pred then
+(*                 let _ = prerr_endline "first" in *)
+                let uses_pred =
+                  match InterCfg.cmdof global.icfg p with
+                  | IntraCfg.Cmd.Ccall (_, _, args, _) when InterCfg.is_entry node ->
+                      if Loc.is_lvar use then   (* parameter *)
+                        let callee = Node.get_pid node in
+                        let caller = Node.get_pid p in
+                        let params = InterCfg.argsof global.icfg callee 
+                        |> List.map (fun x -> Loc.of_lvar callee x.Cil.vname x.Cil.vtype) 
+                        in
+                        (try
+                          List.fold_left2 (fun u arg param ->
+                            if Loc.compare param use = 0 then
+                              locs_of_exp caller arg global.mem
+                            else u) PowLoc.empty args params
+                        with _ -> PowLoc.empty)
+                      else PowLoc.singleton use (* others *)
+                  | _ -> Access.Info.useof access
+                in
+                (PowLoc.fold (fun u -> ReachDef.add (p, u)) uses_pred works,
+                ReachDef.add (p, use) results)
+              else (* phi node or entry *)
+(*                 let _ = prerr_endline "phi" in *)
+                (ReachDef.add (p, use) works, ReachDef.add (p, use) results)  
+          else
+(*             let _ = prerr_endline "asdf" in *)
+            (works, results)) (works, results)
+      |> (fun (works, results) -> loop works results)
   in
-  loop [(q.node, locs_of_alarm_exp q mem)] PowNode.bot PowLoc.bot
+  let works = 
+    AlarmSet.fold (fun q ->
+      let locs = locs_of_alarm_exp q global.mem in
+      PowLoc.fold (fun x -> ReachDef.add (q.node, x)) locs) qset ReachDef.empty
+  in
+  let reach_def = loop works ReachDef.empty in
+(*
+  ReachDef.iter (fun (node, use) -> 
+    prerr_endline ("final : " ^ Node.to_string node ^ ", " ^ Loc.to_string use)) reach_def;
+*)
+  let s = ReachDef.fold (fun x -> PowLoc.add (snd x)) reach_def PowLoc.empty in
+(*   prerr_endline (PowLoc.to_string s); *)
+  s
 
-let dependency_of_query_set global dug access qset feature inputof_prev inputof_idx = 
+(* for debug *)
+let dependency_of_query_set global dug access qset inputof_prev =
   AlarmSet.fold (fun q ->
 (*     let mem_idx = Table.find q.node inputof_idx in *)
     let mem_prev = Table.find q.node inputof_prev in
-    let set = dependency_of_query global dug access q mem_prev in
+    let set = dependency_of_query_set_new global dug access (AlarmSet.singleton q) in
     (if !Options.timer_debug then
     let _ = prdbg_endline ("query: "^(Report.string_of_query q)) in
     prdbg_endline ("node: "^(Node.to_string q.node));
