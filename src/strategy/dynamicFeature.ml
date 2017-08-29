@@ -194,13 +194,13 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.finite_itv_pre);
    b2f (PowLoc.mem x feat.zero_offset_pre);
    b2f (PowLoc.mem x feat.constant_offset_pre);
-   b2f (PowLoc.mem x feat.constant_size_pre);
+   b2f (PowLoc.mem x feat.constant_size_pre); (* 70 *)
    b2f (PowLoc.mem x feat.finite_offset_pre);
    b2f (PowLoc.mem x feat.finite_size_pre);
    b2f (PowLoc.mem x feat.positive_size_pre);
    b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_pre);
-   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 74 *)
+   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 76 *)
    ]
   in
   raw
