@@ -21,6 +21,7 @@ end
 include AbsDom.LAT
 
 val is_bot      : t -> bool
+val is_top      : t -> bool
 val is_const    : t -> bool
 val is_finite   : t -> bool
 val is_zero     : t -> bool

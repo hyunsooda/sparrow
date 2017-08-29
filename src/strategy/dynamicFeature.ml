@@ -39,6 +39,11 @@ type feature = {
   top_itv                   : PowLoc.t;
   left_open_itv             : PowLoc.t;
   right_open_itv            : PowLoc.t;
+  zero_offset               : PowLoc.t;
+  constant_offset           : PowLoc.t;
+  constant_size             : PowLoc.t;
+  finite_offset             : PowLoc.t;
+  finite_size               : PowLoc.t;
   neg_offset                : PowLoc.t;
   left_open_offset          : PowLoc.t;
   right_open_offset         : PowLoc.t;
@@ -49,6 +54,7 @@ type feature = {
   large_ptr_set             : PowLoc.t;
   large_ptr_set_val         : PowLoc.t;
   large_ptr_set_val_widen   : PowLoc.t;
+  singleton_array_set       : PowLoc.t;
   large_array_set           : PowLoc.t;
   large_array_set_val       : PowLoc.t;
   large_array_set_val_widen : PowLoc.t;
@@ -60,6 +66,7 @@ type feature = {
   finite_itv_pre            : PowLoc.t;
   finite_size_pre            : PowLoc.t;
   finite_offset_pre            : PowLoc.t;
+  top_offset_pre            : PowLoc.t;
   constant_size_pre            : PowLoc.t;
   constant_offset_pre            : PowLoc.t;
   zero_offset_pre           : PowLoc.t;
@@ -86,6 +93,11 @@ let empty_feature = {
   top_itv                   = PowLoc.empty;
   left_open_itv             = PowLoc.empty;
   right_open_itv            = PowLoc.empty;
+  zero_offset = PowLoc.empty;
+  constant_offset = PowLoc.empty;
+  constant_size = PowLoc.empty;
+  finite_offset = PowLoc.empty;
+  finite_size = PowLoc.empty;
   neg_offset                = PowLoc.empty;
   left_open_offset          = PowLoc.empty;
   right_open_offset         = PowLoc.empty;
@@ -96,6 +108,7 @@ let empty_feature = {
   large_ptr_set             = PowLoc.empty;
   large_ptr_set_val         = PowLoc.empty;
   large_ptr_set_val_widen   = PowLoc.empty;
+  singleton_array_set           = PowLoc.empty;
   large_array_set           = PowLoc.empty;
   large_array_set_val       = PowLoc.empty;
   large_array_set_val_widen = PowLoc.empty;
@@ -108,6 +121,7 @@ let empty_feature = {
   finite_offset_pre           = PowLoc.empty;
   constant_size_pre             = PowLoc.empty;
   constant_offset_pre           = PowLoc.empty;
+  top_offset_pre            = PowLoc.empty;
   zero_offset_pre           = PowLoc.empty;
   positive_size_pre           = PowLoc.empty;
   singleton_ptr_set_pre       = PowLoc.empty;
@@ -187,15 +201,21 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.neg_offset);
    b2f (PowLoc.mem x feat.left_open_offset);
    b2f (PowLoc.mem x feat.right_open_offset);
+   b2f (PowLoc.mem x feat.zero_offset);
+   b2f (PowLoc.mem x feat.constant_offset);
+   b2f (PowLoc.mem x feat.constant_size);
+   b2f (PowLoc.mem x feat.finite_offset);
+   b2f (PowLoc.mem x feat.finite_size); (* 60 *)
    b2f (PowLoc.mem x feat.left_open_size);
    b2f (PowLoc.mem x feat.right_open_size);
    b2f (PowLoc.mem x feat.neg_size);
    b2f (PowLoc.mem x feat.zero_size);
    b2f (PowLoc.mem x feat.large_ptr_set);
    b2f (PowLoc.mem x feat.large_ptr_set_val);
-   b2f (PowLoc.mem x feat.large_ptr_set_val_widen); (* 60 *)
+   b2f (PowLoc.mem x feat.large_ptr_set_val_widen);
+   b2f (PowLoc.mem x feat.singleton_array_set);
    b2f (PowLoc.mem x feat.large_array_set);
-   b2f (PowLoc.mem x feat.large_array_set_val);
+   b2f (PowLoc.mem x feat.large_array_set_val); (* 70 *)
    b2f (PowLoc.mem x feat.large_array_set_val_widen);
    b2f (PowLoc.mem x feat.large_array_set_val_field);
    b2f (PowLoc.mem x feat.unstable);
@@ -205,13 +225,14 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.zero_offset_pre);
    b2f (PowLoc.mem x feat.constant_offset_pre);
    b2f (PowLoc.mem x feat.constant_size_pre);
-   b2f (PowLoc.mem x feat.finite_offset_pre); (* 70 *)
+   b2f (PowLoc.mem x feat.finite_offset_pre);
+   b2f (PowLoc.mem x feat.top_offset_pre); (* 80 *)
    b2f (PowLoc.mem x feat.finite_size_pre);
    b2f (PowLoc.mem x feat.positive_size_pre);
    b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_pre);
    b2f (PowLoc.mem x feat.large_array_set_pre);
-   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 75 *)
+   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 86 *)
 (*   b2f (PowLoc.mem x feat.non_bot); (* not a feature *)*)
    ]
   in
@@ -354,7 +375,78 @@ let add_large_array_set k v feat =
     let _ = Hashtbl.add large_array_set_cache k k in
     { feat with large_array_set = PowLoc.add k feat.large_array_set } 
   else feat
- 
+
+let not_singleton_array_set_cache = Hashtbl.create 1000
+let add_singleton_array_set k v feat = 
+  if Hashtbl.mem not_singleton_array_set_cache k then feat
+  else if (Val.array_of_val v |> ArrayBlk.cardinal = 1) then
+    { feat with singleton_array_set = PowLoc.add k feat.singleton_array_set } 
+  else if (Val.array_of_val v |> ArrayBlk.cardinal > 1) then
+    let _ = Hashtbl.add not_singleton_array_set_cache k k in
+    feat
+  else feat
+
+(* TODO: optimize *)
+let not_zero_offset_cache = Hashtbl.create 1000
+let add_zero_offset k v feat = 
+  if Hashtbl.mem not_zero_offset_cache k then feat 
+  else
+    let offset = Val.array_of_val v |> ArrayBlk.offsetof in
+    if Itv.is_zero offset then 
+      { feat with zero_offset = PowLoc.add k feat.zero_offset }
+    else if Itv.is_bot offset then feat
+    else
+      let _ = Hashtbl.add not_zero_offset_cache k k in
+      feat
+
+let not_constant_offset_cache = Hashtbl.create 1000
+let add_constant_offset k v feat = 
+  if Hashtbl.mem not_constant_offset_cache k then feat 
+  else
+    let offset = Val.array_of_val v |> ArrayBlk.offsetof in
+    if Itv.is_const offset then 
+      { feat with constant_offset = PowLoc.add k feat.constant_offset }
+    else if Itv.is_bot offset then feat
+    else
+      let _ = Hashtbl.add not_constant_offset_cache k k in
+      feat
+
+let not_finite_offset_cache = Hashtbl.create 1000
+let add_finite_offset k v feat = 
+  if Hashtbl.mem not_finite_offset_cache k then feat 
+  else 
+    let offset = Val.array_of_val v |> ArrayBlk.offsetof in
+    if Itv.is_finite offset then 
+      { feat with finite_offset = PowLoc.add k feat.finite_offset }
+    else if Itv.is_bot offset then feat
+    else
+      let _ = Hashtbl.add not_finite_offset_cache k k in
+      feat
+
+let not_constant_size_cache = Hashtbl.create 1000
+let add_constant_size k v feat = 
+  if Hashtbl.mem not_constant_size_cache k then feat 
+  else 
+    let size = Val.array_of_val v |> ArrayBlk.sizeof in 
+    if Itv.is_const size then 
+      { feat with constant_size = PowLoc.add k feat.constant_size }
+    else if Itv.is_bot size then feat
+    else 
+      let _ = Hashtbl.add not_constant_size_cache k k in
+      feat
+
+let not_finite_size_cache = Hashtbl.create 1000
+let add_finite_size k v feat = 
+  if Hashtbl.mem not_finite_size_cache k then feat 
+  else 
+    let size = Val.array_of_val v |> ArrayBlk.sizeof in 
+    if Itv.is_finite size then 
+      { feat with finite_size = PowLoc.add k feat.finite_size }
+    else if Itv.is_bot size then feat
+    else
+      let _ = Hashtbl.add not_finite_size_cache k k in
+      feat
+
 let large_array_set_val_cache = Hashtbl.create 1000
 let add_large_array_set_val k v feat = 
   if Hashtbl.mem large_array_set_val_cache k && Random.bool () then feat
@@ -408,6 +500,14 @@ let add_finite_offset_pre feat =
     { feat with finite_offset_pre =
       Hashtbl.fold (fun k v set ->
         if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_finite then PowLoc.add k set
+        else set) premem_hash PowLoc.empty }
+  else feat
+
+let add_top_offset_pre feat = 
+  if PowLoc.is_empty feat.top_offset_pre then
+    { feat with top_offset_pre =
+      Hashtbl.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_top then PowLoc.add k set
         else set) premem_hash PowLoc.empty }
   else feat
 
@@ -542,7 +642,13 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
                 PowLoc.join locs_of_query indirect
             | _ -> indirect) PowLoc.empty (try BatMap.find part total_alarms with _ -> [])
       in
-      { feat with alarm = alarm_locs; indirect_alarm = indirect }
+      { feat with alarm = alarm_locs; indirect_alarm = indirect;
+        (* non-monoton features *)
+                  singleton_array_set = PowLoc.empty;
+                  zero_offset = PowLoc.empty; constant_offset = PowLoc.empty;
+                  constant_size = PowLoc.empty; finite_offset = PowLoc.empty;
+                  finite_size = PowLoc.empty;
+      }
      ) new_alarms
 (*  |> (fun x -> prerr_endline ("\n-- until alarm features " ^ string_of_float (Sys.time () -. t0)); x)*)
   |> Table.fold (fun node new_mem feat ->
@@ -561,12 +667,18 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
               |> (add_left_open_size k v)
               |> (add_right_open_size k v)
               |> (add_zero_size k v)
+              |> (add_zero_offset k v)
+              |> (add_constant_offset k v)
+              |> (add_constant_size k v)
+              |> (add_finite_offset k v)
+              |> (add_finite_size k v)
               |> (add_top_itv k v)
               |> (add_left_open_itv k v)
               |> (add_right_open_itv k v)
               |> (add_large_ptr_set k v)
               |> (add_large_ptr_set_val k v)
               |> (add_large_ptr_set_val_widen k v)
+              |> (add_singleton_array_set k v)
               |> (add_large_array_set k v)
               |> (add_large_array_set_val k v)
               |> (add_large_array_set_val_widen k v)
@@ -581,6 +693,7 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
   |> add_constant_offset_pre
   |> add_constant_size_pre
   |> add_finite_offset_pre
+  |> add_top_offset_pre
   |> add_finite_size_pre
   |> add_zero_offset_pre
   |> add_positive_size_pre

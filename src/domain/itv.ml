@@ -184,6 +184,7 @@ let is_bot : t -> bool = function
   | Bot -> true
   | V (l, u) -> l = PInf || u = MInf || not (Integer.le l u)
 
+let is_top = function V (MInf, PInf) -> true | _ -> false
 
 (** Normalizes invalid intervals such as [\[u, l\]] with [u > l] to
     [Bot].*)
