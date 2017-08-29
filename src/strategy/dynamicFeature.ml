@@ -70,6 +70,7 @@ type feature = {
   constant_size_pre            : PowLoc.t;
   constant_offset_pre            : PowLoc.t;
   zero_offset_pre           : PowLoc.t;
+  natural_size_pre         : PowLoc.t;
   positive_size_pre         : PowLoc.t;
   singleton_ptr_set_pre      : PowLoc.t;
   singleton_array_set_pre    : PowLoc.t;
@@ -123,6 +124,7 @@ let empty_feature = {
   constant_offset_pre           = PowLoc.empty;
   top_offset_pre            = PowLoc.empty;
   zero_offset_pre           = PowLoc.empty;
+  natural_size_pre           = PowLoc.empty;
   positive_size_pre           = PowLoc.empty;
   singleton_ptr_set_pre       = PowLoc.empty;
   singleton_array_set_pre     = PowLoc.empty;
@@ -228,6 +230,7 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.finite_offset_pre);
    b2f (PowLoc.mem x feat.top_offset_pre); (* 80 *)
    b2f (PowLoc.mem x feat.finite_size_pre);
+   b2f (PowLoc.mem x feat.natural_size_pre);
    b2f (PowLoc.mem x feat.positive_size_pre);
    b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_pre);
@@ -535,6 +538,14 @@ let add_zero_offset_pre feat =
         else set) premem_hash PowLoc.empty }
   else feat
 
+let add_natural_size_pre feat = 
+  if PowLoc.is_empty feat.natural_size_pre then
+    { feat with natural_size_pre =
+      Hashtbl.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_natural then PowLoc.add k set
+        else set) premem_hash PowLoc.empty }
+  else feat
+
 let add_positive_size_pre feat = 
   if PowLoc.is_empty feat.positive_size_pre then
     { feat with positive_size_pre =
@@ -696,6 +707,7 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
   |> add_top_offset_pre
   |> add_finite_size_pre
   |> add_zero_offset_pre
+  |> add_natural_size_pre
   |> add_positive_size_pre
   |> add_large_array_set_val_field
   |> add_singleton_ptr_set_pre
