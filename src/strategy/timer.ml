@@ -390,7 +390,7 @@ let debug_info global inputof_prev feature_prev static_feature qset dep_locs =
       PowLoc.iter (fun x ->
 (*         prdbg_endline ("FS val : "^(Val.to_string (Mem.find x mem_prev))); *)
         prdbg_endline (DynamicFeature.string_of_raw_feature x feature_prev static_feature);
-        prdbg_endline ("FI val : "^(try Val.to_string (Mem.find x global.mem) with _ -> "Notfound"));
+        prdbg_endline ("FI val        : "^(try Val.to_string (Mem.find x global.mem) with _ -> "Notfound"));
 (*        let v = Table.fold (fun _ mem -> Val.join (Mem.find x mem)) inputof_prev Val.bot in
         prdbg_endline ("FS val (all)  : "^(Val.to_string v));*)
         let v = Table.fold (fun node mem -> 

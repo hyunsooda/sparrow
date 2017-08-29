@@ -299,6 +299,12 @@ let is_zero x =
     | V (Int 0, Int 0) -> true
     | _ -> false
 
+let is_natural x =
+  if is_bot x then false else
+    match x with
+    | V (Int x, _) -> x >= 0
+    | _ -> false
+
 let is_positive x =
   if is_bot x then false else
     match x with
