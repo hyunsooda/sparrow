@@ -36,6 +36,8 @@ type feature = {
   indirect_alarm            : PowLoc.t;
   eq_fi                     : PowLoc.t;
   neg_itv                   : PowLoc.t;
+  top_itv                   : PowLoc.t;
+  left_open_itv             : PowLoc.t;
   right_open_itv            : PowLoc.t;
   neg_offset                : PowLoc.t;
   left_open_offset          : PowLoc.t;
@@ -64,6 +66,7 @@ type feature = {
   positive_size_pre         : PowLoc.t;
   singleton_ptr_set_pre      : PowLoc.t;
   singleton_array_set_pre    : PowLoc.t;
+  large_array_set_pre    : PowLoc.t;
   singleton_array_set_val_pre: PowLoc.t;
   (* syntactic features *)
   temp_var                  : PowLoc.t;
@@ -80,6 +83,8 @@ let empty_feature = {
   indirect_alarm            = PowLoc.empty;
   eq_fi                     = PowLoc.empty;
   neg_itv                   = PowLoc.empty;
+  top_itv                   = PowLoc.empty;
+  left_open_itv             = PowLoc.empty;
   right_open_itv            = PowLoc.empty;
   neg_offset                = PowLoc.empty;
   left_open_offset          = PowLoc.empty;
@@ -107,6 +112,7 @@ let empty_feature = {
   positive_size_pre           = PowLoc.empty;
   singleton_ptr_set_pre       = PowLoc.empty;
   singleton_array_set_pre     = PowLoc.empty;
+  large_array_set_pre     = PowLoc.empty;
   singleton_array_set_val_pre = PowLoc.empty;
   (* syntacitc *)
   temp_var                  = PowLoc.empty;
@@ -175,7 +181,9 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.indirect_alarm);
    b2f (PowLoc.mem x feat.eq_fi);
    b2f (PowLoc.mem x feat.neg_itv);
-   b2f (PowLoc.mem x feat.right_open_itv); (* 50 *)
+   b2f (PowLoc.mem x feat.top_itv); (* 50 *)
+   b2f (PowLoc.mem x feat.left_open_itv);
+   b2f (PowLoc.mem x feat.right_open_itv);
    b2f (PowLoc.mem x feat.neg_offset);
    b2f (PowLoc.mem x feat.left_open_offset);
    b2f (PowLoc.mem x feat.right_open_offset);
@@ -202,6 +210,7 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.positive_size_pre);
    b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_pre);
+   b2f (PowLoc.mem x feat.large_array_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 75 *)
 (*   b2f (PowLoc.mem x feat.non_bot); (* not a feature *)*)
    ]
@@ -246,6 +255,16 @@ let add_precise_pre premem feat =
 let add_neg_itv k v feat = 
   if (Val.itv_of_val v |> Itv.meet Itv.neg) <> Itv.bot then 
     { feat with neg_itv = PowLoc.add k feat.neg_itv }
+  else feat
+
+let add_top_itv k v feat = 
+  if Val.itv_of_val v = Itv.top then 
+    { feat with top_itv = PowLoc.add k feat.top_itv }
+  else feat
+
+let add_left_open_itv k v feat = 
+  if Val.itv_of_val v |> Itv.open_left then 
+    { feat with left_open_itv = PowLoc.add k feat.left_open_itv }
   else feat
 
 let add_right_open_itv k v feat = 
@@ -442,6 +461,15 @@ let add_singleton_array_set_pre feat =
         else set) premem_hash PowLoc.empty
     else feat.singleton_array_set_pre }
 
+let add_large_array_set_pre feat =
+  { feat with large_array_set_pre =
+    if PowLoc.is_empty feat.large_array_set_pre then
+      Hashtbl.fold (fun k v set ->
+        if (Val.array_of_val v |> ArrayBlk.cardinal) >= 3 then
+          PowLoc.add k set
+        else set) premem_hash PowLoc.empty
+    else feat.large_array_set_pre }
+
 let add_singleton_array_set_val_pre feat =
   { feat with singleton_array_set_val_pre =
     if PowLoc.is_empty feat.singleton_array_set_val_pre then
@@ -533,6 +561,8 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
               |> (add_left_open_size k v)
               |> (add_right_open_size k v)
               |> (add_zero_size k v)
+              |> (add_top_itv k v)
+              |> (add_left_open_itv k v)
               |> (add_right_open_itv k v)
               |> (add_large_ptr_set k v)
               |> (add_large_ptr_set_val k v)
@@ -557,5 +587,6 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
   |> add_large_array_set_val_field
   |> add_singleton_ptr_set_pre
   |> add_singleton_array_set_pre
+  |> add_large_array_set_pre
   |> add_singleton_array_set_val_pre
 (*  |> (fun x -> prerr_endline ("\n-- until semantic features " ^ string_of_float (Sys.time () -. t0)); x)*)
