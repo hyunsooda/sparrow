@@ -295,6 +295,16 @@ let print_stat spec global access dug =
   prerr_endline (" # FS AbsLoc : " ^ string_of_int (PowLoc.cardinal locset_of_fs));
   exit 0
 
+let precise_pre x premem =
+  let v = Mem.find x premem in
+  let (i, p, a) = (Val.itv_of_val v, Val.pow_loc_of_val v, Val.array_of_val v) in
+  let (offset, size) = (ArrayBlk.offsetof a, ArrayBlk.sizeof a) in
+  (Itv.is_const i || Itv.is_bot i)
+  && (PowLoc.cardinal p <= 1)
+  && (ArrayBlk.cardinal a <= 1)
+  && (Itv.is_const offset || Itv.is_bot offset)
+  && (Itv.is_const size || Itv.is_bot size)
+
 let initialize spec global access dug worklist inputof = 
   let widen_start = Sys.time () in
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
@@ -305,7 +315,9 @@ let initialize spec global access dug worklist inputof =
           prerr_endline ("set: "^string_of_int (PowLoc.cardinal s));
           PowLoc.join locs s) alarm_fi PowLoc.empty*)
         Dependency.dependency_of_query_set_new global dug access alarm_fi
-        |> PowLoc.filter (fun x -> Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
+        |> PowLoc.filter (fun x ->
+            (Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
+            && not (precise_pre x global.mem))
     else
       spec.Spec.locset_fs
   in
@@ -376,8 +388,8 @@ let debug_info global inputof_prev feature_prev static_feature qset dep_locs =
 (*         prdbg_endline ("FS val : "^(Val.to_string (Mem.find x mem_prev))); *)
         prdbg_endline (DynamicFeature.string_of_raw_feature x feature_prev static_feature);
         prdbg_endline ("FI val : "^(try Val.to_string (Mem.find x global.mem) with _ -> "Notfound"));
-        let v = Table.fold (fun _ mem -> Val.join (Mem.find x mem)) inputof_prev Val.bot in
-        prdbg_endline ("FS val (all)  : "^(Val.to_string v));
+(*        let v = Table.fold (fun _ mem -> Val.join (Mem.find x mem)) inputof_prev Val.bot in
+        prdbg_endline ("FS val (all)  : "^(Val.to_string v));*)
         let v = Table.fold (fun node mem -> 
             if is_inter_node global node then Val.join (Mem.find x mem) else id) inputof_prev Val.bot in
         prdbg_endline ("FS val (inter): "^(Val.to_string v));
