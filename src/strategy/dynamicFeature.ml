@@ -52,8 +52,9 @@ type feature = {
   large_array_set_val_widen : PowLoc.t;
   large_array_set_val_field : PowLoc.t;
   unstable                  : PowLoc.t;
-  bot                       : PowLoc.t;
+  non_bot                       : PowLoc.t;
   (* static semantic features, move to static features in the long run *)
+  constant_itv_pre            : PowLoc.t;
   finite_itv_pre            : PowLoc.t;
   finite_size_pre            : PowLoc.t;
   finite_offset_pre            : PowLoc.t;
@@ -96,6 +97,7 @@ let empty_feature = {
   large_array_set_val_field = PowLoc.empty;
   unstable                  = PowLoc.empty;
   (* static semantic *)
+  constant_itv_pre              = PowLoc.empty;
   finite_itv_pre              = PowLoc.empty;
   finite_size_pre             = PowLoc.empty;
   finite_offset_pre           = PowLoc.empty;
@@ -108,7 +110,7 @@ let empty_feature = {
   singleton_array_set_val_pre = PowLoc.empty;
   (* syntacitc *)
   temp_var                  = PowLoc.empty;
-  bot                   = PowLoc.empty;
+  non_bot                   = PowLoc.empty;
 }
 
 let print_feature feat =
@@ -189,18 +191,19 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.large_array_set_val_widen);
    b2f (PowLoc.mem x feat.large_array_set_val_field);
    b2f (PowLoc.mem x feat.unstable);
-   b2f (PowLoc.mem x feat.bot);
    (* pre: TODO: move to static features*)
+   b2f (PowLoc.mem x feat.constant_itv_pre);
    b2f (PowLoc.mem x feat.finite_itv_pre);
    b2f (PowLoc.mem x feat.zero_offset_pre);
    b2f (PowLoc.mem x feat.constant_offset_pre);
-   b2f (PowLoc.mem x feat.constant_size_pre); (* 70 *)
-   b2f (PowLoc.mem x feat.finite_offset_pre);
+   b2f (PowLoc.mem x feat.constant_size_pre);
+   b2f (PowLoc.mem x feat.finite_offset_pre); (* 70 *)
    b2f (PowLoc.mem x feat.finite_size_pre);
    b2f (PowLoc.mem x feat.positive_size_pre);
    b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_pre);
-   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 76 *)
+   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 75 *)
+(*   b2f (PowLoc.mem x feat.non_bot); (* not a feature *)*)
    ]
   in
   raw
@@ -357,6 +360,13 @@ let add_large_array_set_val_field feat =
               || not (Hashtbl.mem locset_hash l)  -> PowLoc.add k | _ -> id) 
           premem_hash feat.large_array_set_val_field }
 
+let add_constant_itv_pre feat =
+  if PowLoc.is_empty feat.constant_itv_pre then
+    { feat with constant_itv_pre =
+      Hashtbl.fold (fun k v set ->
+        if Val.itv_of_val v |> Itv.is_const then PowLoc.add k set
+        else set) premem_hash PowLoc.empty }
+  else feat
 
 let add_finite_itv_pre feat =
   if PowLoc.is_empty feat.finite_itv_pre then
@@ -469,8 +479,8 @@ let add_temp_var k v feat =
     { feat with neg_itv = PowLoc.add k feat.neg_itv }
   else feat
 
-let add_bot k v feat = 
-  if Val.bot = v then { feat with bot = PowLoc.add k feat.bot }
+let add_non_bot k v feat = 
+  if Val.bot <> v then { feat with non_bot = PowLoc.add k feat.non_bot }
   else feat
 
 let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_feature = 
@@ -532,15 +542,16 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
               |> (add_large_array_set_val_widen k v)
               |> (add_unstable k (Mem.find k old_mem) v )
               |> (add_eq_fi k v)
-              |> (add_bot k v)
+              |> (add_non_bot k v)
 (*            else feat*)
           ) new_mem feat
       else feat) inputof
+  |> add_constant_itv_pre
   |> add_finite_itv_pre
-  |> add_finite_size_pre
-  |> add_finite_offset_pre
-  |> add_constant_size_pre
   |> add_constant_offset_pre
+  |> add_constant_size_pre
+  |> add_finite_offset_pre
+  |> add_finite_size_pre
   |> add_zero_offset_pre
   |> add_positive_size_pre
   |> add_large_array_set_val_field
