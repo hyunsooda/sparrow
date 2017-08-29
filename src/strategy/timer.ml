@@ -147,7 +147,7 @@ let rank_strategy global spec feature timer =
       let (py_module, clf) = load_classifier global in 
       Hashtbl.fold (fun k _ l ->
           if PowLoc.mem k feature.DynamicFeature.eq_fi then
-            (k, 1.0)::l
+            (k, 1.1)::l
           else
             (k, predict_proba py_module clf k feature timer.static_feature)::l) DynamicFeature.locset_hash []
       |> List.sort (fun (_, x) (_, y) -> if x > y then -1 else if x = y then 0 else 1)
