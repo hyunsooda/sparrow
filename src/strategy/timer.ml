@@ -440,7 +440,8 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         let coarsen_score_pos2_new = (PowLoc.cardinal inter_pos2) * 100 / (PowLoc.cardinal coarsen) in
         output_string oc ("#\t\t\t\tPos2 Score previous iter : " ^ string_of_int coarsen_score_pos2 ^ ", this iter : " ^ string_of_int coarsen_score_pos2_new^"\n");
         let pos_locs2 =
-          if coarsen_score_pos2 + 5 >= coarsen_score_pos2_new then PowLoc.bot
+(*           if coarsen_score_pos2 + 5 >= coarsen_score_pos2_new then PowLoc.bot *)
+          if abs (coarsen_score_pos2 - coarsen_score_pos2_new) < 5 then PowLoc.bot
           else (* PowLoc.diff pos_locs2 coarsen *) pos_locs2
         in
         let pos_locs = PowLoc.join pos_locs1 pos_locs2 in
@@ -469,7 +470,8 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         let coarsen_score_neg_new = (PowLoc.cardinal inter_neg) * 100 / (PowLoc.cardinal coarsen) in
         output_string oc ("#\t\t\t\tNeg Score previous iter : " ^ string_of_int coarsen_score_neg ^ ", this iter : " ^ string_of_int coarsen_score_neg_new^"\n");
         let neg_locs =
-          if coarsen_score_neg <= coarsen_score_neg_new + 5 then PowLoc.bot
+(*           if coarsen_score_neg <= coarsen_score_neg_new + 5 then PowLoc.bot *)
+          if abs (coarsen_score_neg - coarsen_score_neg_new) < 5 then PowLoc.bot
           else neg_locs
         in
         MarshalManager.output ~dir (filename ^ ".coarsen.score." ^ string_of_int prev) (coarsen_score_pos1_new, coarsen_score_pos2_new, coarsen_score_neg_new);
