@@ -57,6 +57,8 @@ type feature = {
   finite_itv_pre            : PowLoc.t;
   finite_size_pre            : PowLoc.t;
   finite_offset_pre            : PowLoc.t;
+  constant_size_pre            : PowLoc.t;
+  constant_offset_pre            : PowLoc.t;
   zero_offset_pre           : PowLoc.t;
   positive_size_pre         : PowLoc.t;
   singleton_ptr_set_pre      : PowLoc.t;
@@ -97,6 +99,8 @@ let empty_feature = {
   finite_itv_pre              = PowLoc.empty;
   finite_size_pre             = PowLoc.empty;
   finite_offset_pre           = PowLoc.empty;
+  constant_size_pre             = PowLoc.empty;
+  constant_offset_pre           = PowLoc.empty;
   zero_offset_pre           = PowLoc.empty;
   positive_size_pre           = PowLoc.empty;
   singleton_ptr_set_pre       = PowLoc.empty;
@@ -186,10 +190,13 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.large_array_set_val_field);
    b2f (PowLoc.mem x feat.unstable);
    b2f (PowLoc.mem x feat.bot);
-   b2f (PowLoc.mem x feat.finite_itv_pre); (* TODO: move to static features *)
-   b2f (PowLoc.mem x feat.finite_size_pre);
+   (* pre: TODO: move to static features*)
+   b2f (PowLoc.mem x feat.finite_itv_pre);
+   b2f (PowLoc.mem x feat.zero_offset_pre);
+   b2f (PowLoc.mem x feat.constant_offset_pre);
+   b2f (PowLoc.mem x feat.constant_size_pre);
    b2f (PowLoc.mem x feat.finite_offset_pre);
-   b2f (PowLoc.mem x feat.zero_offset_pre); (* 70 *)
+   b2f (PowLoc.mem x feat.finite_size_pre);
    b2f (PowLoc.mem x feat.positive_size_pre);
    b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_pre);
@@ -375,6 +382,22 @@ let add_finite_offset_pre feat =
         else set) premem_hash PowLoc.empty }
   else feat
 
+let add_constant_size_pre feat = 
+  if PowLoc.is_empty feat.constant_size_pre then
+    { feat with constant_size_pre =
+      Hashtbl.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_const then PowLoc.add k set
+        else set) premem_hash PowLoc.empty }
+  else feat
+
+let add_constant_offset_pre feat = 
+  if PowLoc.is_empty feat.constant_offset_pre then
+    { feat with constant_offset_pre =
+      Hashtbl.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_const then PowLoc.add k set
+        else set) premem_hash PowLoc.empty }
+  else feat
+
 let add_zero_offset_pre feat = 
   if PowLoc.is_empty feat.zero_offset_pre then
     { feat with zero_offset_pre =
@@ -516,6 +539,8 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
   |> add_finite_itv_pre
   |> add_finite_size_pre
   |> add_finite_offset_pre
+  |> add_constant_size_pre
+  |> add_constant_offset_pre
   |> add_zero_offset_pre
   |> add_positive_size_pre
   |> add_large_array_set_val_field
