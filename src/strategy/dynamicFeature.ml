@@ -235,7 +235,7 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_pre);
    b2f (PowLoc.mem x feat.large_array_set_pre);
-   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 86 *)
+   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 87 *)
 (*   b2f (PowLoc.mem x feat.non_bot); (* not a feature *)*)
    ]
   in

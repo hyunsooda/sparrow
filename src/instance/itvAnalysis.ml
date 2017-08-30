@@ -348,14 +348,11 @@ let do_analysis : Global.t -> Global.t * Table.t * Table.t * Report.query list
 = fun global ->
   let _ = prerr_memory_usage () in
   let locset = get_locset global.mem in
-  let locset_fs = PartialFlowSensitivity.select global locset in
-(*  let locset_fs =
-    if !Options.timer_deadline > 0 then
-      let coarsen = Timer.precise_locs global.mem in
-      PowLoc.iter (fun k -> Timer.Hashtbl.replace Timer.locset_fi_hash k k) coarsen;
-      PowLoc.diff locset_fs coarsen
-    else locset_fs
-  in*)
+  let locset_fs =
+    locset
+    |> opt (!Options.timer_deadline > 0) (Timer.select_trivial global.mem)
+    |> PartialFlowSensitivity.select global
+  in
   let unsound_lib = UnsoundLib.collect global in
   let unsound_update = (!Options.bugfinder >= 2) in
   let unsound_bitwise = (!Options.bugfinder >= 1) in
