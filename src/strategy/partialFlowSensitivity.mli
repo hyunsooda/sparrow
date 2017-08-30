@@ -61,5 +61,5 @@ type feature = {
 val empty_feature : feature
 val extract_feature : Global.t -> BasicDom.PowLoc.t -> feature
 val select : Global.t -> BasicDom.PowLoc.t -> BasicDom.PowLoc.t
-
+val select_simple : Global.t -> BasicDom.PowLoc.t -> BasicDom.PowLoc.t
 val assign_weight : BasicDom.Loc.t list -> feature -> string list -> (BasicDom.Loc.t * float) list

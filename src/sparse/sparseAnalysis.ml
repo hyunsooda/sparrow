@@ -296,11 +296,11 @@ struct
   let initialize : Spec.t -> Global.t -> DUGraph.t -> Access.t -> Table.t
   = fun spec global dug access ->
     Table.add InterCfg.start_node (Sem.initial spec.Spec.locset) Table.empty
-    |> cond (!Options.pfs < 100 || !Options.timer_deadline > 0) (bind_fi_locs global spec.Spec.premem dug access) id
+    |> opt (!Options.pfs < 100 || !Options.pfs_simple) (bind_fi_locs global spec.Spec.premem dug access)
 
   let finalize spec global dug access (worklist, global, inputof, outputof) = 
     let inputof = 
-      if !Options.pfs < 100 || !Options.timer_deadline > 0 then bind_unanalyzed_node global spec.Spec.premem dug access inputof
+      if !Options.pfs < 100 || !Options.pfs_simple then bind_unanalyzed_node global spec.Spec.premem dug access inputof
       else inputof
     in
     (if !Options.timer_deadline > 0 then 

@@ -23,6 +23,7 @@ val inline : string list ref
 val inline_size : int ref
 val pfs : int ref
 val pfs_wv : string ref
+val pfs_simple : bool ref
 
 (** {2 Octagon Analysis } *)
 
