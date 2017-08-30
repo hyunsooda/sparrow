@@ -350,7 +350,7 @@ let do_analysis : Global.t -> Global.t * Table.t * Table.t * Report.query list
   let locset = get_locset global.mem in
   let locset_fs =
     locset
-    |> opt (!Options.timer_deadline > 0) (Timer.select_trivial global.mem)
+    |> opt !Options.pfs_simple (PartialFlowSensitivity.select_simple global)
     |> PartialFlowSensitivity.select global 
   in
   let unsound_lib = UnsoundLib.collect global in

@@ -734,3 +734,18 @@ let select : Global.t -> PowLoc.t -> PowLoc.t
   else
     rank global locset
     |> take_top !Options.pfs
+
+let precise_pre x premem =
+  let v = Mem.find x premem in
+  let (i, p, a) = (Val.itv_of_val v, Val.pow_loc_of_val v, Val.array_of_val v) in
+  let (offset, size) = (ArrayBlk.offsetof a, ArrayBlk.sizeof a) in
+  (Itv.is_const i || Itv.is_bot i)
+  && (PowLoc.cardinal p <= 1)
+  && (ArrayBlk.cardinal a <= 1)
+  && (Itv.is_const offset || Itv.is_bot offset)
+  && (Itv.is_const size || Itv.is_bot size)
+
+let select_simple global locset =
+  PowLoc.filter (fun x ->
+      (Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
+      && not (precise_pre x global.mem)) locset

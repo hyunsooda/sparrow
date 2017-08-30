@@ -30,6 +30,7 @@ let pfs_wv = ref
    -100.0 100.0 70.038390871188767 -22.179572133292666 100.0 
    42.647897970881758 100.0 -100.0 -100.0 32.564292030707847 
    98.370519929542738 100.0 100.0 -100.0 -100.0"
+let pfs_simple = ref false
 
 (* Octagon Analysis *)
 let oct = ref false
@@ -123,6 +124,7 @@ let opts =
   ("-inline_size", (Arg.Int (fun x -> inline_size := x)), "Size constraint for function inline");
   ("-pfs", (Arg.Int (fun x -> pfs := x)), "Partial flow-sensitivity -pfs [0-100] (0: flow-insensitive, 100: fully flow-sensitive). default=100");
   ("-pfs_wv", (Arg.String (fun s -> pfs_wv := s)), "Weight vector for flow-sensitivity (e.g., \"0 1 -1 ... \"). Unspecified weights are zeros.");
+  ("-pfs_simple", (Arg.Set pfs_simple), "Simple heuristic for patial flow-sensitivity");
   ("-oct", (Arg.Set oct), "Do octagon analysis");
   ("-profile", (Arg.Set profile), "Profiler");
   ("-narrow", (Arg.Set narrow), "Do narrowing");

@@ -298,21 +298,6 @@ let print_stat spec global access dug =
   prerr_endline (" # FS AbsLoc : " ^ string_of_int (PowLoc.cardinal locset_of_fs));
   exit 0
 
-let precise_pre x premem =
-  let v = Mem.find x premem in
-  let (i, p, a) = (Val.itv_of_val v, Val.pow_loc_of_val v, Val.array_of_val v) in
-  let (offset, size) = (ArrayBlk.offsetof a, ArrayBlk.sizeof a) in
-  (Itv.is_const i || Itv.is_bot i)
-  && (PowLoc.cardinal p <= 1)
-  && (ArrayBlk.cardinal a <= 1)
-  && (Itv.is_const offset || Itv.is_bot offset)
-  && (Itv.is_const size || Itv.is_bot size)
-
-let select_trivial mem locset =
-  PowLoc.filter (fun x ->
-      (Mem.find x mem |> Val.pow_proc_of_val |> PowProc.is_empty)
-      && not (precise_pre x mem)) locset
-
 let initialize spec global access dug worklist inputof = 
   let widen_start = Sys.time () in
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
