@@ -308,19 +308,17 @@ let precise_pre x premem =
   && (Itv.is_const offset || Itv.is_bot offset)
   && (Itv.is_const size || Itv.is_bot size)
 
+let select_trivial mem locset =
+  PowLoc.filter (fun x ->
+      (Mem.find x mem |> Val.pow_proc_of_val |> PowProc.is_empty)
+      && not (precise_pre x mem)) locset
+
 let initialize spec global access dug worklist inputof = 
   let widen_start = Sys.time () in
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
   let target_locset = (* target of this optimization problem *)
     if !Options.timer_initial_coarsening then
-(*        AlarmSet.fold (fun q locs ->
-          let s = Dependency.dependency_of_query global dug access q global.mem in
-          prerr_endline ("set: "^string_of_int (PowLoc.cardinal s));
-          PowLoc.join locs s) alarm_fi PowLoc.empty*)
-        Dependency.dependency_of_query_set_new global dug access alarm_fi
-        |> PowLoc.filter (fun x ->
-            (Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
-            && not (precise_pre x global.mem))
+      Dependency.dependency_of_query_set_new global dug access alarm_fi
     else
       spec.Spec.locset_fs
   in
@@ -329,7 +327,7 @@ let initialize spec global access dug worklist inputof =
   let filename = Filename.basename global.file.Cil.fileName in
   let dir = !Options.timer_dir in
   MarshalManager.output ~dir (filename ^ ".static_feature") static_feature;
-  let locset_coarsen = PowLoc.diff spec.Spec.locset target_locset in
+  let locset_coarsen = PowLoc.diff spec.Spec.locset_fs target_locset in
   (if !Options.timer_stat then print_stat spec global access dug);
   prerr_endline ("\n== feature took " ^ string_of_float (Sys.time () -. widen_start)); 
   (* for efficiency *)
@@ -358,7 +356,7 @@ let extract_type1 spec oc prev next coarsen size_coarsen coarsen_score_pos1 glob
   (* locs not related to FI-alarms *)
 (*   let locs_of_fi_alarms = Dependency.dependency_of_query_set global dug access alarm_fi feature_prev inputof_prev inputof_idx in *)
   let locs_of_fi_alarms = Dependency.dependency_of_query_set_new global dug access alarm_fi in
-  let pos_locs1 = PowLoc.diff spec.Spec.locset locs_of_fi_alarms in
+  let pos_locs1 = PowLoc.diff spec.Spec.locset_fs locs_of_fi_alarms in
   let inter_pos1 = PowLoc.inter pos_locs1 coarsen in
   output_string oc ("#\t\t\t\tPos1 : "^(PowLoc.cardinal pos_locs1 |> string_of_int)^"\n");
   output_string oc ("#\t\t\t\tCoarsen : "^(string_of_int size_coarsen)^"\n");
