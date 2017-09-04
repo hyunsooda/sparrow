@@ -35,6 +35,8 @@ type feature = {
   alarm_fi                  : PowLoc.t;  (* TODO *)
   indirect_alarm            : PowLoc.t;
   eq_fi                     : PowLoc.t;
+  zero_itv                   : PowLoc.t;
+  constant_itv                   : PowLoc.t;
   neg_itv                   : PowLoc.t;
   top_itv                   : PowLoc.t;
   left_open_itv             : PowLoc.t;
@@ -90,6 +92,8 @@ let empty_feature = {
   alarm_fi                  = PowLoc.empty;
   indirect_alarm            = PowLoc.empty;
   eq_fi                     = PowLoc.empty;
+  zero_itv                   = PowLoc.empty;
+  constant_itv                   = PowLoc.empty;
   neg_itv                   = PowLoc.empty;
   top_itv                   = PowLoc.empty;
   left_open_itv             = PowLoc.empty;
@@ -196,8 +200,10 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.alarm_fi);
    b2f (PowLoc.mem x feat.indirect_alarm);
    b2f (PowLoc.mem x feat.eq_fi);
+   b2f (PowLoc.mem x feat.zero_itv);
+   b2f (PowLoc.mem x feat.constant_itv); (* 50 *)
    b2f (PowLoc.mem x feat.neg_itv);
-   b2f (PowLoc.mem x feat.top_itv); (* 50 *)
+   b2f (PowLoc.mem x feat.top_itv);
    b2f (PowLoc.mem x feat.left_open_itv);
    b2f (PowLoc.mem x feat.right_open_itv);
    b2f (PowLoc.mem x feat.neg_offset);
@@ -205,9 +211,9 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.right_open_offset);
    b2f (PowLoc.mem x feat.zero_offset);
    b2f (PowLoc.mem x feat.constant_offset);
-   b2f (PowLoc.mem x feat.constant_size);
+   b2f (PowLoc.mem x feat.constant_size); (* 60 *)
    b2f (PowLoc.mem x feat.finite_offset);
-   b2f (PowLoc.mem x feat.finite_size); (* 60 *)
+   b2f (PowLoc.mem x feat.finite_size);
    b2f (PowLoc.mem x feat.left_open_size);
    b2f (PowLoc.mem x feat.right_open_size);
    b2f (PowLoc.mem x feat.neg_size);
@@ -215,9 +221,9 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.large_ptr_set);
    b2f (PowLoc.mem x feat.large_ptr_set_val);
    b2f (PowLoc.mem x feat.large_ptr_set_val_widen);
-   b2f (PowLoc.mem x feat.singleton_array_set);
+   b2f (PowLoc.mem x feat.singleton_array_set); (* 70 *)
    b2f (PowLoc.mem x feat.large_array_set);
-   b2f (PowLoc.mem x feat.large_array_set_val); (* 70 *)
+   b2f (PowLoc.mem x feat.large_array_set_val);
    b2f (PowLoc.mem x feat.large_array_set_val_widen);
    b2f (PowLoc.mem x feat.large_array_set_val_field);
    b2f (PowLoc.mem x feat.unstable);
@@ -226,16 +232,16 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.finite_itv_pre);
    b2f (PowLoc.mem x feat.zero_offset_pre);
    b2f (PowLoc.mem x feat.constant_offset_pre);
-   b2f (PowLoc.mem x feat.constant_size_pre);
+   b2f (PowLoc.mem x feat.constant_size_pre); (* 80 *)
    b2f (PowLoc.mem x feat.finite_offset_pre);
-   b2f (PowLoc.mem x feat.top_offset_pre); (* 80 *)
+   b2f (PowLoc.mem x feat.top_offset_pre);
    b2f (PowLoc.mem x feat.finite_size_pre);
    b2f (PowLoc.mem x feat.natural_size_pre);
    b2f (PowLoc.mem x feat.positive_size_pre);
    b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
    b2f (PowLoc.mem x feat.singleton_array_set_pre);
    b2f (PowLoc.mem x feat.large_array_set_pre);
-   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 87 *)
+   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 89 *)
 (*   b2f (PowLoc.mem x feat.non_bot); (* not a feature *)*)
    ]
   in
@@ -281,6 +287,18 @@ let add_right_open_itv k i feat =
   else 
     feat
 
+let add_constant_itv k i feat =
+  if Itv.is_const i then
+    { feat with constant_itv = PowLoc.add k feat.constant_itv }
+  else 
+    feat
+
+let add_zero_itv k i feat =
+  if Itv.is_zero i then
+    { feat with zero_itv = PowLoc.add k feat.zero_itv }
+  else 
+    feat
+
 let extract_itv_feature k v feat =
   let i = Val.itv_of_val v in
   if Itv.is_top i then
@@ -295,6 +313,8 @@ let extract_itv_feature k v feat =
     feat
     |> add_right_open_itv k i
     |> add_neg_itv k i
+    |> add_constant_itv k i
+    |> add_zero_itv k i
 
 let neg_offset_cache = Hashtbl.create 1000
 let left_open_offset_cache = Hashtbl.create 1000
