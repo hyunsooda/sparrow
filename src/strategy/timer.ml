@@ -490,8 +490,8 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
             if PowLoc.mem x conflict then pos_data
             else (prev, x, feature_prev)::pos_data) pos_locs pos_data in
         let neg_data = PowLoc.fold (fun x neg_data -> 
-(*            if PowLoc.mem x conflict then neg_data
-            else*) (prev, x, feature_prev)::neg_data) neg_locs neg_data in
+            if PowLoc.mem x conflict then neg_data
+            else (prev, x, feature_prev)::neg_data) neg_locs neg_data in
         (pos_data, neg_data)
       else 
         (pos_data, neg_data)
