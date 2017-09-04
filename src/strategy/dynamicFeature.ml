@@ -269,88 +269,165 @@ let precise_locs premem =
   Mem.fold (fun k v -> 
     if precise v then PowLoc.add k 
     else id) premem PowLoc.empty
-(*
-let add_precise_pre premem feat = 
-  { feat with precise_pre = 
-    Mem.fold (fun k v -> 
-      if precise v then PowLoc.add k 
-          else id) premem feat.precise_pre }
-*)
-let add_neg_itv k v feat = 
-  if (Val.itv_of_val v |> Itv.meet Itv.neg) <> Itv.bot then 
+
+let add_neg_itv k i feat =
+  if (Itv.meet Itv.neg i) <> Itv.bot then
     { feat with neg_itv = PowLoc.add k feat.neg_itv }
   else feat
 
-let add_top_itv k v feat = 
-  if Val.itv_of_val v = Itv.top then 
-    { feat with top_itv = PowLoc.add k feat.top_itv }
-  else feat
-
-let add_left_open_itv k v feat = 
-  if Val.itv_of_val v |> Itv.open_left then 
-    { feat with left_open_itv = PowLoc.add k feat.left_open_itv }
-  else feat
-
-let add_right_open_itv k v feat = 
-  if Val.itv_of_val v |> Itv.open_right then 
+let add_right_open_itv k i feat =
+  if Itv.open_right i then
     { feat with right_open_itv = PowLoc.add k feat.right_open_itv }
-  else feat
+  else 
+    feat
 
-let neg_size_cache = Hashtbl.create 1000
-let add_neg_size k v feat = 
-  if Hashtbl.mem neg_size_cache k then feat
-  else if (Val.array_of_val v |> ArrayBlk.sizeof |> Itv.meet Itv.neg) <> Itv.bot then 
-    let _ = Hashtbl.add neg_size_cache k k in
-    { feat with neg_size = PowLoc.add k feat.neg_size }
-  else feat
+let extract_itv_feature k v feat =
+  let i = Val.itv_of_val v in
+  if Itv.is_top i then
+    { feat with top_itv = PowLoc.add k feat.top_itv;
+                left_open_itv = PowLoc.add k feat.left_open_itv;
+                right_open_itv = PowLoc.add k feat.right_open_itv;
+                neg_itv = PowLoc.add k feat.neg_itv; }
+  else if Itv.open_left i then
+    { feat with left_open_itv = PowLoc.add k feat.left_open_itv;
+                neg_itv = PowLoc.add k feat.neg_itv; }
+  else
+    feat
+    |> add_right_open_itv k i
+    |> add_neg_itv k i
 
 let neg_offset_cache = Hashtbl.create 1000
-let add_neg_offset k v feat = 
+let left_open_offset_cache = Hashtbl.create 1000
+let right_open_offset_cache = Hashtbl.create 1000
+
+let add_neg_offset k offset feat =
   if Hashtbl.mem neg_offset_cache k then feat
-  else if (Val.array_of_val v |> ArrayBlk.offsetof |> Itv.meet Itv.neg) <> Itv.bot then 
+  else if (Itv.meet Itv.neg offset) <> Itv.bot then 
     let _ = Hashtbl.add neg_offset_cache k k in
     { feat with neg_offset = PowLoc.add k feat.neg_offset }
   else feat
 
-let left_open_offset_cache = Hashtbl.create 1000
-let add_left_open_offset k v feat = 
+
+let add_left_open_offset k offset feat =
   if Hashtbl.mem left_open_offset_cache k then feat
-  else if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.open_left then 
+  else if Itv.open_left offset then 
     let _ = Hashtbl.add left_open_offset_cache k k in
     { feat with left_open_offset = PowLoc.add k feat.left_open_offset }
   else feat
 
-let left_right_offset_cache = Hashtbl.create 1000
-let add_right_open_offset k v feat = 
-  if Hashtbl.mem left_right_offset_cache k then feat
-  else if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.open_right then 
-    let _ = Hashtbl.add left_right_offset_cache k k in
+let add_right_open_offset k offset feat =
+  if Hashtbl.mem right_open_offset_cache k then feat
+  else if Itv.open_right offset then 
+    let _ = Hashtbl.add right_open_offset_cache k k in
     { feat with right_open_offset = PowLoc.add k feat.right_open_offset }
   else feat
 
+let not_constant_offset_cache = Hashtbl.create 1000
+let add_constant_offset k offset feat = 
+  if Hashtbl.mem not_constant_offset_cache k then feat 
+  else
+    if Itv.is_const offset then 
+      { feat with constant_offset = PowLoc.add k feat.constant_offset }
+    else if Itv.is_bot offset then feat
+    else
+      let _ = Hashtbl.add not_constant_offset_cache k k in
+      feat
+
+let not_finite_offset_cache = Hashtbl.create 1000
+let add_finite_offset k offset feat = 
+  if Hashtbl.mem not_finite_offset_cache k then feat 
+  else 
+    if Itv.is_finite offset then 
+      { feat with finite_offset = PowLoc.add k feat.finite_offset }
+    else if Itv.is_bot offset then feat
+    else
+      let _ = Hashtbl.add not_finite_offset_cache k k in
+      feat
+
+let not_zero_offset_cache = Hashtbl.create 1000
+let add_zero_offset k offset feat = 
+  if Hashtbl.mem not_zero_offset_cache k then feat 
+  else
+    if Itv.is_zero offset then 
+      { feat with zero_offset = PowLoc.add k feat.zero_offset }
+    else if Itv.is_bot offset then feat
+    else
+      let _ = Hashtbl.add not_zero_offset_cache k k in
+      feat
+
+let extract_offset_feature k v feat =
+  let offset = Val.array_of_val v |> ArrayBlk.offsetof in
+  feat
+  |> add_neg_offset k offset
+  |> add_left_open_offset k offset
+  |> add_right_open_offset k offset
+  |> add_constant_offset k offset
+  |> add_finite_offset k offset
+  |> add_zero_offset k offset
+
+let neg_size_cache = Hashtbl.create 1000
+let add_neg_size k size feat = 
+  if Hashtbl.mem neg_size_cache k then feat
+  else if (Itv.meet Itv.neg size) <> Itv.bot then 
+    let _ = Hashtbl.add neg_size_cache k k in
+    { feat with neg_size = PowLoc.add k feat.neg_size }
+  else feat
+
 let left_open_size_cache = Hashtbl.create 1000
-let add_left_open_size k v feat = 
+let add_left_open_size k size feat = 
   if Hashtbl.mem left_open_size_cache k then feat
-  else if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.open_left then 
+  else if Itv.open_left size then 
     let _ = Hashtbl.add left_open_size_cache k k in
     { feat with left_open_size = PowLoc.add k feat.left_open_size }
   else feat
 
 let left_right_size_cache = Hashtbl.create 1000
-let add_right_open_size k v feat = 
+let add_right_open_size k size feat = 
   if Hashtbl.mem left_right_size_cache k then feat
-  else if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.open_right then 
+  else if Itv.open_right size then 
     let _ = Hashtbl.add left_right_size_cache k k in
     { feat with right_open_size = PowLoc.add k feat.right_open_size }
   else feat
 
 let zero_size_cache = Hashtbl.create 1000
-let add_zero_size k v feat = 
+let add_zero_size k size feat = 
   if Hashtbl.mem zero_size_cache k then feat
-  else if (Val.array_of_val v |> ArrayBlk.sizeof |> Itv.meet Itv.zero) <> Itv.bot then 
+  else if (Itv.meet Itv.zero size) <> Itv.bot then 
     let _ = Hashtbl.add zero_size_cache k k in
     { feat with zero_size = PowLoc.add k feat.zero_size }
   else feat
+
+let not_constant_size_cache = Hashtbl.create 1000
+let add_constant_size k size feat = 
+  if Hashtbl.mem not_constant_size_cache k then feat 
+  else 
+    if Itv.is_const size then 
+      { feat with constant_size = PowLoc.add k feat.constant_size }
+    else if Itv.is_bot size then feat
+    else 
+      let _ = Hashtbl.add not_constant_size_cache k k in
+      feat
+
+let not_finite_size_cache = Hashtbl.create 1000
+let add_finite_size k size feat = 
+  if Hashtbl.mem not_finite_size_cache k then feat 
+  else 
+    if Itv.is_finite size then 
+      { feat with finite_size = PowLoc.add k feat.finite_size }
+    else if Itv.is_bot size then feat
+    else
+      let _ = Hashtbl.add not_finite_size_cache k k in
+      feat
+
+let extract_size_feature k v feat =
+  let size = Val.array_of_val v |> ArrayBlk.sizeof in
+  feat
+  |> add_neg_size k size
+  |> add_left_open_size k size
+  |> add_right_open_size k size
+  |> add_constant_size k size
+  |> add_finite_size k size
+  |> add_zero_size k size
 
 let add_large_ptr_set k v feat = 
   if (Val.pow_loc_of_val v |> PowLoc.cardinal >= 3) 
@@ -390,66 +467,6 @@ let add_singleton_array_set k v feat =
   else feat
 
 (* TODO: optimize *)
-let not_zero_offset_cache = Hashtbl.create 1000
-let add_zero_offset k v feat = 
-  if Hashtbl.mem not_zero_offset_cache k then feat 
-  else
-    let offset = Val.array_of_val v |> ArrayBlk.offsetof in
-    if Itv.is_zero offset then 
-      { feat with zero_offset = PowLoc.add k feat.zero_offset }
-    else if Itv.is_bot offset then feat
-    else
-      let _ = Hashtbl.add not_zero_offset_cache k k in
-      feat
-
-let not_constant_offset_cache = Hashtbl.create 1000
-let add_constant_offset k v feat = 
-  if Hashtbl.mem not_constant_offset_cache k then feat 
-  else
-    let offset = Val.array_of_val v |> ArrayBlk.offsetof in
-    if Itv.is_const offset then 
-      { feat with constant_offset = PowLoc.add k feat.constant_offset }
-    else if Itv.is_bot offset then feat
-    else
-      let _ = Hashtbl.add not_constant_offset_cache k k in
-      feat
-
-let not_finite_offset_cache = Hashtbl.create 1000
-let add_finite_offset k v feat = 
-  if Hashtbl.mem not_finite_offset_cache k then feat 
-  else 
-    let offset = Val.array_of_val v |> ArrayBlk.offsetof in
-    if Itv.is_finite offset then 
-      { feat with finite_offset = PowLoc.add k feat.finite_offset }
-    else if Itv.is_bot offset then feat
-    else
-      let _ = Hashtbl.add not_finite_offset_cache k k in
-      feat
-
-let not_constant_size_cache = Hashtbl.create 1000
-let add_constant_size k v feat = 
-  if Hashtbl.mem not_constant_size_cache k then feat 
-  else 
-    let size = Val.array_of_val v |> ArrayBlk.sizeof in 
-    if Itv.is_const size then 
-      { feat with constant_size = PowLoc.add k feat.constant_size }
-    else if Itv.is_bot size then feat
-    else 
-      let _ = Hashtbl.add not_constant_size_cache k k in
-      feat
-
-let not_finite_size_cache = Hashtbl.create 1000
-let add_finite_size k v feat = 
-  if Hashtbl.mem not_finite_size_cache k then feat 
-  else 
-    let size = Val.array_of_val v |> ArrayBlk.sizeof in 
-    if Itv.is_finite size then 
-      { feat with finite_size = PowLoc.add k feat.finite_size }
-    else if Itv.is_bot size then feat
-    else
-      let _ = Hashtbl.add not_finite_size_cache k k in
-      feat
-
 let large_array_set_val_cache = Hashtbl.create 1000
 let add_large_array_set_val k v feat = 
   if Hashtbl.mem large_array_set_val_cache k && Random.bool () then feat
@@ -670,22 +687,9 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
         Mem.fold (fun k v feat ->
 (*            if Hashtbl.mem locset_hash k then*)
               feat
-              |> (add_neg_itv k v)
-              |> (add_neg_size k v)
-              |> (add_neg_offset k v)
-              |> (add_left_open_offset k v)
-              |> (add_right_open_offset k v)
-              |> (add_left_open_size k v)
-              |> (add_right_open_size k v)
-              |> (add_zero_size k v)
-              |> (add_zero_offset k v)
-              |> (add_constant_offset k v)
-              |> (add_constant_size k v)
-              |> (add_finite_offset k v)
-              |> (add_finite_size k v)
-              |> (add_top_itv k v)
-              |> (add_left_open_itv k v)
-              |> (add_right_open_itv k v)
+              |> (extract_itv_feature k v)
+              |> (extract_offset_feature k v)
+              |> (extract_size_feature k v)
               |> (add_large_ptr_set k v)
               |> (add_large_ptr_set_val k v)
               |> (add_large_ptr_set_val_widen k v)
