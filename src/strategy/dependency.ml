@@ -79,7 +79,7 @@ let string_of_works t =
     prerr_endline (Node.to_string n ^ ", " ^ PowLoc.to_string ploc)) t
 module ReachDef = BatSet.Make(struct type t = Node.t * Loc.t [@@deriving compare] end)
 
-let dependency_of_query_set_new global dug access qset =
+let dependency_of_query_set_new inter global dug access qset =
 (*   prerr_endline (Report.string_of_query q); *)
   let rec loop works results =
 (*
@@ -110,7 +110,7 @@ let dependency_of_query_set_new global dug access qset =
 (*                 let _ = prerr_endline "first" in *)
                 let uses_pred =
                   match InterCfg.cmdof global.icfg p with
-                  | IntraCfg.Cmd.Ccall (_, _, args, _) when InterCfg.is_entry node ->
+                  | IntraCfg.Cmd.Ccall (_, _, args, _) when inter && InterCfg.is_entry node ->
                       if Loc.is_lvar use then   (* parameter *)
                         let callee = Node.get_pid node in
                         let caller = Node.get_pid p in
@@ -155,7 +155,7 @@ let dependency_of_query_set global dug access qset inputof_prev =
   AlarmSet.fold (fun q ->
 (*     let mem_idx = Table.find q.node inputof_idx in *)
     let mem_prev = Table.find q.node inputof_prev in
-    let set = dependency_of_query_set_new global dug access (AlarmSet.singleton q) in
+    let set = dependency_of_query_set_new false global dug access (AlarmSet.singleton q) in
     (if !Options.timer_debug then
     let _ = prdbg_endline ("query: "^(Report.string_of_query q)) in
     prdbg_endline ("node: "^(Node.to_string q.node));

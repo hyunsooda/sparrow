@@ -450,20 +450,20 @@ let extract_size_feature k v feat =
   |> add_zero_size k size
 
 let add_large_ptr_set k v feat = 
-  if (Val.pow_loc_of_val v |> PowLoc.cardinal >= 3) 
-    || (Val.pow_proc_of_val v |> PowProc.cardinal >= 3) then
+  if (Val.pow_loc_of_val v |> PowLoc.cardinal > 2) 
+    || (Val.pow_proc_of_val v |> PowProc.cardinal > 2) then
     { feat with large_ptr_set = PowLoc.add k feat.large_ptr_set } 
   else feat
 
 let add_large_ptr_set_val k v feat = 
-  if (Val.pow_loc_of_val v |> PowLoc.cardinal >= 3) then
+  if (Val.pow_loc_of_val v |> PowLoc.cardinal > 2) then
     { feat with large_ptr_set_val = PowLoc.join (Val.pow_loc_of_val v) (feat.large_ptr_set_val) }
   else feat
 
 let large_ptr_set_val_widen_cache = Hashtbl.create 1000
 let add_large_ptr_set_val_widen k v feat =
   if Hashtbl.mem large_ptr_set_val_widen_cache k then feat
-  else if (Val.pow_loc_of_val v |> PowLoc.cardinal >= 3) then
+  else if (Val.pow_loc_of_val v |> PowLoc.cardinal > 1) then
     let _ = Hashtbl.add large_ptr_set_val_widen_cache k k in
     { feat with large_ptr_set_val_widen = PowLoc.join (Hashtbl.find premem_hash k |> Val.pow_loc_of_val) (feat.large_ptr_set_val_widen) }
   else feat
@@ -471,7 +471,7 @@ let add_large_ptr_set_val_widen k v feat =
 let large_array_set_cache = Hashtbl.create 1000
 let add_large_array_set k v feat = 
   if Hashtbl.mem large_array_set_cache k then feat
-  else if (Val.array_of_val v |> ArrayBlk.cardinal >= 3) then
+  else if (Val.array_of_val v |> ArrayBlk.cardinal > 1) then
     let _ = Hashtbl.add large_array_set_cache k k in
     { feat with large_array_set = PowLoc.add k feat.large_array_set } 
   else feat
