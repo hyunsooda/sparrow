@@ -178,6 +178,7 @@ let diff_alarms alarms1 alarms2 =
   List.filter (fun q -> not (AlarmSet.mem q alarms2_set)) alarms1
 
 module History = BatMap.Make(Loc)
+module HistoryAlarm = Dependency.AlarmMap
 
 let timer_dump global dug inputof feature new_alarms locset_coarsen time = 
   let filename = Filename.basename global.file.Cil.fileName in
@@ -191,7 +192,12 @@ let timer_dump global dug inputof feature new_alarms locset_coarsen time =
     (try MarshalManager.input ~dir (filename ^ ".coarsen_history") with _ -> History.empty)
     |> PowLoc.fold (fun x -> History.add x time) locset_coarsen
   in
-  MarshalManager.output ~dir (filename ^ ".coarsen_history") coarsen_history
+  MarshalManager.output ~dir (filename ^ ".coarsen_history") coarsen_history;
+  let alarm_history =
+    (try MarshalManager.input ~dir (filename ^ ".alarm_history") with _ -> HistoryAlarm.empty)
+    |> list_fold (fun x -> HistoryAlarm.add x time) new_alarms
+  in
+  MarshalManager.output ~dir (filename ^ ".alarm_history") alarm_history
 
 (* compute coarsening targets *)
 let filter locset_coarsen node dug =
@@ -393,7 +399,7 @@ let refine_negative_data global inputof_prev locset =
   PowLoc.filter (fun x ->
     let fs_v = Table.fold (fun node mem -> 
       if is_inter_node global node then Val.join (Mem.find x mem) else id)
-      inputof_prev Val.bot 
+        inputof_prev Val.bot 
     in
     let fi_v = Mem.find x global.mem in
     not (Val.eq fs_v Val.bot) && not (Val.eq fs_v fi_v)) locset
@@ -406,7 +412,10 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
   let alarm_final = MarshalManager.input ~dir (filename ^ ".alarm." ^ (string_of_int final_idx)) |> AlarmSet.of_list in
   let coarsen_history = try MarshalManager.input ~dir (filename ^ ".coarsen_history") with _ -> History.empty in
   let coarsen_history_old = try MarshalManager.input ~dir (filename ^ ".coarsen_history_old") with _ -> History.empty in
+  let alarm_history = try MarshalManager.input ~dir (filename ^ ".alarm_history") with _ -> HistoryAlarm.empty in
+  let alarm_history_old = try MarshalManager.input ~dir (filename ^ ".alarm_history_old") with _ -> HistoryAlarm.empty in
   MarshalManager.output ~dir (filename ^ ".coarsen_history_old") coarsen_history;
+  MarshalManager.output ~dir (filename ^ ".alarm_history_old") alarm_history;
   let (pos_data, neg_data) = List.fold_left (fun (pos_data, neg_data) i ->
     try 
       let (prev, idx, next) = (i, i + 1, i + 2) in
@@ -427,6 +436,14 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
           if idx = 2 then AlarmSet.inter alarm_fs alarm_next
           else AlarmSet.inter alarm_fs (AlarmSet.diff alarm_next alarm_idx) 
         in
+        let inter =
+          AlarmSet.filter (fun x ->
+              try
+                let old_position = HistoryAlarm.find x alarm_history_old in
+                let new_position = HistoryAlarm.find x alarm_history in
+                old_position > new_position
+              with _ -> true) inter
+        in
 (*         let inter = AlarmSet.inter alarm_fs alarm_next in *)
         output_string oc ("#\t\t\t\tnumber of alarm next: "^(string_of_int (AlarmSet.cardinal alarm_next))^"\n");
         output_string oc ("#\t\t\t\tnumber of alarm idx: "^(string_of_int (AlarmSet.cardinal alarm_idx))^"\n");
@@ -438,14 +455,14 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         in
         debug_info global inputof_prev feature_prev static_feature inter coarsen_history_old coarsen_history pos_locs;
         output_string oc ("#\t\t\t\tPos: "^(string_of_int (PowLoc.cardinal pos_locs))^"\n");
-        let pos_locs =
+(*        let pos_locs =
           PowLoc.filter (fun x ->
               try
                 let old_position = History.find x coarsen_history_old in
                 let new_position = History.find x coarsen_history in
                 old_position > new_position
               with _ -> true) pos_locs
-        in
+        in*)
         output_string oc ("#\t\t\t\tPos (after filtering): "^(string_of_int (PowLoc.cardinal pos_locs))^"\n");
         prdbg_endline ("Pos Data : " ^ PowLoc.to_string pos_locs); 
         (* 3. Update w to coarsen variable *)
@@ -455,6 +472,14 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         prdbg_endline ("Negative Data at " ^ string_of_int idx);
         let diff = AlarmSet.diff (AlarmSet.diff alarm_idx alarm_prev) alarm_fs in
 (*         let diff = AlarmSet.diff alarm_final alarm_fs in *)
+        let diff =
+          AlarmSet.filter (fun x ->
+              try
+                let old_position = HistoryAlarm.find x alarm_history_old in
+                let new_position = HistoryAlarm.find x alarm_history in
+                old_position < new_position
+              with _ -> true) diff
+        in
         output_string oc ("#\t\t\t\tnumber of alarm diff & non-fs: "^(string_of_int (AlarmSet.cardinal diff))^"\n");
         let locs_of_alarms =
           Dependency.dependency_of_query_set_new false global dug access diff 
@@ -463,6 +488,7 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         debug_info global inputof_prev feature_prev static_feature diff coarsen_history_old coarsen_history locs_of_alarms;
         let neg_locs = locs_of_alarms in
         output_string oc ("#\t\t\t\tNeg: "^(PowLoc.cardinal neg_locs |> string_of_int)^"\n");
+(*
         let neg_locs =
           PowLoc.filter (fun x ->
               try
@@ -471,6 +497,7 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
                 old_position < new_position
               with _ -> true) neg_locs
         in
+*)
         prdbg_endline ("Neg Data : " ^ PowLoc.to_string neg_locs); 
         output_string oc ("#\t\t\t\tNeg (after filter): "^(PowLoc.cardinal neg_locs |> string_of_int)^"\n");
 (*         MarshalManager.output ~dir (filename ^ ".coarsen.score." ^ string_of_int prev) (coarsen_score_pos1_new, coarsen_score_pos2_new, coarsen_score_neg_new); *)
