@@ -31,6 +31,7 @@ let compare_query a b =
   else Pervasives.compare a.loc.file b.loc.file
 
 module AlarmSet = BatSet.Make(struct type t = Report.query let compare = compare_query end)
+module AlarmMap = BatMap.Make(struct type t = Report.query let compare = compare_query end)
 
 let prdbg_endline x = 
   if !Options.timer_debug then
