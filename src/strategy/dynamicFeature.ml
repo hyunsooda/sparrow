@@ -63,21 +63,6 @@ type feature = {
   large_array_set_val_field : PowLoc.t;
   unstable                  : PowLoc.t;
   non_bot                       : PowLoc.t;
-  (* static semantic features, move to static features in the long run *)
-  constant_itv_pre            : PowLoc.t;
-  finite_itv_pre            : PowLoc.t;
-  finite_size_pre            : PowLoc.t;
-  finite_offset_pre            : PowLoc.t;
-  top_offset_pre            : PowLoc.t;
-  constant_size_pre            : PowLoc.t;
-  constant_offset_pre            : PowLoc.t;
-  zero_offset_pre           : PowLoc.t;
-  natural_size_pre         : PowLoc.t;
-  positive_size_pre         : PowLoc.t;
-  singleton_ptr_set_pre      : PowLoc.t;
-  singleton_array_set_pre    : PowLoc.t;
-  large_array_set_pre    : PowLoc.t;
-  singleton_array_set_val_pre: PowLoc.t;
   (* syntactic features *)
   temp_var                  : PowLoc.t;
 }
@@ -119,21 +104,6 @@ let empty_feature = {
   large_array_set_val_widen = PowLoc.empty;
   large_array_set_val_field = PowLoc.empty;
   unstable                  = PowLoc.empty;
-  (* static semantic *)
-  constant_itv_pre              = PowLoc.empty;
-  finite_itv_pre              = PowLoc.empty;
-  finite_size_pre             = PowLoc.empty;
-  finite_offset_pre           = PowLoc.empty;
-  constant_size_pre             = PowLoc.empty;
-  constant_offset_pre           = PowLoc.empty;
-  top_offset_pre            = PowLoc.empty;
-  zero_offset_pre           = PowLoc.empty;
-  natural_size_pre           = PowLoc.empty;
-  positive_size_pre           = PowLoc.empty;
-  singleton_ptr_set_pre       = PowLoc.empty;
-  singleton_array_set_pre     = PowLoc.empty;
-  large_array_set_pre     = PowLoc.empty;
-  singleton_array_set_val_pre = PowLoc.empty;
   (* syntacitc *)
   temp_var                  = PowLoc.empty;
   non_bot                   = PowLoc.empty;
@@ -196,52 +166,51 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x static_feature.Pfs.return_from_ext_fun);
    b2f (PowLoc.mem x static_feature.Pfs.mod_inside_loops);
    b2f (PowLoc.mem x static_feature.Pfs.used_inside_loops);
+   b2f (PowLoc.mem x static_feature.Pfs.constant_itv_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.finite_itv_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.zero_offset_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.constant_offset_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.constant_size_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.finite_offset_pre); (* 50 *)
+   b2f (PowLoc.mem x static_feature.Pfs.top_offset_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.finite_size_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.natural_size_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.positive_size_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.singleton_ptr_set_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.singleton_array_set_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.large_array_set_pre);
+   b2f (PowLoc.mem x static_feature.Pfs.singleton_array_set_val_pre);
    b2f (PowLoc.mem x feat.alarm);
-   b2f (PowLoc.mem x feat.alarm_fi);
+   b2f (PowLoc.mem x feat.alarm_fi); (* 60 *)
    b2f (PowLoc.mem x feat.indirect_alarm);
    b2f (PowLoc.mem x feat.eq_fi);
    b2f (PowLoc.mem x feat.zero_itv);
-   b2f (PowLoc.mem x feat.constant_itv); (* 50 *)
+   b2f (PowLoc.mem x feat.constant_itv);
    b2f (PowLoc.mem x feat.neg_itv);
    b2f (PowLoc.mem x feat.top_itv);
    b2f (PowLoc.mem x feat.left_open_itv);
    b2f (PowLoc.mem x feat.right_open_itv);
    b2f (PowLoc.mem x feat.neg_offset);
-   b2f (PowLoc.mem x feat.left_open_offset);
+   b2f (PowLoc.mem x feat.left_open_offset); (* 70 *)
    b2f (PowLoc.mem x feat.right_open_offset);
    b2f (PowLoc.mem x feat.zero_offset);
    b2f (PowLoc.mem x feat.constant_offset);
-   b2f (PowLoc.mem x feat.constant_size); (* 60 *)
+   b2f (PowLoc.mem x feat.constant_size);
    b2f (PowLoc.mem x feat.finite_offset);
    b2f (PowLoc.mem x feat.finite_size);
    b2f (PowLoc.mem x feat.left_open_size);
    b2f (PowLoc.mem x feat.right_open_size);
    b2f (PowLoc.mem x feat.neg_size);
-   b2f (PowLoc.mem x feat.zero_size);
+   b2f (PowLoc.mem x feat.zero_size); (* 80 *)
    b2f (PowLoc.mem x feat.large_ptr_set);
    b2f (PowLoc.mem x feat.large_ptr_set_val);
    b2f (PowLoc.mem x feat.large_ptr_set_val_widen);
-   b2f (PowLoc.mem x feat.singleton_array_set); (* 70 *)
+   b2f (PowLoc.mem x feat.singleton_array_set);
    b2f (PowLoc.mem x feat.large_array_set);
    b2f (PowLoc.mem x feat.large_array_set_val);
    b2f (PowLoc.mem x feat.large_array_set_val_widen);
    b2f (PowLoc.mem x feat.large_array_set_val_field);
-   b2f (PowLoc.mem x feat.unstable);
-   (* pre: TODO: move to static features*)
-   b2f (PowLoc.mem x feat.constant_itv_pre);
-   b2f (PowLoc.mem x feat.finite_itv_pre);
-   b2f (PowLoc.mem x feat.zero_offset_pre);
-   b2f (PowLoc.mem x feat.constant_offset_pre);
-   b2f (PowLoc.mem x feat.constant_size_pre); (* 80 *)
-   b2f (PowLoc.mem x feat.finite_offset_pre);
-   b2f (PowLoc.mem x feat.top_offset_pre);
-   b2f (PowLoc.mem x feat.finite_size_pre);
-   b2f (PowLoc.mem x feat.natural_size_pre);
-   b2f (PowLoc.mem x feat.positive_size_pre);
-   b2f (PowLoc.mem x feat.singleton_ptr_set_pre);
-   b2f (PowLoc.mem x feat.singleton_array_set_pre);
-   b2f (PowLoc.mem x feat.large_array_set_pre);
-   b2f (PowLoc.mem x feat.singleton_array_set_val_pre); (* 89 *)
+   b2f (PowLoc.mem x feat.unstable); (* 89 *)
 (*   b2f (PowLoc.mem x feat.non_bot); (* not a feature *)*)
    ]
   in
@@ -510,122 +479,6 @@ let add_large_array_set_val_field feat =
             when (PowLoc.mem l feat.large_array_set_val_widen)
               || not (Hashtbl.mem locset_hash l)  -> PowLoc.add k | _ -> id) 
           premem_hash feat.large_array_set_val_field }
-
-let add_constant_itv_pre feat =
-  if PowLoc.is_empty feat.constant_itv_pre then
-    { feat with constant_itv_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.itv_of_val v |> Itv.is_const then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_finite_itv_pre feat =
-  if PowLoc.is_empty feat.finite_itv_pre then
-    { feat with finite_itv_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.itv_of_val v |> Itv.is_finite then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_finite_size_pre feat = 
-  if PowLoc.is_empty feat.finite_size_pre then
-    { feat with finite_size_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_finite then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_finite_offset_pre feat = 
-  if PowLoc.is_empty feat.finite_offset_pre then
-    { feat with finite_offset_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_finite then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_top_offset_pre feat = 
-  if PowLoc.is_empty feat.top_offset_pre then
-    { feat with top_offset_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_top then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_constant_size_pre feat = 
-  if PowLoc.is_empty feat.constant_size_pre then
-    { feat with constant_size_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_const then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_constant_offset_pre feat = 
-  if PowLoc.is_empty feat.constant_offset_pre then
-    { feat with constant_offset_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_const then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_zero_offset_pre feat = 
-  if PowLoc.is_empty feat.zero_offset_pre then
-    { feat with zero_offset_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_zero then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_natural_size_pre feat = 
-  if PowLoc.is_empty feat.natural_size_pre then
-    { feat with natural_size_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_natural then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_positive_size_pre feat = 
-  if PowLoc.is_empty feat.positive_size_pre then
-    { feat with positive_size_pre =
-      Hashtbl.fold (fun k v set ->
-        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_positive then PowLoc.add k set
-        else set) premem_hash PowLoc.empty }
-  else feat
-
-let add_singleton_ptr_set_pre feat =
-  { feat with singleton_ptr_set_pre =
-    if PowLoc.is_empty feat.singleton_ptr_set_pre then
-      Hashtbl.fold (fun k v set ->
-        if (Val.pow_loc_of_val v |> PowLoc.cardinal) = 1 then
-          PowLoc.add k set
-        else set) premem_hash PowLoc.empty
-    else feat.singleton_ptr_set_pre }
-
-let add_singleton_array_set_pre feat =
-  { feat with singleton_array_set_pre =
-    if PowLoc.is_empty feat.singleton_array_set_pre then
-      Hashtbl.fold (fun k v set ->
-        if (Val.array_of_val v |> ArrayBlk.cardinal) = 1 then
-          PowLoc.add k set
-        else set) premem_hash PowLoc.empty
-    else feat.singleton_array_set_pre }
-
-let add_large_array_set_pre feat =
-  { feat with large_array_set_pre =
-    if PowLoc.is_empty feat.large_array_set_pre then
-      Hashtbl.fold (fun k v set ->
-        if (Val.array_of_val v |> ArrayBlk.cardinal) >= 3 then
-          PowLoc.add k set
-        else set) premem_hash PowLoc.empty
-    else feat.large_array_set_pre }
-
-let add_singleton_array_set_val_pre feat =
-  { feat with singleton_array_set_val_pre =
-    if PowLoc.is_empty feat.singleton_array_set_val_pre then
-      Hashtbl.fold (fun k v set ->
-        if (Val.pow_loc_of_val v |> PowLoc.cardinal) = 1 then
-          PowLoc.join (Val.array_of_val v |> ArrayBlk.pow_loc_of_array) set
-        else set) premem_hash PowLoc.empty
-    else feat.singleton_array_set_val_pre }
      
 let unstable v1 v2 = not (Val.le v2 v1) 
 let add_unstable k old_v new_v feat = 
@@ -723,19 +576,5 @@ let extract spec global elapsed_time alarms new_alarms old_inputof inputof old_f
 (*            else feat*)
           ) new_mem feat
       else feat) inputof
-  |> add_constant_itv_pre
-  |> add_finite_itv_pre
-  |> add_constant_offset_pre
-  |> add_constant_size_pre
-  |> add_finite_offset_pre
-  |> add_top_offset_pre
-  |> add_finite_size_pre
-  |> add_zero_offset_pre
-  |> add_natural_size_pre
-  |> add_positive_size_pre
   |> add_large_array_set_val_field
-  |> add_singleton_ptr_set_pre
-  |> add_singleton_array_set_pre
-  |> add_large_array_set_pre
-  |> add_singleton_array_set_val_pre
 (*  |> (fun x -> prerr_endline ("\n-- until semantic features " ^ string_of_float (Sys.time () -. t0)); x)*)

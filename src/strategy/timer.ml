@@ -31,6 +31,7 @@ let coarsening_target = Dug
 
 type t = {
   widen_start : float;
+  last : float;
   threshold : int;
   time_stamp : int;
   old_inputof : Table.t;
@@ -45,6 +46,7 @@ type t = {
 
 let empty = {
   widen_start = 0.0;
+  last = 0.0;
   threshold = 0;
   time_stamp = 1;
   old_inputof = Table.empty;
@@ -315,10 +317,7 @@ let initialize spec global access dug worklist inputof =
   let deadline = !Options.timer_deadline in (* time unit *)
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
   let target_locset = (* target of this optimization problem *)
-    if !Options.timer_initial_coarsening then
-      Dependency.dependency_of_query_set_new true global dug access alarm_fi
-    else
-      spec.Spec.locset_fs
+    Dependency.dependency_of_query_set_new true global dug access alarm_fi
   in
   prerr_endline ("\n== locset took " ^ string_of_float (Sys.time () -. widen_start)); 
   let static_feature = PartialFlowSensitivity.extract_feature global target_locset in
@@ -334,7 +333,7 @@ let initialize spec global access dug worklist inputof =
   let prepare = int_of_float (Sys.time () -. widen_start) in
 (*   let deadline = !Options.timer_deadline - prepare in *)
   timer := {
-    !timer with widen_start; static_feature; locset = target_locset;
+    !timer with widen_start; last = Sys.time (); static_feature; locset = target_locset;
     num_of_locset = PowLoc.cardinal target_locset;
     prepare; deadline; threshold = deadline };
 (*   timer := { !timer with threshold = threshold !timer.time_stamp; }; (* threshold uses prepare and deadline *) *)
@@ -601,7 +600,7 @@ let coarsening_fs spec global access dug worklist inputof =
     else (spec, dug, worklist, inputof)
   in
   let t0 = Sys.time () in
-  let elapsed = t0 -. !timer.widen_start in
+  let elapsed = t0 -. !timer.last in
   if elapsed > (float_of_int (!timer.threshold * (!timer.time_stamp))) then
     let _ = prerr_endline ("\n== Timer: Coarsening #"^(string_of_int !timer.time_stamp)^" starts at " ^ (string_of_float elapsed)) in
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
@@ -642,7 +641,7 @@ let coarsening_fs spec global access dug worklist inputof =
       prerr_endline ("== Timer: Coarsening took " ^ string_of_float (Sys.time () -. t0));
       prerr_endline ("== Timer: Coarsening completes at " ^ string_of_float (Sys.time () -. !timer.widen_start));
       Profiler.report stdout;
-      timer := { !timer with 
+      timer := { !timer with last = Sys.time (); 
 (*         threshold = threshold (!timer.time_stamp + 1); *)
         time_stamp = !timer.time_stamp + 1;
         dynamic_feature;

@@ -74,7 +74,22 @@ type feature = {
   read_in_rec_fun : locset; (* modified inside recursive functions *) (* TODO *)
   return_from_ext_fun : locset; (* e.g., x = ext_function() : done *)
   mod_inside_loops : locset; (* while (1) { ... x:= ... } : done *)
-  used_inside_loops : locset (* while (1) { ... :=x ... } : done *)
+  used_inside_loops : locset; (* while (1) { ... :=x ... } : done *)
+  (* static semantic features, move to static features in the long run *)
+  constant_itv_pre : PowLoc.t;
+  finite_itv_pre : PowLoc.t;
+  finite_size_pre : PowLoc.t;
+  finite_offset_pre : PowLoc.t;
+  top_offset_pre : PowLoc.t;
+  constant_size_pre : PowLoc.t;
+  constant_offset_pre : PowLoc.t;
+  zero_offset_pre : PowLoc.t;
+  natural_size_pre : PowLoc.t;
+  positive_size_pre : PowLoc.t;
+  singleton_ptr_set_pre : PowLoc.t;
+  singleton_array_set_pre : PowLoc.t;
+  large_array_set_pre : PowLoc.t;
+  singleton_array_set_val_pre: PowLoc.t;
 }
 
 let empty_feature = {
@@ -123,7 +138,22 @@ let empty_feature = {
   used_as_array_buf = PowLoc.empty;
   return_from_ext_fun = PowLoc.empty;
   mod_inside_loops = PowLoc.empty;
-  used_inside_loops = PowLoc.empty
+  used_inside_loops = PowLoc.empty;
+  (* static semantic *)
+  constant_itv_pre              = PowLoc.empty;
+  finite_itv_pre              = PowLoc.empty;
+  finite_size_pre             = PowLoc.empty;
+  finite_offset_pre           = PowLoc.empty;
+  constant_size_pre             = PowLoc.empty;
+  constant_offset_pre           = PowLoc.empty;
+  top_offset_pre            = PowLoc.empty;
+  zero_offset_pre           = PowLoc.empty;
+  natural_size_pre           = PowLoc.empty;
+  positive_size_pre           = PowLoc.empty;
+  singleton_ptr_set_pre       = PowLoc.empty;
+  singleton_array_set_pre     = PowLoc.empty;
+  large_array_set_pre     = PowLoc.empty;
+  singleton_array_set_val_pre = PowLoc.empty;
 }
 
 let prerr_feature feature =
@@ -611,6 +641,122 @@ let closure : Global.t -> feature -> feature
        return_from_realloc_clos = PowLoc.diff (clos_forward rfra) rfra;
        pass_to_buf = PowLoc.diff (clos_backward buf) buf }
 
+let add_finite_itv_pre mem feat =
+  if PowLoc.is_empty feat.finite_itv_pre then
+    { feat with finite_itv_pre =
+      Mem.fold (fun k v set ->
+        if Val.itv_of_val v |> Itv.is_finite then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
+let add_finite_size_pre mem feat =
+  if PowLoc.is_empty feat.finite_size_pre then
+    { feat with finite_size_pre =
+      Mem.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_finite then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
+let add_finite_offset_pre mem feat =
+  if PowLoc.is_empty feat.finite_offset_pre then
+    { feat with finite_offset_pre =
+      Mem.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_finite then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
+let add_top_offset_pre mem feat =
+  if PowLoc.is_empty feat.top_offset_pre then
+    { feat with top_offset_pre =
+      Mem.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_top then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
+let add_constant_size_pre mem feat =
+  if PowLoc.is_empty feat.constant_size_pre then
+    { feat with constant_size_pre =
+      Mem.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_const then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
+let add_constant_offset_pre mem feat =
+  if PowLoc.is_empty feat.constant_offset_pre then
+    { feat with constant_offset_pre =
+      Mem.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_const then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
+let add_zero_offset_pre mem feat =
+  if PowLoc.is_empty feat.zero_offset_pre then
+    { feat with zero_offset_pre =
+      Mem.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.offsetof |> Itv.is_zero then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
+let add_natural_size_pre mem feat =
+  if PowLoc.is_empty feat.natural_size_pre then
+    { feat with natural_size_pre =
+      Mem.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_natural then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
+let add_positive_size_pre mem feat =
+  if PowLoc.is_empty feat.positive_size_pre then
+    { feat with positive_size_pre =
+      Mem.fold (fun k v set ->
+        if Val.array_of_val v |> ArrayBlk.sizeof |> Itv.is_positive then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
+let add_singleton_ptr_set_pre mem feat =
+  { feat with singleton_ptr_set_pre =
+    if PowLoc.is_empty feat.singleton_ptr_set_pre then
+      Mem.fold (fun k v set ->
+        if (Val.pow_loc_of_val v |> PowLoc.cardinal) = 1 then
+          PowLoc.add k set
+        else set) mem PowLoc.empty
+    else feat.singleton_ptr_set_pre }
+
+let add_singleton_array_set_pre mem feat =
+  { feat with singleton_array_set_pre =
+    if PowLoc.is_empty feat.singleton_array_set_pre then
+      Mem.fold (fun k v set ->
+        if (Val.array_of_val v |> ArrayBlk.cardinal) = 1 then
+          PowLoc.add k set
+        else set) mem PowLoc.empty
+    else feat.singleton_array_set_pre }
+
+let add_large_array_set_pre mem feat =
+  { feat with large_array_set_pre =
+    if PowLoc.is_empty feat.large_array_set_pre then
+      Mem.fold (fun k v set ->
+        if (Val.array_of_val v |> ArrayBlk.cardinal) >= 3 then
+          PowLoc.add k set
+        else set) mem PowLoc.empty
+    else feat.large_array_set_pre }
+
+let add_singleton_array_set_val_pre mem feat =
+  { feat with singleton_array_set_val_pre =
+    if PowLoc.is_empty feat.singleton_array_set_val_pre then
+      Mem.fold (fun k v set ->
+        if (Val.pow_loc_of_val v |> PowLoc.cardinal) = 1 then
+          PowLoc.join (Val.array_of_val v |> ArrayBlk.pow_loc_of_array) set
+        else set) mem PowLoc.empty
+    else feat.singleton_array_set_val_pre }
+
+let add_constant_itv_pre mem feat =
+  if PowLoc.is_empty feat.constant_itv_pre then
+    { feat with constant_itv_pre =
+      Mem.fold (fun k v set ->
+        if Val.itv_of_val v |> Itv.is_const then PowLoc.add k set
+        else set) mem PowLoc.empty }
+  else feat
+
 let extract_feature : Global.t -> PowLoc.t -> feature
 =fun global locset ->
   let access = AccessAnalysis.perform global locset sem_fun global.mem in
@@ -624,15 +770,21 @@ let extract_feature : Global.t -> PowLoc.t -> feature
   let feature = try traverse1 global with e -> prerr_endline "traverse1"; raise e in (* first iteration *)
   let feature = traverse2 global feature in (* second iteration *)
   let feature = closure global feature in
-    { feature with
-      gvars = gvars;
-      lvars = lvars;
-      fields = fields;
-      allocsites = allocsites;
-      ext_allocsites = ext_allocsites;
-      single_defs = single_defs;
-      lvars_in_G = lvars_in_G;
-    }
+  { feature with gvars; lvars; fields; allocsites; ext_allocsites; single_defs; lvars_in_G; }
+  |> add_constant_itv_pre global.mem
+  |> add_finite_itv_pre global.mem
+  |> add_constant_offset_pre global.mem
+  |> add_constant_size_pre global.mem
+  |> add_finite_offset_pre global.mem
+  |> add_top_offset_pre global.mem
+  |> add_finite_size_pre global.mem
+  |> add_zero_offset_pre global.mem
+  |> add_natural_size_pre global.mem
+  |> add_positive_size_pre global.mem
+  |> add_singleton_ptr_set_pre global.mem
+  |> add_singleton_array_set_pre global.mem
+  |> add_large_array_set_pre global.mem
+  |> add_singleton_array_set_val_pre global.mem
 
 let weight_of : Loc.t -> feature -> string list -> float
 =fun l f weights ->
@@ -749,3 +901,4 @@ let select_simple global locset =
   PowLoc.filter (fun x ->
       (Mem.find x global.mem |> Val.pow_proc_of_val |> PowProc.is_empty)
       && not (precise_pre x global.mem)) locset
+
