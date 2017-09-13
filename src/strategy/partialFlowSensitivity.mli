@@ -55,7 +55,21 @@ type feature = {
   read_in_rec_fun : locset; (* modified inside recursive functions *) (* TODO *)
   return_from_ext_fun : locset; (* e.g., x = ext_function() : done *) 
   mod_inside_loops : locset; (* while (1) { ... x:= ... } : done *)
-  used_inside_loops : locset (* while (1) { ... :=x ... } : done *)
+  used_inside_loops : locset; (* while (1) { ... :=x ... } : done *)
+  constant_itv_pre : locset;
+  finite_itv_pre : locset;
+  finite_size_pre : locset;
+  finite_offset_pre : locset;
+  top_offset_pre : locset;
+  constant_size_pre : locset;
+  constant_offset_pre : locset;
+  zero_offset_pre : locset;
+  natural_size_pre : locset;
+  positive_size_pre : locset;
+  singleton_ptr_set_pre : locset;
+  singleton_array_set_pre : locset;
+  large_array_set_pre : locset;
+  singleton_array_set_val_pre: locset;
 }
 
 val empty_feature : feature
