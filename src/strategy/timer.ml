@@ -594,6 +594,14 @@ let extract_data spec global access iteration  =
   prerr_endline ("Score of proxy: " ^ string_of_float score);
   exit 0
 
+let prerr_memory_info () =
+  let stat = Gc.stat () in
+  (* total 128 GB *)
+  let live_mem = stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
+  prerr_endline "=== Memory Usage ===";
+  prerr_endline (string_of_int live_mem ^ " / 128GB");
+  ()
+
 let coarsening_fs spec global access dug worklist inputof = 
   let (spec, dug, worklist, inputof) = 
     if !timer.widen_start = 0.0 then initialize spec global access dug worklist inputof  (* initialize *)
@@ -603,6 +611,7 @@ let coarsening_fs spec global access dug worklist inputof =
   let elapsed = t0 -. !timer.last in
   if elapsed > (float_of_int (!timer.threshold * (!timer.time_stamp))) then
     let _ = prerr_endline ("\n== Timer: Coarsening #"^(string_of_int !timer.time_stamp)^" starts at " ^ (string_of_float elapsed)) in
+    let _ = prerr_memory_info () in
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
     let num_of_locset = Hashtbl.length DynamicFeature.locset_hash in
     if num_of_locset_fs = 0 then 
