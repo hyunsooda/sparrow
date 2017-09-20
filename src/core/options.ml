@@ -83,6 +83,7 @@ let timer_threshold_abs = ref ""
 let timer_initial_coarsening = ref false
 let timer_stat = ref false
 let timer_counter_example = ref false
+let timer_mem = ref false
 
 (* Marshaling *)
 let marshal_in = ref false
@@ -156,6 +157,7 @@ let opts =
   ("-timer_dir", (Arg.String (fun s -> timer_dir := s)), "Timer dir");
   ("-timer_threshold_time", (Arg.String (fun s -> timer_threshold_time := s)), "Timer threshold time");
   ("-timer_threshold_abs", (Arg.String (fun s -> timer_threshold_abs := s)), "Timer threshold abs");
+  ("-timer_mem", (Arg.Set timer_mem), "Memory aware");
   ("-predictor", (Arg.Set predictor), "Predictor");
   ("-coarsen_trigger", (Arg.String (fun s -> coarsen_trigger := s)), "Trigers for Coarsening");
   ("-timer_wv", (Arg.String (fun s -> timer_wv := s)), "Weight vector for timer");
