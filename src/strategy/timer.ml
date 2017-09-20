@@ -40,6 +40,9 @@ type t = {
   alarm_history : (int, Report.query list) BatMap.t;
   locset : PowLoc.t;
   num_of_locset : int;
+  num_of_coarsen : int;
+  total_memory : int;
+  base_memory : int;
   prepare : int;
   deadline : int;
 }
@@ -55,6 +58,9 @@ let empty = {
   alarm_history = BatMap.empty;
   locset = PowLoc.empty;
   num_of_locset = 0;
+  num_of_coarsen = 0;
+  total_memory = 70;
+  base_memory = 0;
   prepare = 0;
   deadline = 0;
 }
@@ -71,7 +77,7 @@ let load_classifier global =
   let py = Lymp.init ~exec:"python2" path in
   let py_module = Lymp.get_module py "sparrow" in
   let classifier = Lymp.Pyref (Lymp.get_ref py_module "load" [Lymp.Pystr !Options.timer_clf]) in
-  (py_module, classifier)
+  (py, py_module, classifier)
 
 let predict py_module clf x feature static_feature = 
   let vec = DynamicFeature.feature_vector x feature static_feature in
@@ -86,10 +92,13 @@ let predict_proba py_module clf x feature static_feature =
 module Hashtbl = DynamicFeature.Hashtbl
 
 let clf_strategy global feature timer = 
-  let (py_module, clf) = load_classifier global in 
-  Hashtbl.fold (fun k _ -> 
+  let (py, py_module, clf) = load_classifier global in 
+  let set = Hashtbl.fold (fun k _ -> 
       if predict py_module clf k feature timer.static_feature then PowLoc.add k
-      else id) DynamicFeature.locset_hash PowLoc.empty 
+      else id) DynamicFeature.locset_hash PowLoc.empty
+  in
+  Lymp.close py;
+  set
 
 let threshold_list () = 
   match coarsening_target with 
@@ -119,9 +128,18 @@ let counter_example global lst =
         else ()
     ) lst; lst
 
+let used_mem () =
+  let stat = Gc.stat () in 
+  stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 1024 / 8
+
 let rank_strategy global spec feature timer = 
   let top = 
     match coarsening_target with 
+    | Dug when !Options.timer_mem ->
+      let actual_used_mem = used_mem () - timer.base_memory in
+      let possible_mem = timer.total_memory - timer.base_memory in
+      let target = (actual_used_mem * 100 / possible_mem / 10 + 1) * 10 in (* rounding (e.g. 15 -> 20) *)
+      (target * timer.num_of_locset / 100) - timer.num_of_coarsen
     | Dug ->
         (try List.nth (threshold_list_loc ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100
           - (try List.nth (threshold_list_loc ()) (timer.time_stamp -1) with _ -> 100) * timer.num_of_locset / 100
@@ -146,12 +164,13 @@ let rank_strategy global spec feature timer =
       PartialFlowSensitivity.assign_weight locset timer.static_feature weights
       |> List.sort (fun (_, x) (_, y) -> if x < y then -1 else if x = y then 0 else 1)
     else
-      let (py_module, clf) = load_classifier global in 
+      let (py, py_module, clf) = load_classifier global in 
       Hashtbl.fold (fun k _ l ->
 (*          if PowLoc.mem k feature.DynamicFeature.eq_fi then
             (k, 1.1)::l
           else*)
             (k, predict_proba py_module clf k feature timer.static_feature)::l) DynamicFeature.locset_hash []
+      |> (fun x -> Lymp.close py; x)
       |> List.sort (fun (_, x) (_, y) -> if x > y then -1 else if x = y then 0 else 1)
       |> opt !Options.timer_counter_example (counter_example global)
   in
@@ -332,15 +351,18 @@ let initialize spec global access dug worklist inputof =
   let (spec, dug, worklist, inputof) = coarsening global access locset_coarsen dug worklist inputof spec in
   let prepare = int_of_float (Sys.time () -. widen_start) in
 (*   let deadline = !Options.timer_deadline - prepare in *)
+  let base_memory = used_mem () in
   timer := {
     !timer with widen_start; last = Sys.time (); static_feature; locset = target_locset;
     num_of_locset = PowLoc.cardinal target_locset;
+    base_memory;
     prepare; deadline; threshold = deadline };
 (*   timer := { !timer with threshold = threshold !timer.time_stamp; }; (* threshold uses prepare and deadline *) *)
   prerr_endline ("\n== Timer: Coarsening #0 took " ^ string_of_float (Sys.time () -. widen_start)); 
   prerr_endline ("== Given Deadline: " ^ (string_of_int !Options.timer_deadline));
   prerr_endline ("== Actual Target: " ^ (string_of_int !timer.num_of_locset));
   prerr_endline ("== Actual Deadline: " ^ (string_of_int !timer.deadline));
+  prerr_endline ("== Base Mem: " ^ (string_of_int base_memory));
   let new_alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof 
                    |> flip Report.get Report.UnProven in
   timer_dump global dug inputof empty new_alarms locset_coarsen 0;
@@ -594,12 +616,16 @@ let extract_data spec global access iteration  =
   prerr_endline ("Score of proxy: " ^ string_of_float score);
   exit 0
 
-let prerr_memory_info () =
+let prerr_memory_info timer =
   let stat = Gc.stat () in
   (* total 128 GB *)
   let live_mem = stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
+  let heap_mem = stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
+  let free_mem = stat.Gc.free_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
   prerr_endline "=== Memory Usage ===";
-  prerr_endline (string_of_int live_mem ^ " / 128GB");
+  prerr_endline ("live mem   : " ^ string_of_int live_mem ^ " / 128GB");
+  prerr_endline ("total heap : " ^ string_of_int heap_mem ^ " / 128GB");
+  prerr_endline ("total heap : " ^ string_of_int (heap_mem - timer.base_memory) ^ " / " ^ string_of_int (timer.total_memory - timer.base_memory));
   ()
 
 let coarsening_fs spec global access dug worklist inputof = 
@@ -611,7 +637,7 @@ let coarsening_fs spec global access dug worklist inputof =
   let elapsed = t0 -. !timer.last in
   if elapsed > (float_of_int (!timer.threshold * (!timer.time_stamp))) then
     let _ = prerr_endline ("\n== Timer: Coarsening #"^(string_of_int !timer.time_stamp)^" starts at " ^ (string_of_float elapsed)) in
-    let _ = prerr_memory_info () in
+    let _ = prerr_memory_info !timer in
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
     let num_of_locset = Hashtbl.length DynamicFeature.locset_hash in
     if num_of_locset_fs = 0 then 
@@ -631,6 +657,7 @@ let coarsening_fs spec global access dug worklist inputof =
         | Rank -> rank_strategy global spec dynamic_feature !timer
         | Clf -> clf_strategy global dynamic_feature !timer
       in
+      let num_of_coarsen = PowLoc.cardinal locset_coarsen in
       (if !Options.timer_dump then timer_dump global dug inputof dynamic_feature alarms locset_coarsen !timer.time_stamp); 
       prerr_endline ("\n== Timer: Predict took " ^ string_of_float (Sys.time () -. t1));
       let num_of_works = Worklist.cardinal worklist in
@@ -639,7 +666,7 @@ let coarsening_fs spec global access dug worklist inputof =
       prerr_endline ("\n== Timer: Coarsening dug took " ^ string_of_float (Sys.time () -. t2));
       prerr_endline ("Unproven Query          : " ^ string_of_int (BatMap.cardinal new_alarms_part));
       prerr_endline ("Unproven Query (acc)    : " ^ string_of_int (BatMap.cardinal alarms_part));
-      prerr_endline ("Coarsening Target       : " ^ string_of_int (PowLoc.cardinal locset_coarsen) ^ " / " ^ string_of_int num_of_locset);
+      prerr_endline ("Coarsening Target       : " ^ string_of_int num_of_coarsen ^ " / " ^ string_of_int num_of_locset);
 (*      prerr_endline ("Coarsening Target (acc) : " ^ string_of_int (Hashtbl.length locset_fi_hash) ^ " / " ^ string_of_int num_of_locset);*)
       prerr_endline ("Analyzed Node           : " ^ string_of_int (PowNode.cardinal !SparseAnalysis.reach_node) ^ " / " ^ string_of_int !SparseAnalysis.nb_nodes);
       prerr_endline ("#Abs Locs on Dug        : " ^ string_of_int (DUGraph.nb_loc dug));
@@ -653,6 +680,7 @@ let coarsening_fs spec global access dug worklist inputof =
       timer := { !timer with last = Sys.time (); 
 (*         threshold = threshold (!timer.time_stamp + 1); *)
         time_stamp = !timer.time_stamp + 1;
+        num_of_coarsen = !timer.num_of_coarsen + num_of_coarsen;
         dynamic_feature;
         old_inputof = inputof;
 (*         alarm_history = BatMap.add !timer.threshold alarms !timer.alarm_history; *)
