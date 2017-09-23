@@ -35,7 +35,7 @@ type t = {
   threshold : int;
   time_stamp : int;
   old_inputof : Table.t;
-  static_feature : float list DynamicFeature.Hashtbl.t; 
+  static_feature : float list DynamicFeature.LocHashtbl.t; 
   dynamic_feature : DynamicFeature.feature;
   alarm_history : (int, Report.query list) BatMap.t;
   locset : PowLoc.t;
@@ -53,7 +53,7 @@ let empty = {
   threshold = 0;
   time_stamp = 1;
   old_inputof = Table.empty;
-  static_feature = DynamicFeature.Hashtbl.create 1;
+  static_feature = DynamicFeature.LocHashtbl.create 1;
   dynamic_feature = DynamicFeature.empty_feature;
   alarm_history = BatMap.empty;
   locset = PowLoc.empty;
@@ -89,7 +89,7 @@ let predict_proba py_module clf x feature static_feature =
   let vec = Lymp.Pylist (List.map (fun x -> Lymp.Pyfloat x) vec) in
   Lymp.get_float py_module "predict_proba" [clf; vec]
 
-module Hashtbl = DynamicFeature.Hashtbl
+module Hashtbl = DynamicFeature.LocHashtbl
 
 let clf_strategy global feature timer = 
   let (py, py_module, clf) = load_classifier global in 
@@ -339,7 +339,7 @@ let initialize spec global access dug worklist inputof =
     Dependency.dependency_of_query_set_new true global dug access alarm_fi
   in
   prerr_endline ("\n== locset took " ^ string_of_float (Sys.time () -. widen_start)); 
-  let static_feature = PartialFlowSensitivity.extract_feature global target_locset |> DynamicFeature.encode_static_feature target_locset in
+  let static_feature = PartialFlowSensitivity.extract_feature global target_locset |> DynamicFeature.encode_static_feature spec.Spec.locset in
   let filename = Filename.basename global.file.Cil.fileName in
   let dir = !Options.timer_dir in
   MarshalManager.output ~dir (filename ^ ".static_feature") static_feature;
@@ -347,13 +347,14 @@ let initialize spec global access dug worklist inputof =
   (if !Options.timer_stat then print_stat spec global access dug);
   prerr_endline ("\n== feature took " ^ string_of_float (Sys.time () -. widen_start)); 
   (* for efficiency *)
-  DynamicFeature.initialize_cache target_locset spec.Spec.premem;
+  let dynamic_feature = DynamicFeature.initialize_cache spec.Spec.locset spec.Spec.premem in
   let (spec, dug, worklist, inputof) = coarsening global access locset_coarsen dug worklist inputof spec in
   let prepare = int_of_float (Sys.time () -. widen_start) in
 (*   let deadline = !Options.timer_deadline - prepare in *)
   let base_memory = used_mem () in
   timer := {
     !timer with widen_start; last = Sys.time (); static_feature; locset = target_locset;
+                dynamic_feature;
     num_of_locset = PowLoc.cardinal target_locset;
     base_memory;
     prepare; deadline; threshold = deadline };
@@ -472,7 +473,7 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi ala
         (* locs related to FS-alarms *)
         let pos_locs =
           Dependency.dependency_of_query_set_new false global dug access inter
-          |> PowLoc.filter (fun x -> (PowLoc.mem x feature_prev.DynamicFeature.non_bot))
+          |> PowLoc.filter (fun x -> (DynamicFeature.PowLocBit.mem (Hashtbl.find feature_prev.DynamicFeature.encoding x) feature_prev.DynamicFeature.non_bot))
         in
         debug_info global inputof_prev feature_prev static_feature inter coarsen_history_old coarsen_history pos_locs;
         output_string oc ("#\t\t\t\tPos: "^(string_of_int (PowLoc.cardinal pos_locs))^"\n");
@@ -648,7 +649,7 @@ let coarsening_fs spec global access dug worklist inputof =
       let new_alarms = get_new_alarms alarms in
       let alarms_part = Report.partition alarms in
       let new_alarms_part = Report.partition new_alarms in
-      let dynamic_feature = DynamicFeature.extract spec global elapsed alarms_part new_alarms_part !timer.old_inputof inputof !timer.dynamic_feature in
+      let dynamic_feature = DynamicFeature.extract spec global alarms_part new_alarms_part !timer.old_inputof inputof !timer.dynamic_feature in
       prerr_endline ("\n== Timer: feature extraction took " ^ string_of_float (Sys.time () -. t0));
       let t1 = Sys.time () in
       (* fixted portion *)
