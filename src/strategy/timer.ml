@@ -132,20 +132,20 @@ let used_mem () =
   let stat = Gc.stat () in 
   stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 1024 / 8
 
-let rank_strategy global spec feature timer = 
-  let top = 
-    match coarsening_target with 
-    | Dug when !Options.timer_mem ->
-      let actual_used_mem = used_mem () - timer.base_memory in
-      let possible_mem = timer.total_memory - timer.base_memory in
-      let target = (actual_used_mem * 100 / possible_mem / 10 + 1) * 10 in (* rounding (e.g. 15 -> 20) *)
-      (target * timer.num_of_locset / 100) - timer.num_of_coarsen
-    | Dug ->
-        (try List.nth (threshold_list_loc ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100
-          - (try List.nth (threshold_list_loc ()) (timer.time_stamp -1) with _ -> 100) * timer.num_of_locset / 100
-    | Worklist -> 
-        (try List.nth (threshold_list ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100 
-  in
+let coarsen_portion timer =
+  match coarsening_target with 
+  | Dug when !Options.timer_mem ->
+    let actual_used_mem = used_mem () - timer.base_memory in
+    let possible_mem = timer.total_memory - timer.base_memory in
+    let target = (actual_used_mem * 100 / possible_mem / 10 + 1) * 10 in (* rounding (e.g. 15 -> 20) *)
+    (target * timer.num_of_locset / 100) - timer.num_of_coarsen
+  | Dug ->
+    (try List.nth (threshold_list_loc ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100
+    - (try List.nth (threshold_list_loc ()) (timer.time_stamp -1) with _ -> 100) * timer.num_of_locset / 100
+  | Worklist -> 
+    (try List.nth (threshold_list ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100 
+
+let rank_strategy global spec feature timer top = 
   let ranking =
     if !Options.timer_oracle_rank then
       let filename = Filename.basename global.file.Cil.fileName in
@@ -641,7 +641,14 @@ let coarsening_fs spec global access dug worklist inputof =
     let _ = prerr_memory_info !timer in
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
     let num_of_locset = Hashtbl.length DynamicFeature.locset_hash in
-    if num_of_locset_fs = 0 then 
+    let num_of_coarsen = coarsen_portion !timer in
+    if num_of_locset_fs = 0 || num_of_coarsen = 0 then 
+      let _ = timer := { !timer with last = Sys.time (); 
+                             time_stamp = !timer.time_stamp + 1;
+                             num_of_coarsen = !timer.num_of_coarsen + num_of_coarsen;
+                             old_inputof = inputof;
+               }
+      in
       (spec, dug, worklist, inputof)
     else 
       let _ = Profiler.reset () in
@@ -655,7 +662,7 @@ let coarsening_fs spec global access dug worklist inputof =
       (* fixted portion *)
       let locset_coarsen = 
         match strategy with
-        | Rank -> rank_strategy global spec dynamic_feature !timer
+        | Rank -> rank_strategy global spec dynamic_feature !timer num_of_coarsen
         | Clf -> clf_strategy global dynamic_feature !timer
       in
       let num_of_coarsen = PowLoc.cardinal locset_coarsen in
