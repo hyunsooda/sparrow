@@ -21,6 +21,7 @@ module DUGraph = Analysis.DUGraph
 module Worklist = Analysis.Worklist
 module Spec = Analysis.Spec
 module Access = Spec.Dom.Access
+module Hashtbl = BatHashtbl.Make(Loc)
 
 module Pfs = PartialFlowSensitivity
 
@@ -119,9 +120,8 @@ let print_feature feat =
 let b2s = function true -> "1.0" | false -> "0.0"
 let b2f = function true -> 1.0 | false -> 0.0
 
-let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
-= fun x feat static_feature -> 
-  let raw = [
+let extract_static_feature x static_feature =
+  [
    b2f (PowLoc.mem x static_feature.Pfs.gvars);
    b2f (PowLoc.mem x static_feature.Pfs.lvars);
    b2f (PowLoc.mem x static_feature.Pfs.lvars_in_G);
@@ -180,6 +180,17 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x static_feature.Pfs.singleton_array_set_pre);
    b2f (PowLoc.mem x static_feature.Pfs.large_array_set_pre);
    b2f (PowLoc.mem x static_feature.Pfs.singleton_array_set_val_pre);
+ ]
+
+let encode_static_feature locset static_feature =
+  let hashtbl = Hashtbl.create 100000 in
+  PowLoc.iter (fun k ->
+      Hashtbl.add hashtbl k (extract_static_feature k static_feature)) locset;
+  hashtbl
+
+let feature_vector : Loc.t -> feature -> float list Hashtbl.t -> float list
+= fun x feat static_feature -> 
+  let raw = [
    b2f (PowLoc.mem x feat.alarm);
    b2f (PowLoc.mem x feat.alarm_fi); (* 60 *)
    b2f (PowLoc.mem x feat.indirect_alarm);
@@ -211,21 +222,14 @@ let feature_vector : Loc.t -> feature -> Pfs.feature -> float list
    b2f (PowLoc.mem x feat.large_array_set_val_widen);
    b2f (PowLoc.mem x feat.large_array_set_val_field);
    b2f (PowLoc.mem x feat.unstable); (* 89 *)
-(*   b2f (PowLoc.mem x feat.non_bot); (* not a feature *)*)
    ]
   in
-  raw
-(*  (List.map (fun x -> feat.progress_time *. x) raw)*)
-(*  @ (List.map (fun x -> feat.progress_alarm *. x) raw) 
-  @ (List.map (fun x -> feat.delta_alarm *. x) raw) 
-  @ (List.map (fun x -> feat.fi_var *. x) raw) *)
-(*  feat.progress_time :: feat.progress_alarm :: feat.delta_alarm :: feat.fi_var :: raw*)
+  (Hashtbl.find static_feature x) @ raw
 
 let string_of_raw_feature x feat static_feature =
   List.fold_left (fun s f -> s ^ " " ^ string_of_float f) 
     (Loc.to_string x ^ " : ") (feature_vector x feat static_feature)
 
-module Hashtbl = BatHashtbl.Make(Loc)
 let premem_hash = Hashtbl.create 10000
 let locset_hash = Hashtbl.create 10000  (* locset \ bot-locs *)
 

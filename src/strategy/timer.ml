@@ -35,7 +35,7 @@ type t = {
   threshold : int;
   time_stamp : int;
   old_inputof : Table.t;
-  static_feature : PartialFlowSensitivity.feature;
+  static_feature : float list DynamicFeature.Hashtbl.t; 
   dynamic_feature : DynamicFeature.feature;
   alarm_history : (int, Report.query list) BatMap.t;
   locset : PowLoc.t;
@@ -53,7 +53,7 @@ let empty = {
   threshold = 0;
   time_stamp = 1;
   old_inputof = Table.empty;
-  static_feature = PartialFlowSensitivity.empty_feature;
+  static_feature = DynamicFeature.Hashtbl.create 1;
   dynamic_feature = DynamicFeature.empty_feature;
   alarm_history = BatMap.empty;
   locset = PowLoc.empty;
@@ -158,11 +158,11 @@ let rank_strategy global spec feature timer =
           in
           (k, score)::l) DynamicFeature.locset_hash []
         |> List.sort (fun (_, x) (_, y) -> if x > y then -1 else if x = y then 0 else 1)
-    else if !Options.timer_static_rank then
+(*    else if !Options.timer_static_rank then
       let locset = Hashtbl.fold (fun k _ l -> k::l) DynamicFeature.locset_hash [] in
       let weights = Str.split (Str.regexp "[ \t]+") (!Options.pfs_wv) in
       PartialFlowSensitivity.assign_weight locset timer.static_feature weights
-      |> List.sort (fun (_, x) (_, y) -> if x < y then -1 else if x = y then 0 else 1)
+      |> List.sort (fun (_, x) (_, y) -> if x < y then -1 else if x = y then 0 else 1)*)
     else
       let (py, py_module, clf) = load_classifier global in 
       Hashtbl.fold (fun k _ l ->
@@ -339,7 +339,7 @@ let initialize spec global access dug worklist inputof =
     Dependency.dependency_of_query_set_new true global dug access alarm_fi
   in
   prerr_endline ("\n== locset took " ^ string_of_float (Sys.time () -. widen_start)); 
-  let static_feature = PartialFlowSensitivity.extract_feature global target_locset in
+  let static_feature = PartialFlowSensitivity.extract_feature global target_locset |> DynamicFeature.encode_static_feature target_locset in
   let filename = Filename.basename global.file.Cil.fileName in
   let dir = !Options.timer_dir in
   MarshalManager.output ~dir (filename ^ ".static_feature") static_feature;
