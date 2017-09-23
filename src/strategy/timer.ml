@@ -635,7 +635,7 @@ let coarsening_fs spec global access dug worklist inputof =
   in
   let t0 = Sys.time () in
   let elapsed = t0 -. !timer.last in
-  if elapsed > (float_of_int (!timer.threshold * (!timer.time_stamp))) then
+  if elapsed > (float_of_int !timer.threshold) then
     let _ = prerr_endline ("\n== Timer: Coarsening #"^(string_of_int !timer.time_stamp)^" starts at " ^ (string_of_float elapsed)) in
     let _ = prerr_memory_info !timer in
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
