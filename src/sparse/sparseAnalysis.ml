@@ -203,9 +203,9 @@ struct
     prerr_endline ("# todo  : " ^ (string_of_int (BatSet.cardinal todos)));*)
     (works, global, inputof, outputof) 
 
-  let rec iterate f : Spec.t -> Access.t -> DUGraph.t -> (Worklist.t * Global.t * Table.t * Table.t) 
-     -> (Worklist.t * Global.t * Table.t * Table.t)
-  =fun spec access dug (works, global, inputof, outputof) ->
+  let rec iterate f : Spec.t -> Access.t -> (Worklist.t * Global.t * DUGraph.t * Table.t * Table.t) 
+     -> (Worklist.t * Global.t * DUGraph.t * Table.t * Table.t)
+  =fun spec access (works, global, dug, inputof, outputof) ->
     print_iteration ();
     let (spec, dug, works, inputof) = 
       match spec.Spec.coarsening_fs with 
@@ -219,31 +219,32 @@ struct
       l_timer := Sys.time ()
     );*)
     match Worklist.pick works with
-    | None -> (works, global, inputof, outputof)
+    | None -> (works, global, dug, inputof, outputof)
     | Some (idx, rest) -> 
       (rest, global, inputof, outputof) 
       |> f spec dug idx
-      |> iterate f spec access dug
+      |> (fun (works, global, inputof, outputof) ->
+          iterate f spec access (works, global, dug, inputof, outputof))
 
-  let widening : Spec.t -> Access.t -> DUGraph.t -> (Worklist.t * Global.t * Table.t * Table.t)
-      -> (Worklist.t * Global.t * Table.t * Table.t)
-  =fun spec access dug (worklist, global, inputof, outputof) ->
+  let widening : Spec.t -> Access.t -> (Worklist.t * Global.t * DUGraph.t * Table.t * Table.t)
+      -> (Worklist.t * Global.t * DUGraph.t * Table.t * Table.t)
+  =fun spec access (worklist, global, dug, inputof, outputof) ->
     total_iterations := 0;
     widen_start := Sys.time ();
     l_timer := Sys.time ();
     worklist
     |> Worklist.push_set InterCfg.start_node (DUGraph.nodesof dug)
-    |> (fun init_worklist -> iterate analyze_node spec access dug (init_worklist, global, inputof, outputof))
+    |> (fun init_worklist -> iterate analyze_node spec access (init_worklist, global, dug, inputof, outputof))
     |> (fun x -> my_prerr_endline ("\n#iteration in widening : " ^ string_of_int !total_iterations); x)
  
-  let narrowing ?(initnodes=BatSet.empty) : Spec.t -> Access.t -> DUGraph.t -> (Worklist.t * Global.t * Table.t * Table.t) 
-      -> (Worklist.t * Global.t * Table.t * Table.t)
-  =fun spec access dug (worklist, global, inputof, outputof) ->
+  let narrowing ?(initnodes=BatSet.empty) : Spec.t -> Access.t -> (Worklist.t * Global.t * DUGraph.t * Table.t * Table.t) 
+      -> (Worklist.t * Global.t * DUGraph.t * Table.t * Table.t)
+  =fun spec access (worklist, global, dug, inputof, outputof) ->
     total_iterations := 0;
     worklist
     |> Worklist.push_set InterCfg.start_node (if (BatSet.is_empty initnodes) then DUGraph.nodesof dug else initnodes)
     |> (fun init_worklist -> iterate (analyze_node_with_otable (Dom.narrow, fun x y -> Dom.le y x)) spec
-        access dug (init_worklist, global, inputof, outputof))
+        access (init_worklist, global, dug, inputof, outputof))
     |> (fun x -> my_prerr_endline ("#iteration in narrowing : " ^ string_of_int !total_iterations); x)
 
   let print_dug (access,global,dug) = 
@@ -297,7 +298,7 @@ struct
     Table.add InterCfg.start_node (Sem.initial spec.Spec.locset) Table.empty
     |> opt (!Options.pfs < 100 || !Options.pfs_simple) (bind_fi_locs global spec.Spec.premem dug access)
 
-  let finalize spec global dug access (worklist, global, inputof, outputof) = 
+  let finalize spec global access (worklist, global, dug, inputof, outputof) = 
     let inputof = 
       if !Options.pfs < 100 || !Options.pfs_simple then bind_unanalyzed_node global spec.Spec.premem dug access inputof
       else inputof
@@ -306,7 +307,7 @@ struct
       match spec.Spec.timer_finalize with 
       | Some f -> f spec global dug inputof
       | None -> ());
-    (worklist, global, inputof, outputof)
+    (worklist, global, dug, inputof, outputof)
 
   let print_spec : Spec.t -> unit 
   = fun spec -> 
@@ -344,11 +345,11 @@ struct
     end
     );
     
-    (worklist, global, initialize spec global dug access, Table.empty) 
-    |> StepManager.stepf false "Fixpoint iteration with widening" (widening spec access dug)
-    |> finalize spec global dug access
-    |> StepManager.stepf_opt !Options.narrow false "Fixpoint iteration with narrowing" (narrowing spec access dug)
-    |> (fun (_,global,inputof,outputof) -> (global, inputof, outputof))
+    (worklist, global, dug, initialize spec global dug access, Table.empty) 
+    |> StepManager.stepf false "Fixpoint iteration with widening" (widening spec access)
+    |> finalize spec global access
+    |> StepManager.stepf_opt !Options.narrow false "Fixpoint iteration with narrowing" (narrowing spec access)
+    |> (fun (_,global,_,inputof,outputof) -> (global, inputof, outputof))
 end
 
 module Make (Sem:AbsSem.S) = MakeWithAccess (AccessSem.Make (Sem))
