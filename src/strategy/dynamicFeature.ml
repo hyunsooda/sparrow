@@ -32,6 +32,8 @@ struct
   let add x t =
     set t x;
     t
+  let empty () =
+    create 30000
 
   let mem x t = mem t x
 
