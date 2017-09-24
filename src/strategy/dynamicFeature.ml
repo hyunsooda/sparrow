@@ -261,12 +261,12 @@ let string_of_raw_feature x feat static_feature =
 let premem_hash = LocHashtbl.create 10000
 let locset_hash = LocHashtbl.create 10000  (* locset \ bot-locs *)
 
-let initialize_cache locset premem =
-  PowLoc.iter (fun k -> LocHashtbl.add locset_hash k k) locset;
+let initialize_cache total_locset target_locset premem =
+  PowLoc.iter (fun k -> LocHashtbl.add locset_hash k k) target_locset;
   Mem.iter (LocHashtbl.add premem_hash) premem;
   ignore(PowLoc.fold (fun k i ->
       LocHashtbl.add empty_feature.encoding k i;
-      i + 1) locset 0);
+      i + 1) total_locset 0);
   empty_feature
 
 let precise v = 

@@ -347,7 +347,7 @@ let initialize spec global access dug worklist inputof =
   (if !Options.timer_stat then print_stat spec global access dug);
   prerr_endline ("\n== feature took " ^ string_of_float (Sys.time () -. widen_start)); 
   (* for efficiency *)
-  let dynamic_feature = DynamicFeature.initialize_cache spec.Spec.locset spec.Spec.premem in
+  let dynamic_feature = DynamicFeature.initialize_cache spec.Spec.locset target_locset spec.Spec.premem in
   let (spec, dug, worklist, inputof) = coarsening global access locset_coarsen dug worklist inputof spec in
   let prepare = int_of_float (Sys.time () -. widen_start) in
 (*   let deadline = !Options.timer_deadline - prepare in *)
