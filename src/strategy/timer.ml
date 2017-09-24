@@ -624,9 +624,9 @@ let prerr_memory_info timer =
   let heap_mem = stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
   let free_mem = stat.Gc.free_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
   prerr_endline "=== Memory Usage ===";
-  prerr_endline ("live mem   : " ^ string_of_int live_mem ^ " / 128GB");
-  prerr_endline ("total heap : " ^ string_of_int heap_mem ^ " / 128GB");
-  prerr_endline ("total heap : " ^ string_of_int (heap_mem - timer.base_memory) ^ " / " ^ string_of_int (timer.total_memory - timer.base_memory));
+  prerr_endline ("live mem   : " ^ string_of_int live_mem ^ " / " ^ string_of_int timer.total_memory ^ "GB");
+  prerr_endline ("total heap : " ^ string_of_int heap_mem ^ " / " ^ string_of_int timer.total_memory ^ "GB");
+  prerr_endline ("actual heap : " ^ string_of_int (heap_mem - timer.base_memory) ^ " / " ^ string_of_int (timer.total_memory - timer.base_memory));
   ()
 
 let coarsening_fs spec global access dug worklist inputof = 
