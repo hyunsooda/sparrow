@@ -303,6 +303,13 @@ struct
       if !Options.pfs < 100 || !Options.pfs_simple then bind_unanalyzed_node global spec.Spec.premem dug access inputof
       else inputof
     in
+    let stat = Gc.stat () in
+    let live_mem = stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
+    let heap_mem = stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
+    prerr_endline "=== Memory Usage ===";
+    prerr_endline ("live mem   : " ^ string_of_int live_mem ^ "GB");
+    prerr_endline ("total heap : " ^ string_of_int heap_mem ^ "GB");
+
     (if !Options.timer_deadline > 0 then 
       match spec.Spec.timer_finalize with 
       | Some f -> f spec global dug inputof
