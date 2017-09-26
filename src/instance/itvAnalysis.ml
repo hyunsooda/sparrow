@@ -371,7 +371,6 @@ let do_analysis : Global.t -> Global.t * Table.t * Table.t * Report.query list
       if !Options.timer_extract then Some Timer.extract_data
       else None;
   } in
-  prerr_endline ("Coarsening Triger : " ^ !Options.coarsen_trigger);
 (*   (if !Options.timer_extract then Timer.extract_data spec global !Options.timer_extract_init); *)
   cond !Options.marshal_in marshal_in (Analysis.perform spec) global
   |> opt !Options.marshal_out marshal_out
