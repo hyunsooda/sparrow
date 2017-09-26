@@ -64,12 +64,8 @@ let print_height = ref false
 let print_time = ref false
 let timer_deadline = ref 0
 let timer_iter = ref 0
-let optimistic = ref false
 let predictor = ref false
-let coarsen_trigger = ref ""
-let timer_wv = ref ""
 let timer_unit = ref 300
-let timer_alpha = ref 50
 let timer_dump = ref false
 let timer_extract = ref false 
 let timer_iteration = ref 0
@@ -78,12 +74,12 @@ let timer_static_rank = ref false
 let timer_oracle_rank = ref false
 let timer_clf = ref ""
 let timer_dir = ref ""
-let timer_threshold_time = ref ""
 let timer_threshold_abs = ref ""
 let timer_initial_coarsening = ref false
 let timer_stat = ref false
 let timer_counter_example = ref false
-let timer_mem = ref false
+let timer_total_memory = ref 0
+let timer_coeff = ref 0.0
 
 (* Marshaling *)
 let marshal_in = ref false
@@ -143,7 +139,6 @@ let opts =
   ("-timer_deadline", (Arg.Int (fun x -> timer_deadline := x)), "Timer in second");
   ("-timer_iter", (Arg.Int (fun x -> timer_iter := x)), "Timer in iteration");
   ("-timer_unit", (Arg.Int (fun x -> timer_unit := x)), "Time unit");
-  ("-timer_alpha", (Arg.Int (fun x -> timer_alpha := x)), "Time unit");
   ("-timer_dump", (Arg.Set timer_dump), "Timer dump");
   ("-timer_extract", (Arg.Set timer_extract), "Timer extract");
   ("-timer_iteration", (Arg.Int (fun x -> timer_iteration:=x)), "Timer extract init");
@@ -155,12 +150,9 @@ let opts =
   ("-timer_counter_example", (Arg.Set timer_counter_example), "Counter example");
   ("-timer_clf", (Arg.String (fun s -> timer_clf := s)), "Timer clf");
   ("-timer_dir", (Arg.String (fun s -> timer_dir := s)), "Timer dir");
-  ("-timer_threshold_time", (Arg.String (fun s -> timer_threshold_time := s)), "Timer threshold time");
   ("-timer_threshold_abs", (Arg.String (fun s -> timer_threshold_abs := s)), "Timer threshold abs");
-  ("-timer_mem", (Arg.Set timer_mem), "Memory aware");
-  ("-predictor", (Arg.Set predictor), "Predictor");
-  ("-coarsen_trigger", (Arg.String (fun s -> coarsen_trigger := s)), "Trigers for Coarsening");
-  ("-timer_wv", (Arg.String (fun s -> timer_wv := s)), "Weight vector for timer");
+  ("-timer_total_memory", (Arg.Int (fun x -> timer_total_memory := x)), "Maximum memory");
+  ("-timer_coeff", (Arg.Float (fun x -> timer_coeff := x)), "Coefficient for memory-aware abstraction coarsening");
   ("-marshal_in", (Arg.Set marshal_in), "Read analysis results from marshaled data");
   ("-marshal_out", (Arg.Set marshal_out), "Write analysis results to marshaled data");
   ("-marshal_dir", (Arg.String (fun s -> marshal_dir := s)), "Directory where the marshaled data exists (default: marshal/)");

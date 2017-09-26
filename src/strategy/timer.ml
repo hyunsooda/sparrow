@@ -45,6 +45,7 @@ type t = {
   base_memory : int;
   prepare : int;
   deadline : int;
+  coeff : float;
 }
 
 let empty = {
@@ -63,6 +64,7 @@ let empty = {
   base_memory = 0;
   prepare = 0;
   deadline = 0;
+  coeff = 0.0;
 }
 
 let timer = ref empty
@@ -100,17 +102,6 @@ let clf_strategy global feature timer =
   Lymp.close py;
   set
 
-let threshold_list () = 
-  match coarsening_target with 
-  | Dug when !Options.timer_threshold_abs = "" -> [0; 10; 50; 80; 100]
-  | Dug -> 
-    Str.split (Str.regexp "[ \t]+") (!Options.timer_threshold_time)
-    |> List.map int_of_string
-  | Worklist -> [0; 10; 30; 60; 100; 110; 120; 130]
-
-let rec threshold i = 
-  !timer.prepare + !timer.deadline * (try List.nth (threshold_list ()) i with _ -> 10000000) / 100
-
 let threshold_list_loc () = 
   if !Options.timer_threshold_abs = "" then [0; 10; 50; 80; 100]
   else 
@@ -133,17 +124,14 @@ let used_mem () =
   stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 1024 / 8
 
 let coarsen_portion timer =
-  match coarsening_target with 
-  | Dug when !Options.timer_mem ->
+  if timer.total_memory > 0 then
     let actual_used_mem = used_mem () - timer.base_memory in
     let possible_mem = timer.total_memory - timer.base_memory in
     let target = (actual_used_mem * 100 / possible_mem / 10 + 1) * 10 in (* rounding (e.g. 15 -> 20) *)
     (target * timer.num_of_locset / 100) - timer.num_of_coarsen
-  | Dug ->
+  else
     (try List.nth (threshold_list_loc ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100
     - (try List.nth (threshold_list_loc ()) (timer.time_stamp -1) with _ -> 100) * timer.num_of_locset / 100
-  | Worklist -> 
-    (try List.nth (threshold_list ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100 
 
 let rank_strategy global spec feature timer top = 
   let ranking =
@@ -353,8 +341,11 @@ let initialize spec global access dug worklist inputof =
 (*   let deadline = !Options.timer_deadline - prepare in *)
   let base_memory = used_mem () in
   timer := {
-    !timer with widen_start; last = Sys.time (); static_feature; locset = target_locset;
-                dynamic_feature;
+    !timer with
+    widen_start; last = Sys.time (); static_feature; locset = target_locset;
+    total_memory = !Options.timer_total_memory;
+    coeff = !Options.timer_coeff;
+    dynamic_feature;
     num_of_locset = PowLoc.cardinal target_locset;
     base_memory;
     prepare; deadline; threshold = deadline };
@@ -558,7 +549,7 @@ let extract_data spec global access iteration  =
   let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".tr_data.dat.raw") in
   let alarm_fs = MarshalManager.input (filename ^ ".alarm") |> flip Report.get Report.UnProven |> AlarmSet.of_list in
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
-  let lst = BatList.range 1 `To (List.length (threshold_list ())) in
+  let lst = BatList.range 1 `To 13 in
   let alarms_list = List.fold_left (fun l i -> 
       try 
         let a = MarshalManager.input ~dir (filename ^ ".alarm." ^ (string_of_int i)) |> AlarmSet.of_list in
@@ -622,7 +613,6 @@ let prerr_memory_info timer =
   (* total 128 GB *)
   let live_mem = stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
   let heap_mem = stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
-  let free_mem = stat.Gc.free_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
   prerr_endline "=== Memory Usage ===";
   prerr_endline ("live mem   : " ^ string_of_int live_mem ^ " / " ^ string_of_int timer.total_memory ^ "GB");
   prerr_endline ("total heap : " ^ string_of_int heap_mem ^ " / " ^ string_of_int timer.total_memory ^ "GB");
@@ -703,4 +693,5 @@ let finalize spec global dug inputof =
       let new_alarms_part = Report.partition alarms in
       Report.display_alarms ~verbose:0 ("Alarms at "^string_of_int !timer.time_stamp) new_alarms_part
     end;
-  timer_dump global dug inputof DynamicFeature.empty_feature alarms PowLoc.empty !timer.time_stamp
+  timer_dump global dug inputof DynamicFeature.empty_feature alarms PowLoc.empty !timer.time_stamp;
+  prerr_memory_usage ()

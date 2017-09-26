@@ -82,7 +82,6 @@ val marshal_out_alarm : bool ref
 val timer_deadline : int ref
 val timer_iter : int ref
 val timer_unit : int ref
-val timer_alpha : int ref
 val timer_dump : bool ref
 val timer_extract : bool ref
 val timer_iteration : int ref
@@ -93,16 +92,12 @@ val timer_clf : string ref
 val timer_dir : string ref
 val print_height : bool ref
 val print_time : bool ref
-val optimistic : bool ref
-val coarsen_trigger : string ref
-val timer_wv : string ref
-val predictor : bool ref
-val timer_threshold_time : string ref
 val timer_threshold_abs : string ref
 val timer_initial_coarsening : bool ref
 val timer_stat : bool ref
 val timer_counter_example : bool ref
-val timer_mem : bool ref
+val timer_total_memory : int ref
+val timer_coeff : float ref
 
 (** {2 Options lists } *)
 
