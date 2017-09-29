@@ -60,7 +60,7 @@ let empty = {
   locset = PowLoc.empty;
   num_of_locset = 0;
   num_of_coarsen = 0;
-  total_memory = 70;
+  total_memory = 70; (* MB *)
   base_memory = 0;
   prepare = 0;
   deadline = 0;
@@ -121,14 +121,20 @@ let counter_example global lst =
 
 let used_mem () =
   let stat = Gc.stat () in
-  stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 1024 / 8
+  stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8
+
+let model x =
+  let k = 0.01 in
+  k *. x /. (k -. x +. 1.0)
 
 let coarsen_portion timer =
   if timer.total_memory > 0 then
     let actual_used_mem = used_mem () - timer.base_memory in
     let possible_mem = timer.total_memory - timer.base_memory in
-    let target = (actual_used_mem * 100 / possible_mem / 10 + 1) * 10 in (* rounding (e.g. 15 -> 20) *)
-    (target * timer.num_of_locset / 100) - timer.num_of_coarsen
+(*    let target = (actual_used_mem * 100 / possible_mem / 10 + 1) * 10 in (* rounding (e.g. 15 -> 20) *)*)
+    let x = (float_of_int actual_used_mem) /. (float_of_int possible_mem) in
+    let target = model x in
+    (target *. (float_of_int timer.num_of_locset) |> int_of_float) - timer.num_of_coarsen
   else
     (try List.nth (threshold_list_loc ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100
     - (try List.nth (threshold_list_loc ()) (timer.time_stamp -1) with _ -> 100) * timer.num_of_locset / 100
@@ -563,7 +569,7 @@ let extract_data spec global access iteration  =
     Sys.readdir dir
     |> Array.to_list
     |> List.filter (fun x ->
-        Str.string_match (Str.regexp (filename ^ "\.alarm\.[1-9]+")) x 0)
+        Str.string_match (Str.regexp (filename ^ "\\.alarm\\.[1-9]+")) x 0)
     |> List.length
   in
   let static_feature = MarshalManager.input ~dir (filename ^ ".static_feature") in
@@ -620,11 +626,11 @@ let extract_data spec global access iteration  =
 let prerr_memory_info timer =
   let stat = Gc.stat () in
   (* total 128 GB *)
-  let live_mem = stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
-  let heap_mem = stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 1024 / 8 in
+  let live_mem = stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 8 in
+  let heap_mem = stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8 in
   prerr_endline "=== Memory Usage ===";
-  prerr_endline ("live mem   : " ^ string_of_int live_mem ^ " / " ^ string_of_int timer.total_memory ^ "GB");
-  prerr_endline ("total heap : " ^ string_of_int heap_mem ^ " / " ^ string_of_int timer.total_memory ^ "GB");
+  prerr_endline ("live mem   : " ^ string_of_int live_mem ^ " / " ^ string_of_int timer.total_memory ^ "MB");
+  prerr_endline ("total heap : " ^ string_of_int heap_mem ^ " / " ^ string_of_int timer.total_memory ^ "MB");
   prerr_endline ("actual heap : " ^ string_of_int (heap_mem - timer.base_memory) ^ " / " ^ string_of_int (timer.total_memory - timer.base_memory));
   ()
 
@@ -693,8 +699,7 @@ let coarsening_fs spec global access dug worklist inputof =
       timer := { !timer with last = Sys.time ();
         time_stamp = !timer.time_stamp + 1;
         num_of_coarsen = !timer.num_of_coarsen + num_of_coarsen;
-        old_inputof = inputof;
-      };
+        old_inputof = inputof; };
       (spec,dug,worklist,inputof)
   else (spec, dug, worklist, inputof)
 
