@@ -427,11 +427,11 @@ let refine_negative_data global inputof_prev locset =
     let fi_v = Mem.find x global.mem in
     not (Val.eq fs_v Val.bot) && not (Val.eq fs_v fi_v)) locset
 
-let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi alarms_list static_feature iteration =
+let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi static_feature iteration =
   let filename = Filename.basename global.file.Cil.fileName in
   output_string oc ("# Iteration "^(string_of_int iteration)^" of "^ filename ^" begins\n");
   let dir = !Options.timer_dir in
-  let final_idx = List.length alarms_list in
+  let final_idx = List.length lst in
   let alarm_final = MarshalManager.input ~dir (filename ^ ".alarm." ^ (string_of_int final_idx)) |> AlarmSet.of_list in
   let coarsen_history = try MarshalManager.input ~dir (filename ^ ".coarsen_history") with _ -> History.empty in
   let coarsen_history_old = try MarshalManager.input ~dir (filename ^ ".coarsen_history_old") with _ -> History.empty in
@@ -559,19 +559,18 @@ let extract_data spec global access iteration  =
   let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".tr_data.dat.raw") in
   let alarm_fs = MarshalManager.input (filename ^ ".alarm") |> flip Report.get Report.UnProven |> AlarmSet.of_list in
   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in
-  let lst = BatList.range 1 `To 13 in
-  let alarms_list = List.fold_left (fun l i ->
-      try
-        let a = MarshalManager.input ~dir (filename ^ ".alarm." ^ (string_of_int i)) |> AlarmSet.of_list in
-        a::l
-      with _ -> l) [] lst
+  let final_idx =
+    Sys.readdir dir
+    |> Array.to_list
+    |> List.filter (fun x ->
+        Str.string_match (Str.regexp (filename ^ "\.alarm\.[1-9]+")) x 0)
+    |> List.length
   in
   let static_feature = MarshalManager.input ~dir (filename ^ ".static_feature") in
-  let final_idx = List.length alarms_list in
   let lst = BatList.range 1 `To final_idx in
   let alarm_final = MarshalManager.input ~dir (filename ^ ".alarm." ^ (string_of_int final_idx)) |> AlarmSet.of_list in
   let (pos_data, neg_data) =
-      extract_data_normal spec global access oc filename lst alarm_fs alarm_fi alarms_list static_feature iteration
+      extract_data_normal spec global access oc filename lst alarm_fs alarm_fi static_feature iteration
   in
   close_out oc;
   let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".tr_data.dat") in
