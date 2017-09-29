@@ -123,8 +123,8 @@ let used_mem () =
   let stat = Gc.stat () in
   stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8
 
-let model x =
-  let k = 0.01 in
+let model timer x =
+  let k = timer.coeff in
   k *. x /. (k -. x +. 1.0)
 
 let coarsen_portion timer =
@@ -133,7 +133,8 @@ let coarsen_portion timer =
     let possible_mem = timer.total_memory - timer.base_memory in
 (*    let target = (actual_used_mem * 100 / possible_mem / 10 + 1) * 10 in (* rounding (e.g. 15 -> 20) *)*)
     let x = (float_of_int actual_used_mem) /. (float_of_int possible_mem) in
-    let target = model x in
+    prerr_endline ("target : " ^ string_of_float x);
+    let target = model timer x in
     (target *. (float_of_int timer.num_of_locset) |> int_of_float) - timer.num_of_coarsen
   else
     (try List.nth (threshold_list_loc ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100
@@ -141,14 +142,16 @@ let coarsen_portion timer =
 
 let assign_weight locs features =
   let weight_vector =
-    Str.split (Str.regexp "[ \t]+") (!Options.pfs_wv)
+    Str.split (Str.regexp "[ \t\n]+") (!Options.pfs_wv)
     |> List.map float_of_string
   in
   let score l =
     List.fold_left2 (fun p x y -> p +. x *. y) 0.0 l weight_vector
   in
   List.map (fun l ->
-      let f = DynamicFeature.LocHashtbl.find features l in
+      let f =
+        DynamicFeature.LocHashtbl.find features l |> BatList.take 45
+      in
       (l, score f)) locs
 
 let rank_strategy global spec timer top =
@@ -343,7 +346,10 @@ let initialize spec global access dug worklist inputof =
     Dependency.dependency_of_query_set_new true global dug access alarm_fi
   in
   prerr_endline ("\n== locset took " ^ string_of_float (Sys.time () -. widen_start));
-  let static_feature = PartialFlowSensitivity.extract_feature global target_locset |> DynamicFeature.encode_static_feature spec.Spec.locset in
+  let static_feature =
+    PartialFlowSensitivity.extract_feature global target_locset
+    |> DynamicFeature.encode_static_feature spec.Spec.locset 
+  in
   let filename = Filename.basename global.file.Cil.fileName in
   let dir = !Options.timer_dir in
   MarshalManager.output ~dir (filename ^ ".static_feature") static_feature;
