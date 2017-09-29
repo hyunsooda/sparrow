@@ -569,7 +569,7 @@ let extract_data spec global access iteration  =
     Sys.readdir dir
     |> Array.to_list
     |> List.filter (fun x ->
-        Str.string_match (Str.regexp (filename ^ "\\.alarm\\.[1-9]+")) x 0)
+        Str.string_match (Str.regexp (Str.quote filename ^ "\\.alarm\\.[1-9]+")) x 0)
     |> List.length
   in
   let static_feature = MarshalManager.input ~dir (filename ^ ".static_feature") in
