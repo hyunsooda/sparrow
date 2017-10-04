@@ -124,8 +124,10 @@ let used_mem () =
   stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8
 
 let model timer x =
-  let k = timer.coeff in
-  k *. x /. (k -. x +. 1.0)
+  if x >= 1.0 then 1.0
+  else
+    let k = timer.coeff in
+    k *. x /. (k -. x +. 1.0)
 
 let coarsen_portion timer =
   if timer.total_memory > 0 then
@@ -133,8 +135,8 @@ let coarsen_portion timer =
     let possible_mem = timer.total_memory - timer.base_memory in
 (*    let target = (actual_used_mem * 100 / possible_mem / 10 + 1) * 10 in (* rounding (e.g. 15 -> 20) *)*)
     let x = (float_of_int actual_used_mem) /. (float_of_int possible_mem) in
-    prerr_endline ("target : " ^ string_of_float x);
     let target = model timer x in
+    prerr_endline ("target : " ^ string_of_float target);
     (target *. (float_of_int timer.num_of_locset) |> int_of_float) - timer.num_of_coarsen
   else
     (try List.nth (threshold_list_loc ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100
