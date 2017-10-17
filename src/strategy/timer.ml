@@ -43,9 +43,11 @@ type t = {
   num_of_coarsen : int;
   total_memory : int;
   base_memory : int;
+  current_memory : int;
   prepare : int;
   deadline : int;
   coeff : float;
+  py : Lymp.pycommunication;
 }
 
 let empty = {
@@ -62,9 +64,11 @@ let empty = {
   num_of_coarsen = 0;
   total_memory = 70; (* MB *)
   base_memory = 0;
+  current_memory = 0;
   prepare = 0;
   deadline = 0;
   coeff = 0.0;
+  py = Lymp.init ~exec:"python2" "/home/khheo/project/TimerExperiment/";
 }
 
 let timer = ref empty
@@ -74,12 +78,10 @@ let prdbg_endline x =
     prerr_endline ("DEBUG::"^x)
   else ()
 
-let load_classifier global =
-  let path = "/home/khheo/project/TimerExperiment/" in
-  let py = Lymp.init ~exec:"python2" path in
-  let py_module = Lymp.get_module py "sparrow" in
+let load_classifier global timer =
+  let py_module = Lymp.get_module timer.py "sparrow" in
   let classifier = Lymp.Pyref (Lymp.get_ref py_module "load" [Lymp.Pystr !Options.timer_clf]) in
-  (py, py_module, classifier)
+  (py_module, classifier)
 
 let predict py_module clf x feature static_feature =
   let vec = DynamicFeature.feature_vector x feature static_feature in
@@ -94,12 +96,12 @@ let predict_proba py_module clf x feature static_feature =
 module Hashtbl = DynamicFeature.LocHashtbl
 
 let clf_strategy global timer =
-  let (py, py_module, clf) = load_classifier global in
+  let (py_module, clf) = load_classifier global timer in
   let set = Hashtbl.fold (fun k _ ->
       if predict py_module clf k timer.dynamic_feature timer.static_feature then PowLoc.add k
       else id) DynamicFeature.locset_hash PowLoc.empty
   in
-  Lymp.close py;
+
   set
 
 let threshold_list_loc () =
@@ -120,7 +122,7 @@ let counter_example global lst =
     ) lst; lst
 
 let used_mem () =
-  let stat = Gc.stat () in
+  let stat = Gc.quick_stat () in
   stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8
 
 let model timer x =
@@ -175,11 +177,10 @@ let rank_strategy global spec timer top =
       assign_weight locset timer.static_feature
       |> List.sort (fun (_, x) (_, y) -> if x < y then -1 else if x = y then 0 else 1)
     else
-      let (py, py_module, clf) = load_classifier global in
+      let (py_module, clf) = load_classifier global timer in
       Hashtbl.fold (fun k _ l ->
             (k, predict_proba py_module clf k timer.dynamic_feature timer.static_feature)::l)
         DynamicFeature.locset_hash []
-      |> (fun x -> Lymp.close py; x)
       |> List.sort (fun (_, x) (_, y) -> if x > y then -1 else if x = y then 0 else 1)
       |> opt !Options.timer_counter_example (counter_example global)
   in
@@ -372,6 +373,7 @@ let initialize spec global access dug worklist inputof =
     dynamic_feature;
     num_of_locset = PowLoc.cardinal target_locset;
     base_memory;
+    current_memory = base_memory;
     prepare; deadline; threshold = deadline };
 (*   timer := { !timer with threshold = threshold !timer.time_stamp; }; (* threshold uses prepare and deadline *) *)
   prerr_endline ("\n== Timer: Coarsening #0 took " ^ string_of_float (Sys.time () -. widen_start));
@@ -381,7 +383,7 @@ let initialize spec global access dug worklist inputof =
   prerr_endline ("== Base Mem: " ^ (string_of_int base_memory));
   let new_alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof
                    |> flip Report.get Report.UnProven in
-  timer_dump global dug inputof empty new_alarms locset_coarsen 0;
+  timer_dump global dug inputof dynamic_feature new_alarms locset_coarsen 0;
   (spec, dug, worklist, inputof)
 
 module Data = Set.Make(Loc)
@@ -661,7 +663,10 @@ let coarsening_fs spec global access dug worklist inputof =
   in
   let t0 = Sys.time () in
   let elapsed = t0 -. !timer.last in
-  if elapsed > (float_of_int !timer.threshold) then
+(*   if elapsed > (float_of_int !timer.threshold) then *)
+
+  let used = used_mem () in
+  if used > !timer.current_memory then
     let _ = prerr_endline ("\n== Timer: Coarsening #"^(string_of_int !timer.time_stamp)^" starts at " ^ (string_of_float elapsed)) in
     let _ = prerr_memory_info !timer in
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
@@ -706,6 +711,7 @@ let coarsening_fs spec global access dug worklist inputof =
       Profiler.report stdout;
       timer := { !timer with last = Sys.time ();
         time_stamp = !timer.time_stamp + 1;
+        current_memory = used;
         num_of_coarsen = !timer.num_of_coarsen + num_of_coarsen;
         old_inputof = inputof; };
       (spec,dug,worklist,inputof)
@@ -719,4 +725,5 @@ let finalize spec global dug inputof =
       Report.display_alarms ~verbose:0 ("Alarms at "^string_of_int !timer.time_stamp) new_alarms_part
     end;
   timer_dump global dug inputof DynamicFeature.empty_feature alarms PowLoc.empty !timer.time_stamp;
+  Lymp.close !timer.py;
   prerr_memory_usage ()
