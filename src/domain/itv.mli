@@ -36,6 +36,8 @@ val of_int      : int -> t
 val of_ints     : int -> int -> t 
 val of_integer  : Integer.t -> Integer.t -> t
 
+val height : t -> int
+
 (** {2 Basic Values } *)
 
 val bot         : t

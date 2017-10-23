@@ -63,7 +63,6 @@ struct
     ^(ArrayBlk.to_string (trd x))^", "
     ^(StructBlk.to_string (frth x))^", "
     ^(PowProc.to_string (fifth x))^")"
-
 end
 
 module Mem = 

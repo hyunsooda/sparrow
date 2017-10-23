@@ -164,4 +164,5 @@ let opts =
   ("-marshal_out_worklist", (Arg.Set marshal_out_worklist), "Marshal");
   ("-marshal_out_alarm", (Arg.Set marshal_out_alarm), "Marshal");
   ("-int_overflow", (Arg.Set int_overflow), "Consider integer overflow");
+  ("-print_height", (Arg.Set print_height), "Print height");
   ]
