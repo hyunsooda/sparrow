@@ -317,13 +317,14 @@ let is_negative x =
     | V (_, Int x) -> x < 0
     | _ -> false
 
-let height (x:t) : int =
-  let h_bound = 1000 in
-  if is_bot x then 0 else
+let height x =
+  if is_bot x then 0
+  else
     match x with
-    | V (Int l, Int u) -> if u - l + 1 > h_bound then h_bound else u - l + 1
-    | _ -> h_bound
-
+    | V (Int l, Int u) when l = u -> 1
+    | V (Int l, Int u) when l < u -> 2
+    | V (Int _, PInf) | V (MInf, Int _) -> 3
+    | _ -> 4
 
 let diff (x:t) : int =
   if is_bot x then 0 else

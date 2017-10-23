@@ -48,6 +48,8 @@ type t = {
   deadline : int;
   coeff : float;
   py : Lymp.pycommunication;
+  base_height : int;
+  fi_height : int;
 }
 
 let empty = {
@@ -69,6 +71,8 @@ let empty = {
   deadline = 0;
   coeff = 0.0;
   py = Lymp.init ~exec:"python2" "/home/khheo/project/TimerExperiment/";
+  base_height = 0;
+  fi_height = 0;
 }
 
 let timer = ref empty
@@ -341,6 +345,31 @@ let print_stat spec global access dug =
   prerr_endline (" # FS AbsLoc : " ^ string_of_int (PowLoc.cardinal locset_of_fs));
   exit 0
 
+let height_of_val v =
+  (Val.itv_of_val v |> Itv.height)
+  + (Val.pow_loc_of_val v |> PowLoc.cardinal)
+  + (Val.array_of_val v |> ArrayBlk.cardinal)
+  + (Val.struct_of_val v |> StructBlk.cardinal)
+  + (Val.pow_proc_of_val v |> PowProc.cardinal)
+
+let height_of_mem mem =
+  Mem.fold (fun _ v h -> (height_of_val v) + h) mem 0
+
+let height_of_table t =
+  Table.fold (fun _ mem h -> (height_of_mem mem) + h) t 0
+
+let print_height global inputof worklist_opt =
+  let height = height_of_table inputof in
+  let net_height = height - !timer.base_height in
+  let net_memory = !timer.current_memory - !timer.base_memory in
+  let works = match worklist_opt with None -> 0 | Some wl -> Worklist.cardinal wl in
+  prerr_endline ("Height : " ^ string_of_int net_height);
+  prerr_endline ("Mem : " ^ string_of_int net_memory);
+  let filename = Filename.basename global.file.Cil.fileName in
+  let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".height") in
+  output_string oc ((string_of_int net_memory) ^ "," ^ (string_of_int net_height) ^ "," ^ string_of_int works ^"\n");
+  close_out oc
+
 let initialize spec global access dug worklist inputof =
   let widen_start = Sys.time () in
   let deadline = !Options.timer_deadline in (* time unit *)
@@ -374,7 +403,10 @@ let initialize spec global access dug worklist inputof =
     num_of_locset = PowLoc.cardinal target_locset;
     base_memory;
     current_memory = base_memory;
-    prepare; deadline; threshold = deadline };
+    prepare; deadline; threshold = deadline;
+    base_height = height_of_table inputof;
+    fi_height = height_of_mem spec.Spec.premem;
+  };
 (*   timer := { !timer with threshold = threshold !timer.time_stamp; }; (* threshold uses prepare and deadline *) *)
   prerr_endline ("\n== Timer: Coarsening #0 took " ^ string_of_float (Sys.time () -. widen_start));
   prerr_endline ("== Given Deadline: " ^ (string_of_int !Options.timer_deadline));
@@ -384,6 +416,7 @@ let initialize spec global access dug worklist inputof =
   let new_alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof
                    |> flip Report.get Report.UnProven in
   timer_dump global dug inputof dynamic_feature new_alarms locset_coarsen 0;
+  print_height global inputof (Some worklist); 
   (spec, dug, worklist, inputof)
 
 module Data = Set.Make(Loc)
@@ -634,6 +667,7 @@ let extract_data spec global access iteration  =
   exit 0
 
 let prerr_memory_info timer =
+  (* XXX: quick_stat *)
   let stat = Gc.stat () in
   (* total 128 GB *)
   let live_mem = stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 8 in
@@ -679,6 +713,12 @@ let coarsening_fs spec global access dug worklist inputof =
                              old_inputof = inputof; }
       in
       (spec, dug, worklist, inputof)
+    else if !Options.print_height then
+      let _ =timer := { !timer with last = Sys.time ();
+        time_stamp = !timer.time_stamp + 1;
+        current_memory = used; } in
+      let _ = print_height global inputof (Some worklist) in
+      (spec,dug,worklist,inputof)
     else
       let _ = Profiler.reset () in
       let alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof |> flip Report.get Report.UnProven in
@@ -726,4 +766,5 @@ let finalize spec global dug inputof =
     end;
   timer_dump global dug inputof DynamicFeature.empty_feature alarms PowLoc.empty !timer.time_stamp;
   Lymp.close !timer.py;
+  print_height global inputof None;
   prerr_memory_usage ()
