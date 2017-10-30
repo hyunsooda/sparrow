@@ -27,7 +27,7 @@ sig
     (* for timer *)
     pre_alarm : Report.query list;
     inspect_alarm : (Global.t -> t -> Table.t -> Report.query list) option;
-    coarsening_fs : (t -> Global.t -> Dom.Access.t -> DUGraph.t -> Worklist.t -> Table.t -> 
+    coarsening_fs : (t -> Timer.t -> Global.t -> Dom.Access.t -> DUGraph.t -> Worklist.t -> Table.t -> 
                      t * DUGraph.t * Worklist.t * Table.t) option;
     timer_finalize : (t -> Global.t -> DUGraph.t -> Table.t -> unit) option;
     extract_timer_data : (t -> Global.t -> Dom.Access.t -> int -> unit) option;
