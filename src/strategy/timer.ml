@@ -136,7 +136,12 @@ let model timer x =
     k *. x /. (k -. x +. 1.0)
 
 let coarsen_portion timer =
-  if timer.total_memory > 0 then
+  if timer.total_memory > 0 && !Options.timer_control <> "" then
+    let controls = Str.split (Str.regexp "[ \t\n]+") (!Options.timer_control) in
+    let p = timer.num_of_locset * (int_of_string (List.nth controls timer.time_stamp)) / 100 - timer.num_of_coarsen in
+    prerr_endline ("portion : " ^ string_of_int p);
+    p
+  else if timer.total_memory > 0 then
     let actual_used_mem = used_mem () - timer.base_memory in
     let possible_mem = timer.total_memory - timer.base_memory in
 (*    let target = (actual_used_mem * 100 / possible_mem / 10 + 1) * 10 in (* rounding (e.g. 15 -> 20) *)*)
@@ -706,19 +711,21 @@ let coarsening_fs spec global access dug worklist inputof =
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
     let num_of_locset = Hashtbl.length DynamicFeature.locset_hash in
     let num_of_coarsen = coarsen_portion !timer in
+    let _ = print_height global inputof (Some worklist) in
     if num_of_locset_fs = 0 || num_of_coarsen = 0 then
       let _ = timer := { !timer with last = Sys.time ();
                              time_stamp = !timer.time_stamp + 1;
                              num_of_coarsen = !timer.num_of_coarsen + num_of_coarsen;
+                             current_memory = used;
                              old_inputof = inputof; }
       in
       (spec, dug, worklist, inputof)
-    else if !Options.print_height then
+(*    else if !Options.print_height then
       let _ =timer := { !timer with last = Sys.time ();
         time_stamp = !timer.time_stamp + 1;
         current_memory = used; } in
       let _ = print_height global inputof (Some worklist) in
-      (spec,dug,worklist,inputof)
+      (spec,dug,worklist,inputof)*)
     else
       let _ = Profiler.reset () in
       let alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof |> flip Report.get Report.UnProven in

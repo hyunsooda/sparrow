@@ -99,6 +99,7 @@ val timer_stat : bool ref
 val timer_counter_example : bool ref
 val timer_total_memory : int ref
 val timer_coeff : float ref
+val timer_control : string ref
 
 (** {2 Options lists } *)
 
