@@ -64,7 +64,8 @@ let print_cfg : Global.t -> Global.t
 let finish t0 () =
   my_prerr_endline "Finished properly.";
   Profiler.report stdout;
-  my_prerr_endline (string_of_float (Sys.time () -. t0))
+  my_prerr_endline (string_of_float (Sys.time () -. t0) ^ "sec");
+  prerr_memory_usage ()
 
 let octagon_analysis : Global.t * ItvAnalysis.Table.t * ItvAnalysis.Table.t * Report.query list -> Report.query list
 = fun (global,itvinputof,_,_) ->

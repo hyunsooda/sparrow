@@ -346,7 +346,6 @@ let inspect_pre_alarm : Global.t -> Report.query list
 
 let do_analysis : Global.t -> Global.t * Table.t * Table.t * Report.query list
 = fun global ->
-  let _ = prerr_memory_usage () in
   let locset = get_locset global.mem in
   let locset_fs =
     locset
