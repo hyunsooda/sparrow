@@ -788,7 +788,6 @@ let extract_feature : Global.t -> PowLoc.t -> feature
 
 let weight_of : Loc.t -> feature -> string list -> float
 =fun l f weights ->
-  List.iter (fun i -> prerr_endline i) weights;
   let getw i = try float_of_string (List.nth weights (i-1)) with _ -> 0.0 in
   let mem = PowLoc.mem in
   0.0
