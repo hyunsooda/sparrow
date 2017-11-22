@@ -44,6 +44,7 @@ type t = {
   total_memory : int;
   base_memory : int;
   current_memory : int;
+  total_worklist : int;
   prepare : int;
   deadline : int;
   coeff : float;
@@ -67,6 +68,7 @@ let empty = {
   total_memory = 70; (* MB *)
   base_memory = 0;
   current_memory = 0;
+  total_worklist = 0;
   prepare = 0;
   deadline = 0;
   coeff = 0.0;
@@ -135,10 +137,60 @@ let model timer x =
     let k = timer.coeff in
     k *. x /. (k -. x +. 1.0)
 
-let coarsen_portion timer =
-  if timer.total_memory > 0 && !Options.timer_control <> "" then
+let height_of_val v =
+  (Val.itv_of_val v |> Itv.height)
+  + (Val.pow_loc_of_val v |> PowLoc.cardinal)
+  + (Val.array_of_val v |> ArrayBlk.cardinal)
+  + (Val.struct_of_val v |> StructBlk.cardinal)
+  + (Val.pow_proc_of_val v |> PowProc.cardinal)
+
+let height_of_mem mem =
+  Mem.fold (fun _ v h -> (height_of_val v) + h) mem 0
+
+let height_of_table t =
+  Table.fold (fun _ mem h -> (height_of_mem mem) + h) t 0
+
+let compute_feature global timer inputof worklist =
+  let height = height_of_table inputof in
+  let memory = used_mem () - timer.base_memory in
+  let works = Worklist.cardinal worklist in 
+  prerr_endline ("Height : " ^ string_of_int height);
+  prerr_endline ("Mem : " ^ string_of_int memory);
+  prerr_endline ("Work : " ^ string_of_int works);
+  let feat_memory = (float_of_int memory) /. (float_of_int (timer.total_memory - timer.base_memory)) in
+  let feat_height = (float_of_int height) /. (float_of_int timer.fi_height) in
+  let feat_worklist = (float_of_int works) /. (float_of_int timer.total_worklist) in
+  (feat_memory, feat_height, feat_worklist)
+
+let dump_feature global timer inputof worklist action =
+  let (feat_memory, feat_height, feat_worklist) = compute_feature global timer inputof worklist in
+  let filename = Filename.basename global.file.Cil.fileName in
+  let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".mem_feature") in
+  output_string oc ((string_of_float feat_memory) ^ "," ^ (string_of_float feat_height) ^ "," ^ string_of_float feat_worklist ^ ":" ^ action ^"\n");
+  close_out oc
+
+let coarsen_portion global timer worklist inputof =
+  if timer.total_memory > 0 && !Options.timer_scheduler then
+    let (feat_memory, feat_height, feat_worklist) = compute_feature global timer inputof worklist in
+    let py_module = Lymp.get_module timer.py "sparrow" in
+    prerr_endline (!Options.timer_dir ^ "/scheduler");
+(*     let clf = Lymp.Pyref (Lymp.get_ref py_module "load" [Lymp.Pystr (!Options.timer_dir ^ "/scheduler")]) in *)
+    let clf = Lymp.Pystr (!Options.timer_dir ^ "/scheduler") in
+    let vec = Lymp.Pylist (List.map (fun x -> Lymp.Pyfloat x) [feat_memory; feat_height; feat_worklist]) in
+    let portion = Lymp.get_int py_module "predict_int" [clf; vec] in
+    prerr_endline ("portion : " ^ string_of_int portion);
+    portion
+  else if timer.total_memory > 0 && !Options.timer_control <> "" then
+    let actual_used_mem = used_mem () - timer.base_memory in
+    let possible_mem = timer.total_memory - timer.base_memory in
+    prerr_endline ("actual: " ^ string_of_int actual_used_mem);
+    prerr_endline ("possible: " ^ string_of_int possible_mem);
+(*     let x = (float_of_int actual_used_mem) /. (float_of_int possible_mem) *. 5.0 in *)
+(*     prerr_endline ("x : " ^ string_of_float x); *)
     let controls = Str.split (Str.regexp "[ \t\n]+") (!Options.timer_control) in
-    let p = timer.num_of_locset * (int_of_string (List.nth controls timer.time_stamp)) / 100 - timer.num_of_coarsen in
+    let action = List.nth controls (timer.time_stamp - 1) in
+    let p = timer.num_of_locset * (int_of_string action) / 100 - timer.num_of_coarsen in
+    dump_feature global timer inputof worklist action;
     prerr_endline ("portion : " ^ string_of_int p);
     p
   else if timer.total_memory > 0 then
@@ -350,23 +402,10 @@ let print_stat spec global access dug =
   prerr_endline (" # FS AbsLoc : " ^ string_of_int (PowLoc.cardinal locset_of_fs));
   exit 0
 
-let height_of_val v =
-  (Val.itv_of_val v |> Itv.height)
-  + (Val.pow_loc_of_val v |> PowLoc.cardinal)
-  + (Val.array_of_val v |> ArrayBlk.cardinal)
-  + (Val.struct_of_val v |> StructBlk.cardinal)
-  + (Val.pow_proc_of_val v |> PowProc.cardinal)
-
-let height_of_mem mem =
-  Mem.fold (fun _ v h -> (height_of_val v) + h) mem 0
-
-let height_of_table t =
-  Table.fold (fun _ mem h -> (height_of_mem mem) + h) t 0
-
 let print_height global inputof worklist_opt =
   let height = height_of_table inputof in
   let net_height = height - !timer.base_height in
-  let net_memory = !timer.current_memory - !timer.base_memory in
+  let net_memory = used_mem () - !timer.base_memory in
   let works = match worklist_opt with None -> 0 | Some wl -> Worklist.cardinal wl in
   prerr_endline ("Height : " ^ string_of_int net_height);
   prerr_endline ("Mem : " ^ string_of_int net_memory);
@@ -375,6 +414,19 @@ let print_height global inputof worklist_opt =
   output_string oc ((string_of_int net_memory) ^ "," ^ (string_of_int net_height) ^ "," ^ string_of_int works ^"\n");
   close_out oc
 
+let height_of_fi_mem dug access fi_mem =
+  let t0 = Sys.time () in
+  let height = DUGraph.fold_node (fun n height ->
+      let pred = DUGraph.pred n dug in
+      let access = list_fold (fun p -> PowLoc.union (DUGraph.get_abslocs p n dug)) pred PowLoc.empty in
+      PowLoc.fold (fun x height -> 
+          let h = Mem.find x fi_mem |> height_of_val in
+          h + height) access height) dug 0
+  in
+  prerr_endline ("== height_of_fi_mem took " ^ string_of_float (Sys.time () -. t0));
+  height
+      
+  
 let initialize spec global access dug worklist inputof =
   let widen_start = Sys.time () in
   let deadline = !Options.timer_deadline in (* time unit *)
@@ -408,9 +460,10 @@ let initialize spec global access dug worklist inputof =
     num_of_locset = PowLoc.cardinal target_locset;
     base_memory;
     current_memory = base_memory;
+    total_worklist = Worklist.cardinal worklist;
     prepare; deadline; threshold = deadline;
     base_height = height_of_table inputof;
-    fi_height = height_of_mem spec.Spec.premem;
+    fi_height = height_of_fi_mem dug access spec.Spec.premem;
   };
 (*   timer := { !timer with threshold = threshold !timer.time_stamp; }; (* threshold uses prepare and deadline *) *)
   prerr_endline ("\n== Timer: Coarsening #0 took " ^ string_of_float (Sys.time () -. widen_start));
@@ -421,7 +474,7 @@ let initialize spec global access dug worklist inputof =
   let new_alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof
                    |> flip Report.get Report.UnProven in
   timer_dump global dug inputof dynamic_feature new_alarms locset_coarsen 0;
-  print_height global inputof (Some worklist); 
+(*   print_height global inputof (Some worklist);  *)
   (spec, dug, worklist, inputof)
 
 module Data = Set.Make(Loc)
@@ -710,8 +763,8 @@ let coarsening_fs spec global access dug worklist inputof =
     let _ = prerr_memory_info !timer in
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
     let num_of_locset = Hashtbl.length DynamicFeature.locset_hash in
-    let num_of_coarsen = coarsen_portion !timer in
-    let _ = print_height global inputof (Some worklist) in
+    let num_of_coarsen = coarsen_portion global !timer worklist inputof in
+(*     let _ = print_height global inputof (Some worklist) in *)
     if num_of_locset_fs = 0 || num_of_coarsen = 0 then
       let _ = timer := { !timer with last = Sys.time ();
                              time_stamp = !timer.time_stamp + 1;
@@ -766,12 +819,17 @@ let coarsening_fs spec global access dug worklist inputof =
 
 let finalize spec global dug inputof =
   let alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof |> flip Report.get Report.UnProven in
+  let new_alarms_part = Report.partition alarms in
   if !Options.timer_debug then
     begin
-      let new_alarms_part = Report.partition alarms in
       Report.display_alarms ~verbose:0 ("Alarms at "^string_of_int !timer.time_stamp) new_alarms_part
     end;
-  timer_dump global dug inputof DynamicFeature.empty_feature alarms PowLoc.empty !timer.time_stamp;
+  (* TODO temprory *)
+(*   timer_dump global dug inputof DynamicFeature.empty_feature alarms PowLoc.empty !timer.time_stamp; *)
   Lymp.close !timer.py;
   print_height global inputof None;
+  let filename = Filename.basename global.file.Cil.fileName in
+  let oc = open_out_gen [Open_creat; Open_append; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".mem_feature") in
+(*   output_string oc ("Alarm : " ^ (string_of_int (BatMap.cardinal new_alarms_part)) ^"\n"); *)
+  close_out oc;
   prerr_memory_usage ()
