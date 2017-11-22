@@ -153,13 +153,17 @@ let height_of_table t =
 let compute_feature global timer inputof worklist =
   let height = height_of_table inputof in
   let memory = used_mem () - timer.base_memory in
-  let works = Worklist.cardinal worklist in 
-  prerr_endline ("Height : " ^ string_of_int height);
-  prerr_endline ("Mem : " ^ string_of_int memory);
-  prerr_endline ("Work : " ^ string_of_int works);
+  let works = Worklist.cardinal worklist in
   let feat_memory = (float_of_int memory) /. (float_of_int (timer.total_memory - timer.base_memory)) in
   let feat_height = (float_of_int height) /. (float_of_int timer.fi_height) in
   let feat_worklist = (float_of_int works) /. (float_of_int timer.total_worklist) in
+  prerr_endline ("Current Mem1 : " ^ string_of_int (used_mem ()));
+  prerr_endline ("Height : " ^ string_of_int height);
+  prerr_endline ("Mem : " ^ string_of_int memory);
+  prerr_endline ("Work : " ^ string_of_int works);
+  prerr_endline ("Height : " ^ string_of_float feat_height);
+  prerr_endline ("Mem : " ^ string_of_float feat_memory);
+  prerr_endline ("Work : " ^ string_of_float feat_worklist);
   (feat_memory, feat_height, feat_worklist)
 
 let dump_feature global timer inputof worklist action =
@@ -171,15 +175,14 @@ let dump_feature global timer inputof worklist action =
 
 let coarsen_portion global timer worklist inputof =
   if timer.total_memory > 0 && !Options.timer_scheduler then
+    let _ = prerr_endline ("Current Mem0 : " ^ string_of_int (used_mem ())) in
     let (feat_memory, feat_height, feat_worklist) = compute_feature global timer inputof worklist in
     let py_module = Lymp.get_module timer.py "sparrow" in
-    prerr_endline (!Options.timer_dir ^ "/scheduler");
-(*     let clf = Lymp.Pyref (Lymp.get_ref py_module "load" [Lymp.Pystr (!Options.timer_dir ^ "/scheduler")]) in *)
     let clf = Lymp.Pystr (!Options.timer_dir ^ "/scheduler") in
     let vec = Lymp.Pylist (List.map (fun x -> Lymp.Pyfloat x) [feat_memory; feat_height; feat_worklist]) in
     let portion = Lymp.get_int py_module "predict_int" [clf; vec] in
     prerr_endline ("portion : " ^ string_of_int portion);
-    portion
+    portion 
   else if timer.total_memory > 0 && !Options.timer_control <> "" then
     let actual_used_mem = used_mem () - timer.base_memory in
     let possible_mem = timer.total_memory - timer.base_memory in
@@ -758,7 +761,10 @@ let coarsening_fs spec global access dug worklist inputof =
 (*   if elapsed > (float_of_int !timer.threshold) then *)
 
   let used = used_mem () in
-  if used > !timer.current_memory then
+  if used > !timer.total_memory then
+    let _ = prerr_endline ("Out of Memory: " ^ string_of_int used) in
+    exit 0
+  else if used > !timer.current_memory then
     let _ = prerr_endline ("\n== Timer: Coarsening #"^(string_of_int !timer.time_stamp)^" starts at " ^ (string_of_float elapsed)) in
     let _ = prerr_memory_info !timer in
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
@@ -804,6 +810,7 @@ let coarsening_fs spec global access dug worklist inputof =
       prerr_endline ("#Abs Locs on Dug        : " ^ string_of_int (DUGraph.nb_loc dug));
       prerr_endline ("#Node on Dug            : " ^ string_of_int (DUGraph.nb_node dug));
       prerr_endline ("#Worklist               : " ^ (string_of_int num_of_works) ^ " -> "^(string_of_int (Worklist.cardinal worklist)));
+      prerr_endline ("Current Mem3 : " ^ string_of_int (used_mem ()));
 (*       prdbg_endline ("Coarsened Locs : \n\t"^PowLoc.to_string locset_coarsen); *)
       (if !Options.timer_debug then Report.display_alarms ~verbose:0 ("Alarms at "^string_of_int !timer.time_stamp) new_alarms_part);
       prerr_endline ("== Timer: Coarsening took " ^ string_of_float (Sys.time () -. t0));
