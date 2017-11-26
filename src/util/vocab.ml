@@ -115,7 +115,10 @@ let my_prerr_endline str = if !Options.verbose >= 1 then prerr_endline str
 let my_prerr_newline () = if !Options.verbose >= 1 then prerr_newline ()
 let my_prerr_string str = if !Options.verbose >= 1 then prerr_string str
 
-let prerr_memory_usage () =
+let memory_usage () =
   let stat = Gc.quick_stat () in
-  let heap_MB = stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8 in
+  stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8
+
+let prerr_memory_usage () =
+  let heap_MB = memory_usage () in
   my_prerr_endline (string_of_int heap_MB ^ "MB")

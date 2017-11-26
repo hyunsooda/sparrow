@@ -55,4 +55,5 @@ val fix : ('a BatSet.t -> 'a BatSet.t) -> 'a BatSet.t -> 'a BatSet.t
 val my_prerr_endline : bytes -> unit
 val my_prerr_newline : unit -> unit
 val my_prerr_string : bytes -> unit
+val memory_usage : unit -> int
 val prerr_memory_usage : unit -> unit
