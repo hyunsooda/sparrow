@@ -93,7 +93,6 @@ val timer_clf : string ref
 val timer_dir : string ref
 val print_height : bool ref
 val print_time : bool ref
-val timer_threshold_abs : string ref
 val timer_initial_coarsening : bool ref
 val timer_stat : bool ref
 val timer_counter_example : bool ref

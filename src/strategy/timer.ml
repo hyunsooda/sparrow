@@ -107,14 +107,7 @@ let clf_strategy global timer =
       if predict py_module clf k timer.dynamic_feature timer.static_feature then PowLoc.add k
       else id) DynamicFeature.locset_hash PowLoc.empty
   in
-
   set
-
-let threshold_list_loc () =
-  if !Options.timer_threshold_abs = "" then [0; 10; 50; 80; 100]
-  else
-    Str.split (Str.regexp "[ \t]+") (!Options.timer_threshold_abs)
-    |> List.map int_of_string
 
 let counter_example global lst =
     let filename = Filename.basename global.file.Cil.fileName in
@@ -182,7 +175,7 @@ let coarsen_portion global timer worklist inputof =
     let vec = Lymp.Pylist (List.map (fun x -> Lymp.Pyfloat x) [feat_memory; feat_height; feat_worklist]) in
     let portion = Lymp.get_int py_module "predict_int" [clf; vec] in
     prerr_endline ("portion : " ^ string_of_int portion);
-    portion 
+    timer.num_of_locset * portion / 100 - timer.num_of_coarsen
   else if timer.total_memory > 0 && !Options.timer_control <> "" then
     let actual_used_mem = used_mem () - timer.base_memory in
     let possible_mem = timer.total_memory - timer.base_memory in
@@ -205,8 +198,7 @@ let coarsen_portion global timer worklist inputof =
     prerr_endline ("target : " ^ string_of_float target);
     (target *. (float_of_int timer.num_of_locset) |> int_of_float) - timer.num_of_coarsen
   else
-    (try List.nth (threshold_list_loc ()) timer.time_stamp with _ -> 100) * timer.num_of_locset / 100
-    - (try List.nth (threshold_list_loc ()) (timer.time_stamp -1) with _ -> 100) * timer.num_of_locset / 100
+    0
 
 let assign_weight locs features =
   let weight_vector =

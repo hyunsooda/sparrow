@@ -75,7 +75,6 @@ let timer_static_rank = ref false
 let timer_oracle_rank = ref false
 let timer_clf = ref ""
 let timer_dir = ref ""
-let timer_threshold_abs = ref ""
 let timer_initial_coarsening = ref false
 let timer_stat = ref false
 let timer_counter_example = ref false
@@ -154,7 +153,6 @@ let opts =
   ("-timer_counter_example", (Arg.Set timer_counter_example), "Counter example");
   ("-timer_clf", (Arg.String (fun s -> timer_clf := s)), "Timer clf");
   ("-timer_dir", (Arg.String (fun s -> timer_dir := s)), "Timer dir");
-  ("-timer_threshold_abs", (Arg.String (fun s -> timer_threshold_abs := s)), "Timer threshold abs");
   ("-timer_total_memory", (Arg.Int (fun x -> timer_total_memory := x)), "Maximum memory");
   ("-timer_coeff", (Arg.Float (fun x -> timer_coeff := x)), "Coefficient for memory-aware abstraction coarsening");
   ("-timer_control", (Arg.String (fun s -> timer_control := s)), "Timer constrol");
