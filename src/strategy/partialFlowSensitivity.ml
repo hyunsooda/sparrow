@@ -786,9 +786,9 @@ let extract_feature : Global.t -> PowLoc.t -> feature
   |> add_large_array_set_pre global.mem
   |> add_singleton_array_set_val_pre global.mem
 
-let weight_of : Loc.t -> feature -> string list -> float
+let weight_of : Loc.t -> feature -> float list -> float
 =fun l f weights ->
-  let getw i = try float_of_string (List.nth weights (i-1)) with _ -> 0.0 in
+  let getw i = try List.nth weights (i-1) with _ -> 0.0 in
   let mem = PowLoc.mem in
   0.0
   (* atomic rules *)
@@ -860,15 +860,20 @@ let weight_of : Loc.t -> feature -> string list -> float
       then (+.) (getw 45) else id)
 
 let assign_weight locs feature weights =
-  List.map (fun l -> (l, weight_of l feature weights)) locs
+  PowLoc.fold (fun loc l -> (loc, weight_of loc feature weights)::l) locs []
+
+let weighted_locs global locset =
+  let weights = Str.split (Str.regexp "[ \t\n]+") !Options.pfs_wv |> List.map float_of_string in
+  (*let _ = prerr_endline ("Weight vector : " ^ string_of_list id weights) in*)
+  let feature = extract_feature global locset in
+  assign_weight locset feature weights
 
 let rank : Global.t -> PowLoc.t -> Loc.t list
 = fun global locset ->
-  let weights = Str.split (Str.regexp "[ \t\n]+") (!Options.pfs_wv) in
+  let weights = Str.split (Str.regexp "[ \t\n]+") !Options.pfs_wv |> List.map float_of_string in
   (*let _ = prerr_endline ("Weight vector : " ^ string_of_list id weights) in*)
   let feature = extract_feature global locset in
-  let loclist = PowLoc.elements locset in
-  let locs_weighted = assign_weight loclist feature weights in
+  let locs_weighted = assign_weight locset feature weights in
   let sorted = List.sort (fun (_,w) (_,w') -> compare w' w) locs_weighted in
     BatList.map fst sorted
 

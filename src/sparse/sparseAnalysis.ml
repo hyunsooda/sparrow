@@ -58,16 +58,16 @@ struct
   let get_def_locs : Node.t -> DUGraph.t -> Access.PowLoc.t
   = fun idx dug ->
     (* when coarsening, the set of def_locs changes *)
-    if !Options.timer_deadline > 0 then
+    if !Options.timer_total_memory > 0 then
       let union_locs succ = PowLoc.union (DUGraph.get_abslocs idx succ dug) in
       DUGraph.fold_succ union_locs dug idx PowLoc.empty
     else
-    try Hashtbl.find def_locs_cache idx with Not_found ->
-    let def_locs =
-      let union_locs succ = PowLoc.union (DUGraph.get_abslocs idx succ dug) in
-      DUGraph.fold_succ union_locs dug idx PowLoc.empty
-    in
-    Hashtbl.add def_locs_cache idx def_locs; def_locs
+      try Hashtbl.find def_locs_cache idx with Not_found ->
+      let def_locs =
+        let union_locs succ = PowLoc.union (DUGraph.get_abslocs idx succ dug) in
+        DUGraph.fold_succ union_locs dug idx PowLoc.empty
+      in
+      Hashtbl.add def_locs_cache idx def_locs; def_locs
 
   let print_iteration () =
     total_iterations := !total_iterations + 1;
@@ -304,7 +304,7 @@ struct
       if !Options.pfs < 100 || !Options.pfs_simple then bind_unanalyzed_node global spec.Spec.premem dug access inputof
       else inputof
     in
-    (if !Options.timer_deadline > 0 then 
+    (if !Options.timer_total_memory > 0 then 
       match spec.Spec.timer_finalize with 
       | Some f -> f spec global dug inputof
       | None -> ());
@@ -345,7 +345,7 @@ struct
       MarshalManager.output (filename^".worklist") worklist
     end
     );
-    
+    prerr_endline ("Memory Usage: " ^ string_of_int (memory_usage ()));
     (worklist, global, dug, initialize spec global dug access, Table.empty) 
     |> StepManager.stepf false "Fixpoint iteration with widening" (widening spec access)
     |> finalize spec global access

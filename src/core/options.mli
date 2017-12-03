@@ -80,7 +80,6 @@ val marshal_out_alarm : bool ref
 
 (** {2 Timer (experimental) } *)
 
-val timer_deadline : int ref
 val timer_iter : int ref
 val timer_unit : int ref
 val timer_dump : bool ref
@@ -97,9 +96,11 @@ val timer_stat : bool ref
 val timer_counter_example : bool ref
 val timer_total_memory : int ref
 val timer_coeff : float ref
-val timer_control : string ref
-val timer_scheduler : bool ref
-
+val timer_auto_coarsen : bool ref
+val timer_manual_coarsen : string ref
+val timer_explore_rate : int ref
+val timer_fi_alarm : int ref
+val timer_fs_alarm : int ref
 (** {2 Options lists } *)
 
 val opts : (string * Arg.spec * string) list

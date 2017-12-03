@@ -62,7 +62,6 @@ let show_all_query = ref false
 
 (* Timer *)
 let print_time = ref false
-let timer_deadline = ref 0
 let timer_iter = ref 0
 let predictor = ref false
 let timer_unit = ref 300
@@ -79,8 +78,11 @@ let timer_stat = ref false
 let timer_counter_example = ref false
 let timer_total_memory = ref 0
 let timer_coeff = ref 0.0
-let timer_control = ref ""
-let timer_scheduler = ref false
+let timer_auto_coarsen = ref false
+let timer_manual_coarsen = ref ""
+let timer_explore_rate = ref 0
+let timer_fi_alarm = ref 0
+let timer_fs_alarm = ref 0
 
 (* Marshaling *)
 let marshal_in = ref false
@@ -138,7 +140,6 @@ let opts =
   ("-nobar", (Arg.Set nobar), "No progress bar");
   ("-show_all_query", (Arg.Set show_all_query), "Show all queries");
   ("-optil", (Arg.Set optil), "Optimize IL (default)");
-  ("-timer_deadline", (Arg.Int (fun x -> timer_deadline := x)), "Timer in second");
   ("-timer_iter", (Arg.Int (fun x -> timer_iter := x)), "Timer in iteration");
   ("-timer_unit", (Arg.Int (fun x -> timer_unit := x)), "Time unit");
   ("-timer_dump", (Arg.Set timer_dump), "Timer dump");
@@ -154,8 +155,11 @@ let opts =
   ("-timer_dir", (Arg.String (fun s -> timer_dir := s)), "Timer dir");
   ("-timer_total_memory", (Arg.Int (fun x -> timer_total_memory := x)), "Maximum memory");
   ("-timer_coeff", (Arg.Float (fun x -> timer_coeff := x)), "Coefficient for memory-aware abstraction coarsening");
-  ("-timer_control", (Arg.String (fun s -> timer_control := s)), "Timer constrol");
-  ("-timer_scheduler", (Arg.Set timer_scheduler), "Timer scheduler");
+  ("-timer_auto_coarsen", (Arg.Set timer_auto_coarsen), "Timer scheduler");
+  ("-timer_explore_rate", (Arg.Int (fun x -> timer_explore_rate := x)), "Timer scheduler");
+  ("-timer_manual_coarsen", (Arg.String (fun s -> timer_manual_coarsen := s)), "Timer scheduler");
+  ("-timer_fi_alarm", (Arg.Int (fun x -> timer_fi_alarm := x)), "Maximum memory");
+  ("-timer_fs_alarm", (Arg.Int (fun x -> timer_fs_alarm := x)), "Maximum memory");
   ("-marshal_in", (Arg.Set marshal_in), "Read analysis results from marshaled data");
   ("-marshal_out", (Arg.Set marshal_out), "Write analysis results to marshaled data");
   ("-marshal_dir", (Arg.String (fun s -> marshal_dir := s)), "Directory where the marshaled data exists (default: marshal/)");
