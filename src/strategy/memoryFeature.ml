@@ -90,4 +90,4 @@ let extract_feature global inputof worklist ~total_memory ~base_memory ~fi_heigh
   feat
 
 let to_vector feat =
-  [ feat.memory_consumption; feat.lattice_height; feat.worklist_size; feat.total_memory ]
+  [ feat.memory_consumption; feat.lattice_height; feat.worklist_size; (* feat.total_memory*) ]

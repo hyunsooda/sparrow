@@ -52,7 +52,7 @@ type t = {
   py : Lymp.pycommunication;
   base_height : int;
   fi_height : int;
-  history : (float list * int) list
+  history : (float list * float) list
 }
 
 let empty = {
@@ -157,25 +157,26 @@ let coarsen_portion global timer worklist inputof =
     let clf = Lymp.Pystr (!Options.timer_dir ^ "/strategy") in
     let vec = List.map (fun x -> Lymp.Pyfloat x) mem_feature in
     let portion =
-      if Random.int 1000 < (!Options.timer_explore_rate * 10 / (!Options.timer_iteration + 1)) then
+      if !Options.timer_iteration < 10 || Random.int 1000 < (!Options.timer_explore_rate * 10 - !Options.timer_iteration) then
         let _ = prerr_endline "Randomly chosen" in
-        (Random.int 11) * 10
+        (Random.int 5 |> float_of_int) /. 10.0
       else
         BatList.range 0 `To 10
         |> List.map (fun x ->
-            let p = x * 10 in
-            let vec = Lymp.Pylist (vec @ [Lymp.Pyfloat (float_of_int p)]) in
-            let estimation = Lymp.get_int py_module "predict_int" [clf; vec] in
+            let p = float_of_int x /. 10.0 in
+            let vec = Lymp.Pylist (vec @ [Lymp.Pyfloat p]) in
+            let estimation = Lymp.get_float py_module "predict_float" [clf; vec] in
             (p, estimation))
         |> List.sort (fun (_, x) (_, y) -> compare x y)
-        |> (fun x -> List.iter (fun (portion, alarm_estimation) -> prerr_endline ((string_of_int portion) ^ " : " ^ (string_of_int alarm_estimation))) x; x)
+        |> (fun x -> List.iter (fun (portion, alarm_estimation) ->
+            prerr_endline ((string_of_float portion) ^ " : " ^ (string_of_float alarm_estimation))) x; x)
         |> List.hd
         |> fst
     in
     append_history mem_feature portion;
-    prerr_endline ("portion : " ^ string_of_int portion);
+    prerr_endline ("portion : " ^ string_of_float portion);
 (*     timer.num_of_locset * portion / 100 - timer.num_of_coarsen *)
-    (timer.num_of_locset - timer.num_of_coarsen) * portion / 100
+    (timer.num_of_locset - timer.num_of_coarsen) * (portion *. 100.0 |> int_of_float) / 100
   else if timer.total_memory > 0 && !Options.timer_manual_coarsen <> "" then
     let actual_used_mem = memory_usage () - timer.base_memory in
     let possible_mem = timer.total_memory - timer.base_memory in
@@ -727,12 +728,12 @@ let select global spec timer num_of_coarsen =
 let history_to_json history cost old_json =
   let state_to_json feat action =
     List.fold_left (fun l num ->
-        (`Float num)::l) [] ((float_of_int action)::feat)
+        l@[`Float num]) [] (feat@[action])
   in
   let history = List.fold_left (fun l (feat, action) ->
       (`List (state_to_json feat action))::l) [] history
   in
-  let new_json = `Assoc [ ("history", `List history); ("cost", `Float cost) ] in
+  let new_json = `Assoc [ ("history", `List history); ("log", `String ("log"^string_of_int !Options.timer_iteration)); ("cost", `Float cost) ] in
   match old_json with
   | `Null -> prerr_endline "yojson null"; `List [new_json]
   | `List l -> `List (new_json :: l)
