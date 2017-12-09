@@ -22,6 +22,7 @@ module Spec = Analysis.Spec
 module Access = Spec.Dom.Access
 
 type t = {
+  memory_budget : float;
   memory_consumption : float;
   lattice_height : float;
   worklist_size : float;
@@ -29,6 +30,7 @@ type t = {
 }
 
 let empty = {
+  memory_budget = 0.0;
   memory_consumption = 0.0;
   lattice_height = 0.0;
   worklist_size = 0.0;
@@ -74,6 +76,7 @@ let extract_feature global inputof worklist ~total_memory ~base_memory ~fi_heigh
   let memory = memory_usage () - base_memory in
   let works = Worklist.cardinal worklist in
   let feat = {
+    memory_budget = 1.0 /. float_of_int (total_memory - base_memory);
     memory_consumption = (float_of_int memory) /. (float_of_int (total_memory - base_memory));
     lattice_height = (float_of_int height) /. (float_of_int (fi_height - base_height));
     worklist_size = (float_of_int works) /. (float_of_int total_worklist);
@@ -90,4 +93,5 @@ let extract_feature global inputof worklist ~total_memory ~base_memory ~fi_heigh
   feat
 
 let to_vector feat =
-  [ feat.memory_consumption; feat.lattice_height; feat.worklist_size; (* feat.total_memory*) ]
+  [ feat.memory_budget; feat.memory_consumption; feat.lattice_height;
+    feat.worklist_size; ]

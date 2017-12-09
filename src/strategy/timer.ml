@@ -73,7 +73,7 @@ let empty = {
   prepare = 0;
   deadline = 0;
   coeff = 0.0;
-  py = Lymp.init ~exec:"python2" "/home/khheo/project/TimerExperiment/";
+  py = Lymp.init ~exec:"python3" "/home/khheo/project/TimerExperiment/";
   base_height = 0;
   fi_height = 0;
   history = [];
@@ -742,13 +742,13 @@ let history_to_json history cost old_json =
 let save_history global cost =
   let filename = Filename.basename global.file.Cil.fileName in
   let old_json =
-    if Sys.file_exists (!Options.timer_dir ^ "/" ^ filename ^ ".mcts") then
-      Yojson.Safe.from_file (!Options.timer_dir ^ "/" ^ filename ^ ".mcts")
+    if Sys.file_exists (!Options.timer_dir ^ "/" ^ filename ^ "." ^ (string_of_int !Options.timer_total_memory) ^ ".mcts") then
+      Yojson.Safe.from_file (!Options.timer_dir ^ "/" ^ filename ^ "." ^ string_of_int !Options.timer_total_memory ^ ".mcts")
     else
       `Null
   in
   let json = history_to_json !timer.history cost old_json in
-  let oc = open_out_gen [Open_creat; Open_wronly; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ ".mcts") in
+  let oc = open_out_gen [Open_creat; Open_wronly; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ "." ^ string_of_int !Options.timer_total_memory ^ ".mcts") in
   Yojson.Safe.pretty_to_channel oc json;
 (*   output_string oc ("Alarm : " ^ (string_of_int (BatMap.cardinal new_alarms_part)) ^"\n"); *)
   close_out oc
