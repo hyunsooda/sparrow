@@ -154,12 +154,13 @@ let coarsen_portion global timer worklist inputof =
     in
     let py_module = Lymp.get_module timer.py "sparrow" in
 (*     let filename = Filename.basename global.file.Cil.fileName in *)
-    let clf = Lymp.Pystr (!Options.timer_dir ^ "/strategy") in
+(*     let clf = Lymp.Pystr (!Options.timer_dir ^ "/" ^ filename ^ "." ^ string_of_int timer.total_memory ^ ".strategy") in *)
+    let clf = Lymp.Pystr (!Options.timer_clf ^ ".strategy") in
     let vec = List.map (fun x -> Lymp.Pyfloat x) mem_feature in
     let portion =
-      if !Options.timer_iteration < 10 || Random.int 1000 < (!Options.timer_explore_rate * 10 - !Options.timer_iteration) then
+      if !Options.timer_training && (!Options.timer_iteration < 10 || Random.int 1000 < (!Options.timer_explore_rate * 10 - !Options.timer_iteration)) then
         let _ = prerr_endline "Randomly chosen" in
-        (Random.int 5 |> float_of_int) /. 10.0
+        (Random.int 10 |> float_of_int) /. 10.0
       else
         BatList.range 0 `To 10
         |> List.map (fun x ->
@@ -740,15 +741,15 @@ let history_to_json history cost old_json =
   | _ -> assert false
 
 let save_history global cost =
-  let filename = Filename.basename global.file.Cil.fileName in
+(*   let filename = Filename.basename global.file.Cil.fileName in *)
   let old_json =
-    if Sys.file_exists (!Options.timer_dir ^ "/" ^ filename ^ "." ^ (string_of_int !Options.timer_total_memory) ^ ".mcts") then
-      Yojson.Safe.from_file (!Options.timer_dir ^ "/" ^ filename ^ "." ^ string_of_int !Options.timer_total_memory ^ ".mcts")
+    if Sys.file_exists (!Options.timer_clf ^ ".mcts") then
+      Yojson.Safe.from_file (!Options.timer_clf ^ ".mcts")
     else
       `Null
   in
   let json = history_to_json !timer.history cost old_json in
-  let oc = open_out_gen [Open_creat; Open_wronly; Open_text] 0o640 (!Options.timer_dir ^ "/" ^ filename ^ "." ^ string_of_int !Options.timer_total_memory ^ ".mcts") in
+  let oc = open_out_gen [Open_creat; Open_wronly; Open_text] 0o640 (!Options.timer_clf ^ ".mcts") in
   Yojson.Safe.pretty_to_channel oc json;
 (*   output_string oc ("Alarm : " ^ (string_of_int (BatMap.cardinal new_alarms_part)) ^"\n"); *)
   close_out oc
@@ -769,7 +770,7 @@ let finalize ?(out_of_mem=false) spec global dug inputof =
   in
   Lymp.close !timer.py;
   let cost = float_of_int (num_of_alarms - !Options.timer_fs_alarm) /. float_of_int (!Options.timer_fi_alarm - !Options.timer_fs_alarm) in
-  save_history global cost;
+  if !Options.timer_training then save_history global cost;
   prerr_memory_usage ()
 
 let coarsening_fs spec global access dug worklist inputof =
@@ -783,7 +784,7 @@ let coarsening_fs spec global access dug worklist inputof =
 
   let used = memory_usage () in
   if used > !timer.total_memory then
-    let _ = prerr_endline ("Out of Memory: " ^ string_of_int used) in
+    let _ = prerr_endline ("\nOut of Memory: " ^ string_of_int used) in
     finalize ~out_of_mem:true spec global dug inputof;
     exit 0
   else if used > !timer.current_memory then

@@ -83,6 +83,7 @@ let timer_manual_coarsen = ref ""
 let timer_explore_rate = ref 0
 let timer_fi_alarm = ref 0
 let timer_fs_alarm = ref 0
+let timer_training = ref false
 
 (* Marshaling *)
 let marshal_in = ref false
@@ -156,6 +157,7 @@ let opts =
   ("-timer_total_memory", (Arg.Int (fun x -> timer_total_memory := x)), "Maximum memory");
   ("-timer_coeff", (Arg.Float (fun x -> timer_coeff := x)), "Coefficient for memory-aware abstraction coarsening");
   ("-timer_auto_coarsen", (Arg.Set timer_auto_coarsen), "Timer scheduler");
+  ("-timer_training", (Arg.Set timer_training), "Timer training");
   ("-timer_explore_rate", (Arg.Int (fun x -> timer_explore_rate := x)), "Timer scheduler");
   ("-timer_manual_coarsen", (Arg.String (fun s -> timer_manual_coarsen := s)), "Timer scheduler");
   ("-timer_fi_alarm", (Arg.Int (fun x -> timer_fi_alarm := x)), "Maximum memory");
