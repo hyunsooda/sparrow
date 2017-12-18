@@ -87,8 +87,9 @@ let extract_feature global inputof worklist ~total_memory ~base_memory ~fi_heigh
   prerr_endline ("Height : " ^ string_of_int height);
   prerr_endline ("Mem : " ^ string_of_int memory);
   prerr_endline ("Work : " ^ string_of_int works);
-  prerr_endline ("Height : " ^ string_of_float feat.lattice_height);
+  prerr_endline ("Budget : " ^ string_of_float feat.memory_budget);
   prerr_endline ("Mem : " ^ string_of_float feat.memory_consumption);
+  prerr_endline ("Height : " ^ string_of_float feat.lattice_height);
   prerr_endline ("Work : " ^ string_of_float feat.worklist_size);
   feat
 

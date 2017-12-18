@@ -769,8 +769,9 @@ let finalize ?(out_of_mem=false) spec global dug inputof =
       BatMap.cardinal new_alarms_part
   in
   Lymp.close !timer.py;
-  let cost = float_of_int (num_of_alarms - !Options.timer_fs_alarm) /. float_of_int (!Options.timer_fi_alarm - !Options.timer_fs_alarm) in
-  if !Options.timer_training then save_history global cost;
+  (if !Options.timer_training then
+     let cost = float_of_int (num_of_alarms - !Options.timer_fs_alarm) /. float_of_int (!Options.timer_fi_alarm - !Options.timer_fs_alarm) in
+     save_history global cost);
   prerr_memory_usage ()
 
 let coarsening_fs spec global access dug worklist inputof =
