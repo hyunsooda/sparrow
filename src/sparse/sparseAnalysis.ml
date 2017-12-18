@@ -208,10 +208,10 @@ struct
      -> (Worklist.t * Global.t * DUGraph.t * Table.t * Table.t)
   =fun spec access (works, global, dug, inputof, outputof) ->
     print_iteration ();
-    let (spec, dug, works, inputof) = 
+    let (spec, dug, works, inputof, outputof) = 
       match spec.Spec.coarsening_fs with 
-        Some f -> f spec global access dug works inputof
-      | None -> (spec, dug, works, inputof) 
+        Some f -> f spec global access dug works inputof outputof
+      | None -> (spec, dug, works, inputof, outputof) 
     in
 (*    (if (Sys.time () -. !l_timer) > 50.0 then 
       let queries = match spec.inspect_alarm with Some f -> f global spec inputof | None -> [] in

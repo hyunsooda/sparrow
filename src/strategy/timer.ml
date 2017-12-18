@@ -81,6 +81,18 @@ let empty = {
 
 let timer = ref empty
 
+let prerr_memory_info timer =
+  (* XXX: quick_stat *)
+  let stat = Gc.stat () in
+  (* total 128 GB *)
+  let live_mem = stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 8 in
+  let heap_mem = stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8 in
+  prerr_endline "=== Memory Usage ===";
+  prerr_endline ("live mem   : " ^ string_of_int live_mem ^ " / " ^ string_of_int timer.total_memory ^ "MB");
+  prerr_endline ("total heap : " ^ string_of_int heap_mem ^ " / " ^ string_of_int timer.total_memory ^ "MB");
+  prerr_endline ("actual heap : " ^ string_of_int (heap_mem - timer.base_memory) ^ " / " ^ string_of_int (timer.total_memory - timer.base_memory));
+  ()
+
 let prdbg_endline x =
   if !Options.timer_debug then
     prerr_endline ("DEBUG::"^x)
@@ -158,7 +170,7 @@ let coarsen_portion global timer worklist inputof =
     let clf = Lymp.Pystr (!Options.timer_clf ^ ".strategy") in
     let vec = List.map (fun x -> Lymp.Pyfloat x) mem_feature in
     let portion =
-      if !Options.timer_training && (!Options.timer_iteration < 10 || Random.int 1000 < (!Options.timer_explore_rate * 10 - !Options.timer_iteration)) then
+      if !Options.timer_training && (!Options.timer_iteration < 5 || Random.int 1000 < (!Options.timer_explore_rate * 10 - !Options.timer_iteration)) then
         let _ = prerr_endline "Randomly chosen" in
         (Random.int 10 |> float_of_int) /. 10.0
       else
@@ -187,10 +199,8 @@ let coarsen_portion global timer worklist inputof =
 (*     prerr_endline ("x : " ^ string_of_float x); *)
     let controls = Str.split (Str.regexp "[ \t\n]+") (!Options.timer_manual_coarsen) in
     let action = try List.nth controls (timer.time_stamp - 1) with _ -> "0" in
-    let p = timer.num_of_locset * (int_of_string action) / 100 - timer.num_of_coarsen in
-(*     dump_feature global timer inputof worklist action; *)
-    prerr_endline ("portion : " ^ string_of_int p);
-    p
+    prerr_endline ("portion : " ^ action);
+    (timer.num_of_locset - timer.num_of_coarsen) * (int_of_string action) / 100
   else if timer.total_memory > 0 then
     let actual_used_mem = memory_usage () - timer.base_memory in
     let possible_mem = timer.total_memory - timer.base_memory in
@@ -304,27 +314,33 @@ let filter locset_coarsen node dug =
     ) (DUGraph.pred node dug) (PowLoc.empty, dug)
 
 (* coarsening all nodes in dug *)
-let coarsening_dug global access locset_coarsen dug worklist inputof spec =
-  if PowLoc.is_empty locset_coarsen then (spec,dug,worklist,inputof)
+let coarsening_dug global access locset_coarsen dug worklist inputof outputof spec =
+  if PowLoc.is_empty locset_coarsen then (spec,dug,worklist,inputof,outputof)
   else
-    let (dug,worklist_candidate,inputof) =
-      DUGraph.fold_node (fun node (dug,worklist_candidate,inputof) ->
+    let (dug,worklist_candidate,inputof,outputof) =
+      DUGraph.fold_node (fun node (dug,worklist_candidate,inputof,outputof) ->
           let _ = Profiler.start_event "coarsening filter" in
           let (locset_coarsen, dug) = filter locset_coarsen node dug in
           let _ = Profiler.finish_event "coarsening filter" in
-          if PowLoc.is_empty locset_coarsen then (dug, worklist_candidate, inputof)
+          if PowLoc.is_empty locset_coarsen then (dug, worklist_candidate, inputof,outputof)
           else
-            let locset_coarsen = PowLoc.inter (Access.Info.useof (Access.find_node node access)) locset_coarsen in
-            let old_mem = Table.find node inputof in
+            let used = Access.Info.useof (Access.find_node node access) in
+            let (old_input_mem, old_output_mem) = (Table.find node inputof, Table.find node outputof) in
             let _ = Profiler.start_event "coarsening mem" in
-            let new_mem = PowLoc.fold (fun l -> Mem.add l
-              (try Hashtbl.find DynamicFeature.premem_hash l with _ -> Val.bot)
-              ) locset_coarsen old_mem in
+            let (new_input_mem, new_output_mem) = PowLoc.fold (fun l (new_input_mem, new_output_mem) ->
+                if PowLoc.mem l used then 
+                  (Mem.add l (try Hashtbl.find DynamicFeature.premem_hash l with _ -> Val.bot)
+                  new_input_mem, new_output_mem)
+                else
+                  (Mem.remove l new_input_mem, Mem.remove l new_output_mem)
+              ) locset_coarsen (old_input_mem, old_output_mem) in
             let _ = Profiler.finish_event "coarsening mem" in
             let worklist_candidate =
 (*              if Mem.unstables old_mem new_mem unstable spec.Spec.locset_fs = [] then worklist
               else*) node::worklist_candidate in
-            (dug, worklist_candidate, Table.add node new_mem inputof)) dug (dug,[],inputof)
+            (dug, worklist_candidate,
+             Table.add node new_input_mem inputof,
+             Table.add node new_output_mem outputof)) dug (dug,[],inputof,outputof)
     in
     let (to_add, to_remove) = List.fold_left (fun (to_add, to_remove) node ->
         if DUGraph.pred node dug = [] && DUGraph.succ node dug = [] then (to_add, BatSet.add node to_remove)
@@ -337,7 +353,7 @@ let coarsening_dug global access locset_coarsen dug worklist inputof spec =
 (*    let spec = { spec with Spec.locset_fs = PowLoc.diff spec.Spec.locset_fs locset_coarsen } in*)
     Hashtbl.filteri_inplace (fun k _ -> not (PowLoc.mem k locset_coarsen)) DynamicFeature.locset_hash;
 (*    PowLoc.iter (fun k -> Hashtbl.replace locset_fi_hash k k) locset_coarsen;*)
-    (spec,dug,worklist,inputof)
+    (spec,dug,worklist,inputof,outputof)
 
 (* coarsening all nodes in worklist *)
 let coarsening_worklist access locset_coarsen dug worklist inputof spec =
@@ -374,14 +390,14 @@ let coarsening_worklist access locset_coarsen dug worklist inputof spec =
     in
     (dug,worklist,inputof)
 
-let coarsening global access locset_coarsen dug worklist inputof spec =
+let coarsening global access locset_coarsen dug worklist inputof outputof spec =
   match coarsening_target with
-  | Dug -> coarsening_dug global access locset_coarsen dug worklist inputof spec
+  | Dug -> coarsening_dug global access locset_coarsen dug worklist inputof outputof spec
   | Worklist ->
     let (dug,worklist,inputof) = coarsening_worklist access locset_coarsen dug
         worklist inputof spec
     in
-    (spec,dug,worklist,inputof)
+    (spec,dug,worklist,inputof, outputof) (* TODO: outputof *)
 
 let print_stat spec global access dug =
   let alarm_fs = MarshalManager.input (global.file.Cil.fileName ^ ".alarm") |> flip Report.get Report.UnProven |> AlarmSet.of_list in
@@ -409,7 +425,7 @@ let encode_static_feature global locset =
       LocHashtbl.add hashtbl loc weight) weighted_locs;
   hashtbl
 
-let initialize spec global access dug worklist inputof =
+let initialize spec global access dug worklist inputof outputof =
   Random.self_init ();
   let widen_start = Sys.time () in
 (*   let alarm_fi = spec.Spec.pre_alarm |> flip Report.get Report.UnProven |> AlarmSet.of_list in *)
@@ -427,7 +443,7 @@ let initialize spec global access dug worklist inputof =
   prerr_endline ("\n== feature took " ^ string_of_float (Sys.time () -. widen_start));
   (* for efficiency *)
   let dynamic_feature = DynamicFeature.initialize_cache spec.Spec.locset target_locset spec.Spec.premem in
-  let (spec, dug, worklist, inputof) = coarsening global access locset_coarsen dug worklist inputof spec in
+  let (spec, dug, worklist, inputof, outputof) = coarsening global access locset_coarsen dug worklist inputof outputof spec in
   let prepare = int_of_float (Sys.time () -. widen_start) in
 (*   let deadline = !Options.timer_deadline - prepare in *)
   let base_memory = memory_usage () in
@@ -453,7 +469,7 @@ let initialize spec global access dug worklist inputof =
                    |> flip Report.get Report.UnProven in*)
       (* TODO: revert the following when dynamic learning is necessary *)
 (*   timer_dump global dug inputof dynamic_feature new_alarms locset_coarsen 0; *)
-  (spec, dug, worklist, inputof)
+  (spec, dug, worklist, inputof, outputof)
 
 module Data = Set.Make(Loc)
 
@@ -702,18 +718,6 @@ let extract_data spec global access iteration  =
   prerr_endline ("Score of proxy: " ^ string_of_float score);
   exit 0
 
-let prerr_memory_info timer =
-  (* XXX: quick_stat *)
-  let stat = Gc.stat () in
-  (* total 128 GB *)
-  let live_mem = stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 8 in
-  let heap_mem = stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8 in
-  prerr_endline "=== Memory Usage ===";
-  prerr_endline ("live mem   : " ^ string_of_int live_mem ^ " / " ^ string_of_int timer.total_memory ^ "MB");
-  prerr_endline ("total heap : " ^ string_of_int heap_mem ^ " / " ^ string_of_int timer.total_memory ^ "MB");
-  prerr_endline ("actual heap : " ^ string_of_int (heap_mem - timer.base_memory) ^ " / " ^ string_of_int (timer.total_memory - timer.base_memory));
-  ()
-
 let extract_feature spec global alarms_part new_alarms_part inputof timer =
   if !Options.timer_static_rank then timer
   else
@@ -774,10 +778,10 @@ let finalize ?(out_of_mem=false) spec global dug inputof =
      save_history global cost);
   prerr_memory_usage ()
 
-let coarsening_fs spec global access dug worklist inputof =
-  let (spec, dug, worklist, inputof) =
-    if !timer.widen_start = 0.0 then initialize spec global access dug worklist inputof  (* initialize *)
-    else (spec, dug, worklist, inputof)
+let coarsening_fs spec global access dug worklist inputof outputof =
+  let (spec, dug, worklist, inputof, outputof) =
+    if !timer.widen_start = 0.0 then initialize spec global access dug worklist inputof outputof (* initialize *)
+    else (spec, dug, worklist, inputof, outputof)
   in
   let t0 = Sys.time () in
   let elapsed = t0 -. !timer.last in
@@ -802,7 +806,7 @@ let coarsening_fs spec global access dug worklist inputof =
                              current_memory = used;
                              (*old_inputof = inputof; *)}
       in
-      (spec, dug, worklist, inputof)
+      (spec, dug, worklist, inputof, outputof)
     else
       let _ = Profiler.reset () in
       let alarms = (BatOption.get spec.Spec.inspect_alarm) global spec inputof |> flip Report.get Report.UnProven in
@@ -818,7 +822,7 @@ let coarsening_fs spec global access dug worklist inputof =
       prerr_endline ("\n== Timer: Predict took " ^ string_of_float (Sys.time () -. t1));
       let num_of_works = Worklist.cardinal worklist in
       let t2 = Sys.time () in
-      let (spec, dug, worklist, inputof) = coarsening global access locset_coarsen dug worklist inputof spec in
+      let (spec, dug, worklist, inputof, outputof) = coarsening global access locset_coarsen dug worklist inputof outputof spec in
       prerr_endline ("\n== Timer: Coarsening dug took " ^ string_of_float (Sys.time () -. t2));
       prerr_endline ("Unproven Query          : " ^ string_of_int (BatMap.cardinal new_alarms_part));
       prerr_endline ("Unproven Query (acc)    : " ^ string_of_int (BatMap.cardinal alarms_part));
@@ -839,5 +843,5 @@ let coarsening_fs spec global access dug worklist inputof =
         current_memory = memory_usage ();
         num_of_coarsen = !timer.num_of_coarsen + num_of_coarsen;
         (*old_inputof = inputof; *)};
-      (spec,dug,worklist,inputof)
-  else (spec, dug, worklist, inputof)
+      (spec,dug,worklist,inputof, outputof)
+  else (spec, dug, worklist, inputof, outputof)
