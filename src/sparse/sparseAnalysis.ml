@@ -53,7 +53,7 @@ struct
 
   let needwidening : DUGraph.node -> Worklist.t -> bool
   =fun idx wl -> Worklist.is_loopheader idx wl
-
+(*
   let def_locs_cache = Hashtbl.create 251
   let get_def_locs : Node.t -> DUGraph.t -> Access.PowLoc.t
   = fun idx dug ->
@@ -68,7 +68,7 @@ struct
         DUGraph.fold_succ union_locs dug idx PowLoc.empty
       in
       Hashtbl.add def_locs_cache idx def_locs; def_locs
-
+*)
   let print_iteration () =
     total_iterations := !total_iterations + 1;
     if !total_iterations = 1 then (g_clock := Sys.time(); l_clock := Sys.time ())
@@ -105,7 +105,7 @@ struct
     (works, global, inputof, Table.add idx new_output outputof)
 
   let get_unstable dug idx works old_output (new_output, global) =
-    let def_locs = Profiler.event "SparseAnalysis.widening_get_def_locs" (get_def_locs idx) dug in
+    let def_locs = Profiler.event "SparseAnalysis.widening_get_def_locs" (DUGraph.out_abslocs idx) dug in
     let is_unstb v1 v2 = not (Dom.B.le v2 v1) in
     let u = Profiler.event "SparseAnalysis.widening_unstable" (Dom.unstables old_output new_output is_unstb) def_locs in
     if u = [] then None
@@ -301,7 +301,7 @@ struct
 
   let finalize spec global access (worklist, global, dug, inputof, outputof) = 
     let inputof = 
-      if !Options.pfs < 100 || !Options.pfs_simple then bind_unanalyzed_node global spec.Spec.premem dug access inputof
+      if !Options.pfs < 100 || !Options.pfs_simple || !Options.timer_auto_coarsen then bind_unanalyzed_node global spec.Spec.premem dug access inputof
       else inputof
     in
     (if !Options.timer_total_memory > 0 then 

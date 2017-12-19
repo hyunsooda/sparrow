@@ -36,9 +36,11 @@ sig
   val remove_node       : node -> t -> t
   val get_abslocs       : node -> node -> t -> PowLoc.t
   val mem_duset         : Loc.t -> PowLoc.t -> bool
+  val out_abslocs       : node -> t -> PowLoc.t
   val add_absloc        : node -> Loc.t -> node -> t -> t
   val add_abslocs       : node -> PowLoc.t -> node -> t -> t
   val remove_abslocs    : node -> PowLoc.t -> node -> t -> t
+  val modify_abslocs    : node -> PowLoc.t -> node -> t -> t
 
 (** {2 Iterator } *)
 
@@ -107,6 +109,11 @@ struct
   let pred_e n dug = try G.pred_e dug n with _ -> []
   let nb_node dug = G.nb_vertex dug
 
+  let fold_node = G.fold_vertex
+  let fold_edges = G.fold_edges
+  let iter_edges = G.iter_edges
+  let fold_succ = G.fold_succ
+
   let remove_node : node -> t -> t
   =fun n dug -> G.remove_vertex dug n
 
@@ -133,25 +140,39 @@ struct
     if PowLoc.is_empty xs then dug else
     G.modify_edge_def xs dug src dst (PowLoc.union xs)
 
+  let out_locs_cache = Hashtbl.create 251
+
   let remove_absloc : node -> Loc.t -> node -> t -> t
   =fun src x dst dug ->
+    Hashtbl.remove out_locs_cache src;
     G.modify_edge_def PowLoc.empty dug src dst (PowLoc.remove x)
+
+  let modify_abslocs src xs dst dug =
+    Hashtbl.remove out_locs_cache src;
+    if PowLoc.is_empty xs then
+      remove_edge src dst dug
+    else
+      G.modify_edge_def xs dug src dst (fun _ -> xs)
 
   let remove_abslocs : node -> PowLoc.t -> node -> t -> t
   =fun src xs dst dug ->
     if PowLoc.is_empty xs then dug 
     else
       try 
+        Hashtbl.remove out_locs_cache src;
         let old_label = G.find_label dug src dst in
         let new_label = PowLoc.diff old_label xs in
         if PowLoc.is_empty new_label then G.remove_edge dug src dst
         else G.add_edge_e dug (src,new_label,dst)
       with _ -> dug 
 
-  let fold_node = G.fold_vertex
-  let fold_edges = G.fold_edges
-  let iter_edges = G.iter_edges
-  let fold_succ = G.fold_succ
+  let out_abslocs n dug =
+    try Hashtbl.find out_locs_cache n with Not_found ->
+      let def_locs =
+        let union_locs succ = PowLoc.union (get_abslocs n succ dug) in
+        fold_succ union_locs dug n PowLoc.empty
+      in
+      Hashtbl.add out_locs_cache n def_locs; def_locs
 
   let nb_loc dug =
     fold_edges (fun src dst size ->

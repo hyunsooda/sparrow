@@ -30,9 +30,11 @@ sig
   val remove_node       : node -> t -> t
   val get_abslocs       : node -> node -> t -> PowLoc.t
   val mem_duset         : Loc.t -> PowLoc.t -> bool
+  val out_abslocs       : node -> t -> PowLoc.t
   val add_absloc        : node -> Loc.t -> node -> t -> t
   val add_abslocs       : node -> PowLoc.t -> node -> t -> t
   val remove_abslocs    : node -> PowLoc.t -> node -> t -> t
+  val modify_abslocs    : node -> PowLoc.t -> node -> t -> t
 
 (** {2 Iterator } *)
 

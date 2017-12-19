@@ -113,7 +113,6 @@ let predict_proba py_module clf x feature static_feature =
   let vec = Lymp.Pylist (List.map (fun x -> Lymp.Pyfloat x) vec) in
   Lymp.get_float py_module "predict_proba" [clf; vec]
 
-module Hashtbl = LocHashtbl
 (*
 
 let clf_strategy global timer =
@@ -172,11 +171,11 @@ let coarsen_portion global timer worklist inputof =
     let portion =
       if !Options.timer_training && (!Options.timer_iteration < 5 || Random.int 1000 < (!Options.timer_explore_rate * 10 - !Options.timer_iteration)) then
         let _ = prerr_endline "Randomly chosen" in
-        (Random.int 10 |> float_of_int) /. 10.0
+        (Random.int 80 |> float_of_int) /. 100.0
       else
-        BatList.range 0 `To 10
+        BatList.range 0 `To 100
         |> List.map (fun x ->
-            let p = float_of_int x /. 10.0 in
+            let p = float_of_int x /. 100.0 in
             let vec = Lymp.Pylist (vec @ [Lymp.Pyfloat p]) in
             let estimation = Lymp.get_float py_module "predict_float" [clf; vec] in
             (p, estimation))
@@ -234,14 +233,14 @@ let rank_strategy global spec timer top =
         try MarshalManager.input ~dir:!Options.timer_dir (filename^".oracle")
         with _ -> prerr_endline "Can't find the oracle"; BatMap.empty
       in
-      Hashtbl.fold (fun k _ l ->
+      LocHashtbl.fold (fun k _ l ->
           let score =
             (try BatMap.find (timer.time_stamp, Loc.to_string k) oracle with _ -> 0.0)
           in
           (k, score)::l) DynamicFeature.locset_hash []
         |> List.sort (fun (_, x) (_, y) -> if x > y then -1 else if x = y then 0 else 1)
     else if (*!Options.timer_static_rank*) true then
-      Hashtbl.fold (fun k _ l -> (k, LocHashtbl.find timer.static_feature k)::l)
+      LocHashtbl.fold (fun k _ l -> (k, LocHashtbl.find timer.static_feature k)::l)
           DynamicFeature.locset_hash []
       |> List.sort (fun (_, x) (_, y) -> compare x y)
     else
@@ -302,7 +301,7 @@ let timer_dump global dug inputof feature new_alarms locset_coarsen time =
   MarshalManager.output ~dir (filename ^ ".alarm_history") alarm_history
 
 (* compute coarsening targets *)
-let filter locset_coarsen node dug =
+let filter global locset_coarsen node dug =
   list_fold (fun p (target, dug) ->
       let locs_on_edge = DUGraph.get_abslocs p node dug in
       let target_on_edge = PowLoc.inter locs_on_edge locset_coarsen in
@@ -313,6 +312,37 @@ let filter locset_coarsen node dug =
         (target, dug)
     ) (DUGraph.pred node dug) (PowLoc.empty, dug)
 
+(* memory sharing for inter-edges *)
+let optimize_dug global dug =
+  let uses_of_function = Hashtbl.create 256 in
+  let defs_of_function = Hashtbl.create 256 in
+  let calls = InterCfg.callnodesof global.icfg in
+  list_fold (fun call dug ->
+    let return = InterCfg.returnof call global.icfg in
+    InterCfg.ProcSet.fold (fun callee dug ->
+        let entry = InterCfg.entryof global.icfg callee in
+        let exit  = InterCfg.exitof  global.icfg callee in
+        let locs_on_call =
+          try
+            Hashtbl.find uses_of_function callee
+          with Not_found ->
+            let locs = DUGraph.get_abslocs call entry dug in
+            Hashtbl.add uses_of_function callee locs;
+            locs
+        in
+        let locs_on_return =
+          try
+            Hashtbl.find defs_of_function callee
+          with Not_found ->
+            let locs = DUGraph.get_abslocs exit return dug in
+            Hashtbl.add defs_of_function callee locs;
+            locs
+        in
+        dug
+        |> DUGraph.modify_abslocs call locs_on_call entry
+        |> DUGraph.modify_abslocs exit locs_on_return return
+      ) (InterCfg.get_callees call global.icfg) dug) calls dug
+
 (* coarsening all nodes in dug *)
 let coarsening_dug global access locset_coarsen dug worklist inputof outputof spec =
   if PowLoc.is_empty locset_coarsen then (spec,dug,worklist,inputof,outputof)
@@ -320,7 +350,7 @@ let coarsening_dug global access locset_coarsen dug worklist inputof outputof sp
     let (dug,worklist_candidate,inputof,outputof) =
       DUGraph.fold_node (fun node (dug,worklist_candidate,inputof,outputof) ->
           let _ = Profiler.start_event "coarsening filter" in
-          let (locset_coarsen, dug) = filter locset_coarsen node dug in
+          let (locset_coarsen, dug) = filter global locset_coarsen node dug in
           let _ = Profiler.finish_event "coarsening filter" in
           if PowLoc.is_empty locset_coarsen then (dug, worklist_candidate, inputof,outputof)
           else
@@ -329,7 +359,7 @@ let coarsening_dug global access locset_coarsen dug worklist inputof outputof sp
             let _ = Profiler.start_event "coarsening mem" in
             let (new_input_mem, new_output_mem) = PowLoc.fold (fun l (new_input_mem, new_output_mem) ->
                 if PowLoc.mem l used then 
-                  (Mem.add l (try Hashtbl.find DynamicFeature.premem_hash l with _ -> Val.bot)
+                  (Mem.add l (try LocHashtbl.find DynamicFeature.premem_hash l with _ -> Val.bot)
                   new_input_mem, new_output_mem)
                 else
                   (Mem.remove l new_input_mem, Mem.remove l new_output_mem)
@@ -342,6 +372,7 @@ let coarsening_dug global access locset_coarsen dug worklist inputof outputof sp
              Table.add node new_input_mem inputof,
              Table.add node new_output_mem outputof)) dug (dug,[],inputof,outputof)
     in
+    let dug = optimize_dug global dug in
     let (to_add, to_remove) = List.fold_left (fun (to_add, to_remove) node ->
         if DUGraph.pred node dug = [] && DUGraph.succ node dug = [] then (to_add, BatSet.add node to_remove)
         else (BatSet.add node to_add, to_remove)) (BatSet.empty, BatSet.empty) worklist_candidate
@@ -350,19 +381,26 @@ let coarsening_dug global access locset_coarsen dug worklist inputof outputof sp
       Worklist.remove_set to_remove worklist
       |> Worklist.push_plain_set to_add
     in
+    let (dug, inputof, outputof) =
+      BatSet.fold (fun node (dug, inputof, outputof) ->
+        if DUGraph.pred node dug = [] && DUGraph.succ node dug = [] then
+          (DUGraph.remove_node node dug, Table.remove node inputof, Table.remove node outputof)
+        else
+          (dug, inputof, outputof)) to_remove (dug, inputof, outputof)
+    in
 (*    let spec = { spec with Spec.locset_fs = PowLoc.diff spec.Spec.locset_fs locset_coarsen } in*)
-    Hashtbl.filteri_inplace (fun k _ -> not (PowLoc.mem k locset_coarsen)) DynamicFeature.locset_hash;
+    LocHashtbl.filteri_inplace (fun k _ -> not (PowLoc.mem k locset_coarsen)) DynamicFeature.locset_hash;
 (*    PowLoc.iter (fun k -> Hashtbl.replace locset_fi_hash k k) locset_coarsen;*)
     (spec,dug,worklist,inputof,outputof)
 
 (* coarsening all nodes in worklist *)
-let coarsening_worklist access locset_coarsen dug worklist inputof spec =
+let coarsening_worklist global access locset_coarsen dug worklist inputof spec =
   if PowLoc.is_empty locset_coarsen then (dug,worklist,inputof)
   else
     let (dug,candidate) =
       Worklist.fold (fun node (dug,candidate) ->
           let _ = Profiler.start_event "coarsening filter" in
-          let (locset_coarsen, dug) = filter locset_coarsen node dug in
+          let (locset_coarsen, dug) = filter global locset_coarsen node dug in
           let _ = Profiler.finish_event "coarsening filter" in
           if PowLoc.is_empty locset_coarsen then (dug, candidate)
       else (dug, (node,locset_coarsen)::candidate)) worklist (dug,[])
@@ -378,7 +416,7 @@ let coarsening_worklist access locset_coarsen dug worklist inputof spec =
         let old_mem = Table.find node inputof in
         let _ = Profiler.start_event "coarsening mem" in
         let new_mem = PowLoc.fold (fun l -> Mem.add l
-          (try Hashtbl.find DynamicFeature.premem_hash l with _ -> Val.bot)
+          (try LocHashtbl.find DynamicFeature.premem_hash l with _ -> Val.bot)
           ) locset_coarsen old_mem in
         let _ = Profiler.finish_event "coarsening mem" in
         let worklist =
@@ -394,7 +432,7 @@ let coarsening global access locset_coarsen dug worklist inputof outputof spec =
   match coarsening_target with
   | Dug -> coarsening_dug global access locset_coarsen dug worklist inputof outputof spec
   | Worklist ->
-    let (dug,worklist,inputof) = coarsening_worklist access locset_coarsen dug
+    let (dug,worklist,inputof) = coarsening_worklist global access locset_coarsen dug
         worklist inputof spec
     in
     (spec,dug,worklist,inputof, outputof) (* TODO: outputof *)
@@ -575,7 +613,7 @@ let extract_data_normal spec global access oc filename lst alarm_fs alarm_fi sta
         (* locs related to FS-alarms *)
         let pos_locs =
           Dependency.dependency_of_query_set_new false global dug access inter
-          |> PowLoc.filter (fun x -> (DynamicFeature.PowLocBit.mem (Hashtbl.find feature_prev.DynamicFeature.encoding x) feature_prev.DynamicFeature.non_bot))
+          |> PowLoc.filter (fun x -> (DynamicFeature.PowLocBit.mem (LocHashtbl.find feature_prev.DynamicFeature.encoding x) feature_prev.DynamicFeature.non_bot))
         in
         debug_info global inputof_prev feature_prev static_feature inter coarsen_history_old coarsen_history pos_locs;
         output_string oc ("#\t\t\t\tPos: "^(string_of_int (PowLoc.cardinal pos_locs))^"\n");
@@ -797,7 +835,7 @@ let coarsening_fs spec global access dug worklist inputof outputof =
     let _ = prerr_endline ("==Mem0 : " ^ string_of_int used) in
     let _ = prerr_memory_info !timer in
     let num_of_locset_fs = PowLoc.cardinal spec.Spec.locset_fs in
-    let num_of_locset = Hashtbl.length DynamicFeature.locset_hash in
+    let num_of_locset = LocHashtbl.length DynamicFeature.locset_hash in
     let num_of_coarsen = coarsen_portion global !timer worklist inputof in
     if num_of_locset_fs = 0 || num_of_coarsen = 0 then
       let _ = timer := { !timer with last = Sys.time ();
@@ -827,7 +865,7 @@ let coarsening_fs spec global access dug worklist inputof outputof =
       prerr_endline ("Unproven Query          : " ^ string_of_int (BatMap.cardinal new_alarms_part));
       prerr_endline ("Unproven Query (acc)    : " ^ string_of_int (BatMap.cardinal alarms_part));
       prerr_endline ("Coarsening Target       : " ^ string_of_int num_of_coarsen ^ " / " ^ string_of_int num_of_locset);
-(*      prerr_endline ("Coarsening Target (acc) : " ^ string_of_int (Hashtbl.length locset_fi_hash) ^ " / " ^ string_of_int num_of_locset);*)
+(*      prerr_endline ("Coarsening Target (acc) : " ^ string_of_int (LocHashtbl.length locset_fi_hash) ^ " / " ^ string_of_int num_of_locset);*)
       prerr_endline ("Analyzed Node           : " ^ string_of_int (PowNode.cardinal !SparseAnalysis.reach_node) ^ " / " ^ string_of_int !SparseAnalysis.nb_nodes);
       prerr_endline ("#Abs Locs on Dug        : " ^ string_of_int (DUGraph.nb_loc dug));
       prerr_endline ("#Node on Dug            : " ^ string_of_int (DUGraph.nb_node dug));
