@@ -361,10 +361,10 @@ let do_analysis : Global.t -> Global.t * Table.t * Table.t * Report.query list
     Spec.inspect_alarm = Some inspect_alarm_simple;
     Spec.pre_alarm = inspect_pre_alarm global;
     Spec.coarsening_fs =
-      if !Options.timer_total_memory > 0 then Some Timer.coarsening_fs
+      if !Options.timer_total_memory > 0 && !Options.timer_auto_coarsen then Some Timer.coarsening_fs
       else None;
     Spec.timer_finalize =
-      if !Options.timer_total_memory > 0 then Some Timer.finalize
+      if !Options.timer_total_memory > 0 && !Options.timer_auto_coarsen then Some Timer.finalize
       else None;
     Spec.extract_timer_data =
       if !Options.timer_extract then Some Timer.extract_data

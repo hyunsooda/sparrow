@@ -211,6 +211,10 @@ struct
     let (spec, dug, works, inputof, outputof) = 
       match spec.Spec.coarsening_fs with 
         Some f -> f spec global access dug works inputof outputof
+      | None when !Options.timer_total_memory > 0
+               && memory_usage () > !Options.timer_total_memory ->
+        prerr_endline ("\nOut of Memory: " ^ string_of_int (memory_usage ()));
+        exit 0
       | None -> (spec, dug, works, inputof, outputof) 
     in
 (*    (if (Sys.time () -. !l_timer) > 50.0 then 
