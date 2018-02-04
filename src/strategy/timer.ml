@@ -155,7 +155,8 @@ let append_history mem_feature portion =
   timer := { !timer with history = (mem_feature, portion)::(!timer.history) }
 
 let coarsen_portion global timer worklist inputof =
-  if timer.total_memory > 0 && !Options.timer_auto_coarsen then
+  if timer.total_memory > 0 && !Options.timer_auto_coarsen && (memory_usage () * 100 / timer.total_memory < 50) then 0
+  else if timer.total_memory > 0 && !Options.timer_auto_coarsen then
     let _ = prerr_endline ("Current Mem0 : " ^ string_of_int (memory_usage ())) in
     let mem_feature = MemoryFeature.extract_feature global inputof worklist
         ~total_memory:timer.total_memory ~base_memory:timer.base_memory
