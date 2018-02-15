@@ -429,7 +429,7 @@ let extract_set pid (lv,e) mem global feature =
     |> (if is_inc (lv,e) then PowLoc.fold add_inc locs else id)
     |> (if is_dec (lv,e) then PowLoc.fold add_dec locs else id)
     |> (if Global.is_rec pid global then PowLoc.fold add_mod_in_rec_fun locs else id)
-  with e -> prerr_endline "extract_set"; raise e
+  with e -> prerr_endline "extract_set"; feature
 
 let sem_fun = ItvSem.run AbsSem.Strong ItvSem.Spec.empty
 
