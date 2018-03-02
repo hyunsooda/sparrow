@@ -296,16 +296,16 @@ let marshal_in : Global.t -> Global.t * Table.t * Table.t
 = fun global ->
   let filename = Filename.basename global.file.fileName in
   let global = MarshalManager.input (filename ^ ".itv.global") in
-  let input = MarshalManager.input (filename ^ ".itv.input") in
-  let output = MarshalManager.input (filename ^ ".itv.output") in
+  let input = MarshalManager.input (filename ^ ".itv." ^ string_of_int !Options.pfs ^ ".input") in
+  let output = MarshalManager.input (filename ^ ".itv." ^ string_of_int !Options.pfs ^ ".output") in
   (global,input,output)
 
 let marshal_out : Global.t * Table.t * Table.t -> Global.t * Table.t * Table.t
 = fun (global,input,output) ->
   let filename = Filename.basename global.file.fileName in
   MarshalManager.output (filename ^ ".itv.global") global;
-  MarshalManager.output (filename ^ ".itv.input") input;
-  MarshalManager.output (filename ^ ".itv.output") output;
+  MarshalManager.output (filename ^ ".itv." ^ string_of_int !Options.pfs ^ ".input") input;
+  MarshalManager.output (filename ^ ".itv." ^ string_of_int !Options.pfs ^ ".output") output;
   (global,input,output)
 
 let inspect_alarm : Global.t -> Spec.t -> Table.t -> Report.query list

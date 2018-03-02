@@ -583,9 +583,9 @@ let scaffolded_functions mode spec node pid (lvo,f,exps) (mem, global) =
     | "memcpy" -> model_memcpy mode spec pid (lvo, exps) (mem, global)
     | "getpwent" -> model_getpwent mode spec node pid lvo f (mem,global)
     | "strcpy" -> model_strcpy mode spec node pid exps (mem, global)
-    | "strncpy" -> model_strncpy mode spec node pid exps (mem, global)
+    | "__builtin_strncpy" | "strncpy" -> model_strncpy mode spec node pid exps (mem, global)
     | "strcat" -> model_strcat mode spec node pid exps (mem, global)
-    | "strchr" | "strrchr" -> model_strchr mode spec node pid (lvo, exps) (mem, global)
+    | "__builtin_strchr" | "strchr" | "strrchr" -> model_strchr mode spec node pid (lvo, exps) (mem, global)
     | s when List.mem s mem_alloc_libs -> model_alloc_one mode spec pid lvo f (mem, global)
     | _ -> model_unknown mode spec node pid lvo f exps (mem, global)
   else
