@@ -94,9 +94,11 @@ let marshal_dir = ref "marshal"
 let marshal_in_global = ref false
 let marshal_in_dug = ref false
 let marshal_in_worklist = ref false
+let marshal_in_access = ref false
 let marshal_out_global = ref false
 let marshal_out_dug = ref false
 let marshal_out_worklist = ref false
+let marshal_out_access = ref false
 let marshal_out_alarm = ref false
 
 (* Debug *)
@@ -171,10 +173,12 @@ let opts =
   ("-marshal_dir", (Arg.String (fun s -> marshal_dir := s)), "Directory where the marshaled data exists (default: marshal/)");
   ("-marshal_in_global", (Arg.Set marshal_in_global), "Marshal");
   ("-marshal_in_dug", (Arg.Set marshal_in_dug), "Marshal");
+  ("-marshal_in_access", (Arg.Set marshal_in_access), "Marshal");
   ("-marshal_in_worklist", (Arg.Set marshal_in_worklist), "Marshal");
   ("-marshal_out_global", (Arg.Set marshal_out_global), "Marshal");
   ("-marshal_out_dug", (Arg.Set marshal_out_dug), "Marshal");
   ("-marshal_out_worklist", (Arg.Set marshal_out_worklist), "Marshal");
+  ("-marshal_out_access", (Arg.Set marshal_out_access), "Marshal");
   ("-marshal_out_alarm", (Arg.Set marshal_out_alarm), "Marshal");
   ("-int_overflow", (Arg.Set int_overflow), "Consider integer overflow");
   ]

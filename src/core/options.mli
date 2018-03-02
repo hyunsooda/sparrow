@@ -74,9 +74,11 @@ val marshal_dir : string ref
 val marshal_in_global : bool ref
 val marshal_in_dug : bool ref
 val marshal_in_worklist : bool ref
+val marshal_in_access : bool ref
 val marshal_out_global : bool ref
 val marshal_out_dug : bool ref
 val marshal_out_worklist : bool ref
+val marshal_out_access : bool ref
 val marshal_out_alarm : bool ref
 
 (** {2 Timer (experimental) } *)

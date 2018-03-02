@@ -322,11 +322,17 @@ struct
   let perform : Spec.t -> Global.t -> Global.t * Table.t * Table.t
   =fun spec global ->
     print_spec spec;
-    let access = StepManager.stepf false "Access Analysis" (AccessAnalysis.perform global spec.Spec.locset (Sem.run Strong spec)) spec.Spec.premem in
+    let filename = Filename.basename global.file.Cil.fileName in
+    let access =
+      if (!Options.marshal_in || !Options.marshal_in_access)
+        && Sys.file_exists (!Options.marshal_dir ^ "/" ^ filename ^ ".access") then 
+        MarshalManager.input (filename ^ ".access")
+      else
+        StepManager.stepf false "Access Analysis" (AccessAnalysis.perform global spec.Spec.locset (Sem.run Strong spec)) spec.Spec.premem
+    in
     (match spec.Spec.extract_timer_data with
      | Some f -> f spec global access !Options.timer_iteration
      | None -> ());
-    let filename = Filename.basename global.file.Cil.fileName in
     let dug = (* for experiment *)
       if (!Options.marshal_in || !Options.marshal_in_dug)
         && Sys.file_exists (!Options.marshal_dir ^ "/" ^ filename ^ ".dug") then 
@@ -342,9 +348,10 @@ struct
       else
         StepManager.stepf false "Workorder computation" Worklist.init dug 
     in  
-    (if !Options.marshal_out || (!Options.marshal_out_dug && !Options.marshal_out_worklist)
+    (if !Options.marshal_out || (!Options.marshal_out_dug && !Options.marshal_out_worklist && !Options.marshal_out_access)
      then 
     begin
+      MarshalManager.output (filename^".access") access;
       MarshalManager.output (filename^".dug") dug;
       MarshalManager.output (filename^".worklist") worklist
     end
