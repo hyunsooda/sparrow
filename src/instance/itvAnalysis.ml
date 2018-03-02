@@ -41,15 +41,15 @@ let print_abslocs_info locs =
  * Alarm Inspection *
  * **************** *)
 let ignore_alarm a arr offset =
-  (!Options.bugfinder >= 1
+  ((!Options.bugfinder >= 1 || !Options.filter_alarm)
     && (Allocsite.is_string_allocsite a
        || arr.ArrInfo.size = Itv.top
        || arr.ArrInfo.size = Itv.one
        || offset = Itv.top && arr.ArrInfo.size = Itv.nat
        || offset = Itv.zero))
-  || (!Options.bugfinder >= 2
+  || ((!Options.bugfinder >= 2 || !Options.filter_alarm)
       && not (Itv.is_const arr.ArrInfo.size))
-  || (!Options.bugfinder >= 3
+  || ((!Options.bugfinder >= 3 || !Options.filter_alarm)
        && (offset = Itv.top
           || Itv.meet arr.ArrInfo.size Itv.zero <> Itv.bot
           || (offset = Itv.top && arr.ArrInfo.offset <> Itv.top)))
@@ -272,7 +272,7 @@ let generate : Global.t * Table.t * target -> query list
     (qs, k+1)
   ) nodes ([],0)
   |> fst
-  |> opt (!Options.bugfinder > 0) (unsound_filter global)
+  |> opt (!Options.bugfinder > 0 || !Options.filter_alarm) (unsound_filter global)
 
 let generate_with_mem : Global.t * Mem.t * target -> query list
 =fun (global,mem,target) ->

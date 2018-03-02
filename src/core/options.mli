@@ -54,6 +54,7 @@ val bo : bool ref
 val nd : bool ref
 val dz : bool ref
 val show_all_query : bool ref
+val filter_alarm : bool ref
 
 (** {2 Pretty Printer & Debugging } *)
 
@@ -98,6 +99,7 @@ val timer_total_memory : int ref
 val timer_coeff : float ref
 val timer_auto_coarsen : bool ref
 val timer_training : bool ref
+val timer_random_search : bool ref
 val timer_manual_coarsen : string ref
 val timer_explore_rate : int ref
 val timer_fi_alarm : int ref

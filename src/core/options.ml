@@ -59,6 +59,7 @@ let bo = ref true
 let nd = ref false
 let dz = ref false
 let show_all_query = ref false
+let filter_alarm = ref false
 
 (* Timer *)
 let print_time = ref false
@@ -84,6 +85,7 @@ let timer_explore_rate = ref 0
 let timer_fi_alarm = ref 0
 let timer_fs_alarm = ref 0
 let timer_training = ref false
+let timer_random_search = ref false
 
 (* Marshaling *)
 let marshal_in = ref false
@@ -158,10 +160,12 @@ let opts =
   ("-timer_coeff", (Arg.Float (fun x -> timer_coeff := x)), "Coefficient for memory-aware abstraction coarsening");
   ("-timer_auto_coarsen", (Arg.Set timer_auto_coarsen), "Timer scheduler");
   ("-timer_training", (Arg.Set timer_training), "Timer training");
+  ("-timer_random_search", (Arg.Set timer_random_search), "Timer training");
   ("-timer_explore_rate", (Arg.Int (fun x -> timer_explore_rate := x)), "Timer scheduler");
   ("-timer_manual_coarsen", (Arg.String (fun s -> timer_manual_coarsen := s)), "Timer scheduler");
   ("-timer_fi_alarm", (Arg.Int (fun x -> timer_fi_alarm := x)), "Maximum memory");
   ("-timer_fs_alarm", (Arg.Int (fun x -> timer_fs_alarm := x)), "Maximum memory");
+  ("-filter_alarm", (Arg.Set filter_alarm), "Filtering alarms");
   ("-marshal_in", (Arg.Set marshal_in), "Read analysis results from marshaled data");
   ("-marshal_out", (Arg.Set marshal_out), "Write analysis results to marshaled data");
   ("-marshal_dir", (Arg.String (fun s -> marshal_dir := s)), "Directory where the marshaled data exists (default: marshal/)");

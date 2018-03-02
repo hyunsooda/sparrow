@@ -155,7 +155,11 @@ let append_history mem_feature portion =
   timer := { !timer with history = (mem_feature, portion)::(!timer.history) }
 
 let coarsen_portion global timer worklist inputof =
-  if timer.total_memory > 0 && !Options.timer_auto_coarsen && (memory_usage () * 100 / timer.total_memory < 50) then 0
+  if !Options.timer_random_search then
+    let _ = prerr_endline "Randomly chosen (random search)" in
+    let portion = (Random.int 100 |> float_of_int) /. 100.0 in
+    (timer.num_of_locset - timer.num_of_coarsen) * (portion *. 100.0 |> int_of_float) / 100
+  else if timer.total_memory > 0 && !Options.timer_auto_coarsen && (memory_usage () * 100 / timer.total_memory < 50) then 0
   else if timer.total_memory > 0 && !Options.timer_auto_coarsen then
     let _ = prerr_endline ("Current Mem0 : " ^ string_of_int (memory_usage ())) in
     let mem_feature = MemoryFeature.extract_feature global inputof worklist
@@ -792,6 +796,9 @@ let save_history global cost =
       `Null
   in
   let json = history_to_json !timer.history cost old_json in
+  (try
+     Unix.unlink (!Options.timer_clf ^ ".mcts")
+   with _ -> ());
   let oc = open_out_gen [Open_creat; Open_wronly; Open_text] 0o640 (!Options.timer_clf ^ ".mcts") in
   Yojson.Safe.pretty_to_channel oc json;
 (*   output_string oc ("Alarm : " ^ (string_of_int (BatMap.cardinal new_alarms_part)) ^"\n"); *)
