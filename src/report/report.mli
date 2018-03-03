@@ -27,4 +27,4 @@ val string_of_query : query -> string
 val partition : query list -> (part_unit, query list) BatMap.t
 val get : query list -> status -> query list
 val display_alarms : ?verbose:int -> string -> (part_unit, query list) BatMap.t -> unit
-val print : query list -> unit
+val print : Global.t -> query list -> unit

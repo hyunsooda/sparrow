@@ -252,49 +252,6 @@ let unsound_filter : Global.t -> query list -> query list
 let filter : query list -> status -> query list
 = fun qs s -> List.filter (fun q -> q.status = s) qs
 
-let filter_extern partition =
-  BatMap.map (fun ql ->
-      if List.exists (fun q ->
-          match q.allocsite with
-          | Some allocsite -> Allocsite.is_ext_allocsite allocsite
-          | None -> false) ql then
-        List.map (fun q -> { q with status = Proven}) ql
-      else ql) partition
- 
-let filter_global partition =
-  BatMap.map (fun ql ->
-      if List.exists (fun q ->
-          InterCfg.Node.get_pid q.node = InterCfg.global_proc) ql then
-        List.map (fun q -> { q with status = Proven}) ql
-      else ql) partition
- 
-let filter_lib partition =
-  BatMap.map (fun ql ->
-      if List.exists (fun q ->
-          match q.exp with
-          | AlarmExp.Strcpy (_, _, _) | AlarmExp.Strcat (_, _, _)
-          | AlarmExp.Strncpy (_, _, _, _) | AlarmExp.Memcpy (_, _, _, _)
-          | AlarmExp.Memmove (_, _, _, _) -> true
-          | _ -> false) ql
-      then
-        List.map (fun q -> { q with status = Proven}) ql
-      else ql) partition
-
-let filter_rec global partition =
-  BatMap.map (fun ql ->
-      if List.exists (fun q ->
-          Global.is_rec (InterCfg.Node.get_pid q.node) global) ql then
-        List.map (fun q -> { q with status = Proven}) ql
-      else ql) partition
- 
-let alarm_filter global ql =
-  Report.partition ql
-  |> opt !Options.filter_extern filter_extern
-  |> opt !Options.filter_global filter_global
-  |> opt !Options.filter_lib filter_lib
-  |> opt !Options.filter_rec (filter_rec global)
-  |> flip (BatMap.fold (fun ql result -> ql@result)) []
-
 let generate : Global.t * Table.t * target -> query list
 =fun (global,inputof,target) ->
   let nodes = InterCfg.nodesof global.icfg in
@@ -316,7 +273,6 @@ let generate : Global.t * Table.t * target -> query list
     (qs, k+1)
   ) nodes ([],0)
   |> fst
-  |> (alarm_filter global)
   |> opt (!Options.bugfinder > 0) (unsound_filter global)
 
 let generate_with_mem : Global.t * Mem.t * target -> query list

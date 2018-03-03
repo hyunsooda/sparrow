@@ -92,6 +92,39 @@ let string_of_query q =
    | _ -> "") ^ "  " ^
   q.desc ^ " " ^ status_to_string (get_status [q])
 
+let filter_extern partition =
+  BatMap.filterv (fun ql ->
+      List.exists (fun q ->
+          match q.allocsite with
+          | Some allocsite -> not (Allocsite.is_ext_allocsite allocsite)
+          | None -> true) ql) partition
+
+let filter_global partition =
+  BatMap.filterv (fun ql ->
+      not (List.exists (fun q ->
+          InterCfg.Node.get_pid q.node = InterCfg.global_proc) ql)) partition
+
+let filter_lib partition =
+  BatMap.filterv (fun ql ->
+      not (List.exists (fun q ->
+          match q.exp with
+          | AlarmExp.Strcpy (_, _, _) | AlarmExp.Strcat (_, _, _)
+          | AlarmExp.Strncpy (_, _, _, _) | AlarmExp.Memcpy (_, _, _, _)
+          | AlarmExp.Memmove (_, _, _, _) -> true
+          | _ -> false) ql)) partition
+
+let filter_rec global partition =
+  BatMap.filterv (fun ql ->
+      not (List.exists (fun q ->
+          Global.is_rec (InterCfg.Node.get_pid q.node) global) ql)) partition
+
+let alarm_filter global part =
+  part
+  |> opt !Options.filter_extern filter_extern
+  |> opt !Options.filter_global filter_global
+  |> opt !Options.filter_lib filter_lib
+  |> opt !Options.filter_rec (filter_rec global)
+
 let display_alarms ?(verbose=1) title alarms_part =
   prerr_endline "";
   prerr_endline ("= " ^ title ^ " =");
@@ -117,10 +150,9 @@ let display_alarms ?(verbose=1) title alarms_part =
       prerr_endline (string_of_int (k + 1) ^ ". " ^ CilHelper.s_location part_unit ^ " ");
   ) alarms_part
 
-let print : query list -> unit
-=fun queries ->
+let print global queries =
   let all = partition queries in
-  let unproven = partition (get queries UnProven) in
+  let unproven = partition (get queries UnProven) |> alarm_filter global in
   let bot = partition (get queries BotAlarm) in
   if not !Options.noalarm then
     begin
