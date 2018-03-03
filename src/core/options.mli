@@ -58,6 +58,7 @@ val filter_alarm : bool ref
 val filter_extern : bool ref
 val filter_global : bool ref
 val filter_lib : bool ref
+val filter_rec : bool ref
 
 (** {2 Pretty Printer & Debugging } *)
 

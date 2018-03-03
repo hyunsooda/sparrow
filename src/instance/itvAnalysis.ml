@@ -280,11 +280,19 @@ let filter_lib partition =
         List.map (fun q -> { q with status = Proven}) ql
       else ql) partition
 
+let filter_rec global partition =
+  BatMap.map (fun ql ->
+      if List.exists (fun q ->
+          Global.is_rec (InterCfg.Node.get_pid q.node) global) ql then
+        List.map (fun q -> { q with status = Proven}) ql
+      else ql) partition
+ 
 let alarm_filter global ql =
   Report.partition ql
   |> opt !Options.filter_extern filter_extern
   |> opt !Options.filter_global filter_global
   |> opt !Options.filter_lib filter_lib
+  |> opt !Options.filter_rec (filter_rec global)
   |> flip (BatMap.fold (fun ql result -> ql@result)) []
 
 let generate : Global.t * Table.t * target -> query list
