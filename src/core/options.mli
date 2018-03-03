@@ -55,6 +55,9 @@ val nd : bool ref
 val dz : bool ref
 val show_all_query : bool ref
 val filter_alarm : bool ref
+val filter_extern : bool ref
+val filter_global : bool ref
+val filter_lib : bool ref
 
 (** {2 Pretty Printer & Debugging } *)
 

@@ -60,6 +60,9 @@ let nd = ref false
 let dz = ref false
 let show_all_query = ref false
 let filter_alarm = ref false
+let filter_extern = ref false
+let filter_global = ref false
+let filter_lib = ref false
 
 (* Timer *)
 let print_time = ref false
@@ -168,6 +171,9 @@ let opts =
   ("-timer_fi_alarm", (Arg.Int (fun x -> timer_fi_alarm := x)), "Maximum memory");
   ("-timer_fs_alarm", (Arg.Int (fun x -> timer_fs_alarm := x)), "Maximum memory");
   ("-filter_alarm", (Arg.Set filter_alarm), "Filtering alarms");
+  ("-filter_extern", (Arg.Set filter_extern), "Filtering alarms");
+  ("-filter_global", (Arg.Set filter_global), "Filtering alarms");
+  ("-filter_lib", (Arg.Set filter_lib), "Filtering alarms");
   ("-marshal_in", (Arg.Set marshal_in), "Read analysis results from marshaled data");
   ("-marshal_out", (Arg.Set marshal_out), "Write analysis results to marshaled data");
   ("-marshal_dir", (Arg.String (fun s -> marshal_dir := s)), "Directory where the marshaled data exists (default: marshal/)");
