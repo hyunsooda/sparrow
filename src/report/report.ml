@@ -94,10 +94,10 @@ let string_of_query q =
 
 let filter_extern partition =
   BatMap.filterv (fun ql ->
-      List.exists (fun q ->
+      not (List.exists (fun q ->
           match q.allocsite with
-          | Some allocsite -> not (Allocsite.is_ext_allocsite allocsite)
-          | None -> true) ql) partition
+          | Some allocsite -> Allocsite.is_ext_allocsite allocsite
+          | None -> false) ql)) partition
 
 let filter_global partition =
   BatMap.filterv (fun ql ->

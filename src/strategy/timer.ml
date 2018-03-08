@@ -188,8 +188,8 @@ let coarsen_portion global timer worklist inputof =
         |> (fun x -> List.iter (fun (portion, alarm_estimation) ->
             prerr_endline ((string_of_float portion) ^ " : " ^ (string_of_float alarm_estimation))) x; x)
         |> (fun x -> List.filter (fun e -> snd (List.hd x) = snd e) x)
-(*        |> (fun x -> List.nth x (List.length x / 3))*)
-        |> List.hd  
+        |> (fun x -> List.nth x (List.length x / 2))
+(*        |> List.hd  *)
         |> fst
     in
     append_history mem_feature portion;
