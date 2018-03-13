@@ -58,7 +58,9 @@ val filter_alarm : bool ref
 val filter_extern : bool ref
 val filter_global : bool ref
 val filter_lib : bool ref
+val filter_complex_exp : bool ref
 val filter_rec : bool ref
+val filter_allocsite : string BatSet.t ref
 
 (** {2 Pretty Printer & Debugging } *)
 

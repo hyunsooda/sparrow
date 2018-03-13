@@ -118,12 +118,30 @@ let filter_rec global partition =
       not (List.exists (fun q ->
           Global.is_rec (InterCfg.Node.get_pid q.node) global) ql)) partition
 
+let filter_complex_exp partition =
+  BatMap.filterv (fun ql ->
+      not (List.exists (fun q ->
+        match q.exp with
+        | AlarmExp.ArrayExp (_, BinOp (bop, _, _, _), _) -> bop = BAnd || bop = BOr || bop = BXor
+        | AlarmExp.ArrayExp (_, Lval (Var vi, _), _) -> vi.vglob
+        | AlarmExp.DerefExp (Lval (Var vi, _), _) -> vi.vglob
+        | _ -> false) ql)) partition
+
+let filter_allocsite partition =
+  BatMap.filterv (fun ql ->
+      not (List.exists (fun q ->
+          match q.allocsite with
+          | Some allocsite -> BatSet.mem (Allocsite.to_string allocsite) !Options.filter_allocsite
+          | None -> false) ql)) partition
+
 let alarm_filter global part =
   part
   |> opt !Options.filter_extern filter_extern
   |> opt !Options.filter_global filter_global
   |> opt !Options.filter_lib filter_lib
+  |> opt !Options.filter_complex_exp filter_complex_exp
   |> opt !Options.filter_rec (filter_rec global)
+  |> opt (not (BatSet.is_empty !Options.filter_allocsite)) filter_allocsite
 
 let display_alarms ?(verbose=1) title alarms_part =
   prerr_endline "";
