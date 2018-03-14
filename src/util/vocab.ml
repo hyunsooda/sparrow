@@ -119,6 +119,10 @@ let memory_usage () =
   let stat = Gc.quick_stat () in
   stat.Gc.heap_words * Sys.word_size / 1024 / 1024 / 8
 
+let live_memory_usage () =
+  let stat = Gc.stat () in
+  stat.Gc.live_words * Sys.word_size / 1024 / 1024 / 8
+
 let prerr_memory_usage () =
   let heap_MB = memory_usage () in
   my_prerr_endline (string_of_int heap_MB ^ "MB")

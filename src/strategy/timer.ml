@@ -159,7 +159,7 @@ let coarsen_portion global timer worklist inputof =
     let _ = prerr_endline "Randomly chosen (random search)" in
     let portion = (Random.int 100 |> float_of_int) /. 100.0 in
     (timer.num_of_locset - timer.num_of_coarsen) * (portion *. 100.0 |> int_of_float) / 100
-  else if timer.total_memory > 0 && !Options.timer_auto_coarsen && (memory_usage () * 100 / timer.total_memory < 50) then 0
+  else if timer.total_memory > 0 && !Options.timer_auto_coarsen && (live_memory_usage () * 100 / timer.total_memory < 50) then 0
   else if timer.total_memory > 0 && !Options.timer_auto_coarsen then
     let _ = prerr_endline ("Current Mem0 : " ^ string_of_int (memory_usage ())) in
     let mem_feature = MemoryFeature.extract_feature global inputof worklist
@@ -188,8 +188,8 @@ let coarsen_portion global timer worklist inputof =
         |> (fun x -> List.iter (fun (portion, alarm_estimation) ->
             prerr_endline ((string_of_float portion) ^ " : " ^ (string_of_float alarm_estimation))) x; x)
         |> (fun x -> List.filter (fun e -> snd (List.hd x) = snd e) x)
-        |> (fun x -> List.nth x (List.length x / 2))
-(*        |> List.hd  *)
+(*         |> (fun x -> List.nth x (List.length x / 2)) *)
+        |> List.hd 
         |> fst
     in
     append_history mem_feature portion;
