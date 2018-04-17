@@ -311,7 +311,7 @@ let marshal_out : Global.t * Table.t * Table.t -> Global.t * Table.t * Table.t
 
 let inspect_alarm : Global.t -> Spec.t -> Table.t -> Report.query list
 = fun global _ inputof ->
-  (if !Options.bo then generate (global,inputof,Report.BO) else [])
+  (if !Options.bo && not !Options.nd then generate (global,inputof,Report.BO) else [])
   @ (if !Options.nd then generate (global,inputof,Report.ND) else [])
   @ (if !Options.dz then  generate (global,inputof,Report.DZ) else [])
 

@@ -312,6 +312,7 @@ struct
       match spec.Spec.timer_finalize with 
       | Some f -> f spec global dug inputof
       | None -> ());
+    prerr_memory_usage ();
     (worklist, global, dug, inputof, outputof)
 
   let print_spec : Spec.t -> unit
