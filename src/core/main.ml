@@ -93,6 +93,7 @@ let main () =
   prerr_endline "";
 
   Cil.initCIL ();
+  Cabs2cil.doCollapseCallCast := true;
 
   try
     StepManager.stepf true "Front-end" Frontend.parse ()
