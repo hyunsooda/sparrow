@@ -157,7 +157,14 @@ let append_history mem_feature portion =
 let coarsen_portion global timer worklist inputof =
   if !Options.timer_random_search then
     let _ = prerr_endline "Randomly chosen (random search)" in
+    let mem_feature = MemoryFeature.extract_feature global inputof worklist
+        ~total_memory:timer.total_memory ~base_memory:timer.base_memory
+        ~fi_height:timer.fi_height ~base_height:timer.base_height
+        ~total_worklist:timer.total_worklist
+        |> MemoryFeature.to_vector
+    in
     let portion = (Random.int 100 |> float_of_int) /. 100.0 in
+    append_history mem_feature portion;
     (timer.num_of_locset - timer.num_of_coarsen) * (portion *. 100.0 |> int_of_float) / 100
   else if timer.total_memory > 0 && !Options.timer_auto_coarsen && (memory_usage () * 100 / timer.total_memory < 50) then 0
   else if timer.total_memory > 0 && !Options.timer_auto_coarsen then
