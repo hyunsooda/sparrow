@@ -55,12 +55,19 @@ val nd : bool ref
 val dz : bool ref
 val show_all_query : bool ref
 val filter_alarm : bool ref
-val filter_extern : bool ref
-val filter_global : bool ref
+val filter_extern_forall : bool ref
+val filter_extern_exist : bool ref
+val filter_global_proc : bool ref
 val filter_lib : bool ref
 val filter_complex_exp : bool ref
 val filter_rec : bool ref
 val filter_allocsite : string BatSet.t ref
+val filter_large_ptr_set : bool ref
+val filter_large_caller_set : bool ref
+val filter_struct_deref : bool ref
+val filter_field_deref : bool ref
+val filter_nested_deref : bool ref
+val filter_global_deref : bool ref
 
 (** {2 Pretty Printer & Debugging } *)
 

@@ -48,6 +48,10 @@ let add_edge : BasicDom.Proc.t -> BasicDom.Proc.t -> t -> t
 let callees : BasicDom.Proc.t -> t -> PowProc.t
 = fun pid g -> G.succ g.graph pid |> PowProc.of_list
 
+let callers pid g = G.pred g.graph pid |> PowProc.of_list
+
+let fold_vertex f g a = G.fold_vertex f g.graph a
+
 let trans_callees : BasicDom.Proc.t -> t -> PowProc.t
 = fun pid g -> G.succ g.trans_calls pid |> PowProc.of_list
 

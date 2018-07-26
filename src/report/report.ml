@@ -92,14 +92,14 @@ let string_of_query q =
    | _ -> "") ^ "  " ^
   q.desc ^ " " ^ status_to_string (get_status [q])
 
-let filter_extern partition =
+let filter_extern f partition =
   BatMap.filterv (fun ql ->
-      not (List.exists (fun q ->
+      not (f (fun q ->
           match q.allocsite with
           | Some allocsite -> Allocsite.is_ext_allocsite allocsite
           | None -> false) ql)) partition
 
-let filter_global partition =
+let filter_global_proc partition =
   BatMap.filterv (fun ql ->
       not (List.exists (fun q ->
           InterCfg.Node.get_pid q.node = InterCfg.global_proc) ql)) partition
@@ -122,7 +122,16 @@ let filter_complex_exp partition =
   BatMap.filterv (fun ql ->
       not (List.exists (fun q ->
         match q.exp with
-        | AlarmExp.ArrayExp (_, BinOp (bop, _, _, _), _) -> bop = BAnd || bop = BOr || bop = BXor
+        | AlarmExp.ArrayExp (_, BinOp (bop, _, _, _), _)
+        | AlarmExp.DerefExp (BinOp (bop, _, _, _), _) when bop = BAnd || bop = BOr || bop = BXor || bop = MinusPI -> true
+        | AlarmExp.ArrayExp (_, BinOp (PlusPI, _, e, _), _)
+        | AlarmExp.DerefExp (BinOp (PlusPI, _, e, _), _) -> e = Cil.mone
+        | _ -> false) ql)) partition
+
+let filter_global_deref partition =
+  BatMap.filterv (fun ql ->
+      not (List.exists (fun q ->
+        match q.exp with
         | AlarmExp.ArrayExp (_, Lval (Var vi, _), _) -> vi.vglob
         | AlarmExp.DerefExp (Lval (Var vi, _), _) -> vi.vglob
         | _ -> false) ql)) partition
@@ -134,13 +143,73 @@ let filter_allocsite partition =
           | Some allocsite -> BatSet.mem (Allocsite.to_string allocsite) !Options.filter_allocsite
           | None -> false) ql)) partition
 
+let filter_large_ptr_set partition =
+  BatMap.filterv (fun ql -> List.length ql < 10) partition
+
+let filter_large_caller_set global partition =
+  BatMap.filterv (fun ql ->
+    let pids = List.fold_left (fun pids q ->
+      PowProc.add (InterCfg.Node.get_pid q.node) pids) PowProc.empty ql
+    in
+    not (PowProc.exists (fun pid ->
+      let callers = CallGraph.callers pid global.Global.callgraph in
+      PowProc.cardinal callers >= 10) pids)) partition
+
+let filter_struct_deref partition =
+  let rec is_struct_ptr = function
+    | TPtr (TComp (_, _), _) -> true
+    | _ -> false
+  in
+  BatMap.filterv (fun ql ->
+      not (List.exists (fun q ->
+          match q.exp with
+          | DerefExp (Lval lv, _) ->
+              is_struct_ptr (Cil.unrollTypeDeep (Cil.typeOfLval lv))
+          | DerefExp (CastE (t, _), _) ->
+              is_struct_ptr t
+          | _ -> false) ql)) partition
+
+let filter_field_deref partition =
+  BatMap.filterv (fun ql ->
+      not (List.exists (fun q ->
+        match q.exp with
+        | AlarmExp.DerefExp (Lval (_, offset), _) -> begin
+          match Cil.removeOffset offset with
+          | (_, Field (_, _)) -> true
+          | _ -> false
+        end
+        | _ -> false) ql)) partition
+
+let filter_nested_deref partition =
+  let rec has_deref = function
+    | BinOp (_, e1, e2, _) -> has_deref e1 || has_deref e2
+    | Lval (Mem _, _) -> true
+    | _ -> false
+  in
+  BatMap.filterv (fun ql ->
+      not (List.exists (fun q ->
+        match q.exp with
+        | AlarmExp.DerefExp (e, _) -> has_deref e
+        | _ -> false) ql)) partition
+
 let alarm_filter global part =
+(*  CallGraph.fold_vertex (fun v _ ->
+    prerr_endline (Proc.to_string v);
+    prerr_endline (string_of_int (PowProc.cardinal (CallGraph.callers v global.Global.callgraph))))
+  global.Global.callgraph ();*)
   part
-  |> opt !Options.filter_extern filter_extern
-  |> opt !Options.filter_global filter_global
+  |> opt !Options.filter_extern_forall (filter_extern List.for_all)
+  |> opt !Options.filter_extern_exist (filter_extern List.exists)
+  |> opt !Options.filter_global_proc filter_global_proc 
   |> opt !Options.filter_lib filter_lib
   |> opt !Options.filter_complex_exp filter_complex_exp
   |> opt !Options.filter_rec (filter_rec global)
+  |> opt !Options.filter_large_ptr_set filter_large_ptr_set
+  |> opt !Options.filter_large_caller_set (filter_large_caller_set global)
+  |> opt !Options.filter_struct_deref filter_struct_deref
+  |> opt !Options.filter_field_deref filter_field_deref
+  |> opt !Options.filter_nested_deref filter_nested_deref
+  |> opt !Options.filter_global_deref filter_global_deref
   |> opt (not (BatSet.is_empty !Options.filter_allocsite)) filter_allocsite
 
 let display_alarms ?(verbose=1) title alarms_part =
