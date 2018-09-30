@@ -4,14 +4,15 @@ Synopsis: Static analyzer for C.
 Authors: Programmin Research Laboratory (ROPAS), Seoul National University
 License: BSD-3-clause
 
-Description: Sparrow is a state-of-the-art static analyzer that aims to verify the absence of fatal bugs in C source. 
+Description: Sparrow is a state-of-the-art static analyzer that aims to verify the absence of fatal bugs in C source.
 Homepage: https://github.com/ropas/sparrow
 
 OASISFormat: 0.4
 BuildTools: ocamlbuild
 Plugins: META (0.4), DevFiles (0.4)
+AlphaFeatures: ocamlbuild_more_args
 
-PostBuildCommand: 
+PostBuildCommand:
   cp -f main.native bin/sparrow
   cp -f vis.native bin/sparrow-vis
   rm -f main.native vis.native test.native
@@ -53,3 +54,10 @@ Test "main"
   TestTools: sparrow
   WorkingDirectory: test
   Command: $test
+
+Document "sparrow"
+  Title: Sparrow
+  Type: custom (0.2)
+  XOCamlbuildPath: src
+  XCustom: $ocamlbuild sparrow.docdir/index.html -use-ocamlfind -docflags -hide-warnings,-charset,utf-8,-keep-code
+  PostCommand: cp sparrow.docdir/* docs/

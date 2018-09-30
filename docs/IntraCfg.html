@@ -1,0 +1,142 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="InterCfg.html">
+<link rel="next" href="AbsDom.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of class methods" rel=Appendix href="index_methods.html">
+<link title="Index of classes" rel=Appendix href="index_classes.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="CallGraph" rel="Chapter" href="CallGraph.html">
+<link title="InterCfg" rel="Chapter" href="InterCfg.html">
+<link title="IntraCfg" rel="Chapter" href="IntraCfg.html">
+<link title="AbsDom" rel="Chapter" href="AbsDom.html">
+<link title="MapDom" rel="Chapter" href="MapDom.html">
+<link title="PowDom" rel="Chapter" href="PowDom.html">
+<link title="ProdDom" rel="Chapter" href="ProdDom.html">
+<link title="ArrayBlk" rel="Chapter" href="ArrayBlk.html">
+<link title="Itv" rel="Chapter" href="Itv.html">
+<link title="StructBlk" rel="Chapter" href="StructBlk.html">
+<link title="InstrumentedMem" rel="Chapter" href="InstrumentedMem.html">
+<link title="ItvDom" rel="Chapter" href="ItvDom.html">
+<link title="OctDom" rel="Chapter" href="OctDom.html">
+<link title="OctImpactDom" rel="Chapter" href="OctImpactDom.html">
+<link title="TaintDom" rel="Chapter" href="TaintDom.html">
+<link title="AbsSem" rel="Chapter" href="AbsSem.html">
+<link title="ItvSem" rel="Chapter" href="ItvSem.html">
+<link title="OctImpactSem" rel="Chapter" href="OctImpactSem.html">
+<link title="OctSem" rel="Chapter" href="OctSem.html">
+<link title="TaintSem" rel="Chapter" href="TaintSem.html">
+<link title="Access" rel="Chapter" href="Access.html">
+<link title="AccessAnalysis" rel="Chapter" href="AccessAnalysis.html">
+<link title="AccessSem" rel="Chapter" href="AccessSem.html">
+<link title="Dug" rel="Chapter" href="Dug.html">
+<link title="SparseAnalysis" rel="Chapter" href="SparseAnalysis.html">
+<link title="SsaDug" rel="Chapter" href="SsaDug.html">
+<link title="Worklist" rel="Chapter" href="Worklist.html">
+<link title="PartialFlowSensitivity" rel="Chapter" href="PartialFlowSensitivity.html">
+<link title="UnsoundAlloc" rel="Chapter" href="UnsoundAlloc.html">
+<link title="UnsoundLib" rel="Chapter" href="UnsoundLib.html">
+<link title="UnsoundLoop" rel="Chapter" href="UnsoundLoop.html">
+<link title="ItvAnalysis" rel="Chapter" href="ItvAnalysis.html">
+<link title="OctAnalysis" rel="Chapter" href="OctAnalysis.html">
+<link title="OctImpactAnalysis" rel="Chapter" href="OctImpactAnalysis.html">
+<link title="TaintAnalysis" rel="Chapter" href="TaintAnalysis.html">
+<link title="AlarmExp" rel="Chapter" href="AlarmExp.html">
+<link title="Report" rel="Chapter" href="Report.html">
+<link title="Spec" rel="Chapter" href="Spec.html">
+<link title="Frontend" rel="Chapter" href="Frontend.html">
+<link title="PreAnalysis" rel="Chapter" href="PreAnalysis.html">
+<link title="Options" rel="Chapter" href="Options.html">
+<link title="CilHelper" rel="Chapter" href="CilHelper.html">
+<link title="Logging" rel="Chapter" href="Logging.html">
+<link title="MarshalManager" rel="Chapter" href="MarshalManager.html">
+<link title="Profiler" rel="Chapter" href="Profiler.html">
+<link title="StepManager" rel="Chapter" href="StepManager.html">
+<link title="Vocab" rel="Chapter" href="Vocab.html">
+<link title="Main" rel="Chapter" href="Main.html">
+<link title="Vis" rel="Chapter" href="Vis.html"><link title="Predecessors and Successors " rel="Section" href="#2_PredecessorsandSuccessors">
+<link title="Graph Manipulation " rel="Section" href="#2_GraphManipulation">
+<link title="Dominators " rel="Section" href="#2_Dominators">
+<link title="Print " rel="Section" href="#2_Print">
+<title>IntraCfg</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="InterCfg.html" title="InterCfg">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="AbsDom.html" title="AbsDom">Next</a>
+</div>
+<h1>Module <a href="type_IntraCfg.html">IntraCfg</a></h1>
+
+<pre><span id="MODULEIntraCfg"><span class="keyword">module</span> IntraCfg</span>: <code class="code">sig</code> <a href="IntraCfg.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<p>Intra-procedural CFG</p>
+</div>
+</div>
+<hr width="100%">
+
+<pre><span id="MODULENode"><span class="keyword">module</span> <a href="IntraCfg.Node.html">Node</a></span>: <code class="code">sig</code> <a href="IntraCfg.Node.html">..</a> <code class="code">end</code></pre>
+<pre><span id="MODULENodeSet"><span class="keyword">module</span> <a href="IntraCfg.NodeSet.html">NodeSet</a></span>: <code class="type">BatSet.S</code><code class="type">  with type elt = Node.t</code></pre>
+<pre><span id="MODULECmd"><span class="keyword">module</span> <a href="IntraCfg.Cmd.html">Cmd</a></span>: <code class="code">sig</code> <a href="IntraCfg.Cmd.html">..</a> <code class="code">end</code></pre>
+<pre><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> </pre>
+<div class="info ">
+<div class="info-desc">
+<p>Abstract type of intra-procedural CFG</p>
+</div>
+</div>
+
+
+<pre><span id="TYPEnode"><span class="keyword">type</span> <code class="type"></code>node</span> = <code class="type">Node.t</code> </pre>
+
+
+<pre><span id="TYPEcmd"><span class="keyword">type</span> <code class="type"></code>cmd</span> = <code class="type"><a href="IntraCfg.Cmd.html#TYPEt">Cmd.t</a></code> </pre>
+
+
+<pre><span id="VALinit"><span class="keyword">val</span> init</span> : <code class="type">Cil.fundec -> Cil.location -> <a href="IntraCfg.html#TYPEt">t</a></code></pre>
+<pre><span id="VALgenerate_global_proc"><span class="keyword">val</span> generate_global_proc</span> : <code class="type">Cil.global list -> Cil.fundec -> <a href="IntraCfg.html#TYPEt">t</a></code></pre>
+<pre><span id="VALget_pid"><span class="keyword">val</span> get_pid</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> string</code></pre>
+<pre><span id="VALget_formals"><span class="keyword">val</span> get_formals</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> Cil.varinfo list</code></pre>
+<pre><span id="VALget_scc_list"><span class="keyword">val</span> get_scc_list</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEnode">node</a> list list</code></pre>
+<pre><span id="VALnodesof"><span class="keyword">val</span> nodesof</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEnode">node</a> list</code></pre>
+<pre><span id="VALentryof"><span class="keyword">val</span> entryof</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEnode">node</a></code></pre>
+<pre><span id="VALexitof"><span class="keyword">val</span> exitof</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEnode">node</a></code></pre>
+<pre><span id="VALcallof"><span class="keyword">val</span> callof</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEnode">node</a></code></pre>
+<pre><span id="VALreturnof"><span class="keyword">val</span> returnof</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEnode">node</a></code></pre>
+<pre><span id="VALis_entry"><span class="keyword">val</span> is_entry</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> bool</code></pre>
+<pre><span id="VALis_exit"><span class="keyword">val</span> is_exit</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> bool</code></pre>
+<pre><span id="VALis_callnode"><span class="keyword">val</span> is_callnode</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> bool</code></pre>
+<pre><span id="VALis_returnnode"><span class="keyword">val</span> is_returnnode</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> bool</code></pre>
+<pre><span id="VALis_inside_loop"><span class="keyword">val</span> is_inside_loop</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> bool</code></pre>
+<pre><span id="VALfind_cmd"><span class="keyword">val</span> find_cmd</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEcmd">cmd</a></code></pre>
+<pre><span id="VALunreachable_node"><span class="keyword">val</span> unreachable_node</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> NodeSet.t</code></pre>
+<pre><span id="VALcompute_scc"><span class="keyword">val</span> compute_scc</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEt">t</a></code></pre>
+<pre><span id="VALoptimize"><span class="keyword">val</span> optimize</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEt">t</a></code></pre>
+<pre><span id="VALfold_node"><span class="keyword">val</span> fold_node</span> : <code class="type">(<a href="IntraCfg.html#TYPEnode">node</a> -> 'a -> 'a) -> <a href="IntraCfg.html#TYPEt">t</a> -> 'a -> 'a</code></pre>
+<pre><span id="VALfold_edges"><span class="keyword">val</span> fold_edges</span> : <code class="type">(<a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEnode">node</a> -> 'a -> 'a) -> <a href="IntraCfg.html#TYPEt">t</a> -> 'a -> 'a</code></pre>
+<pre><span id="VALiter_node"><span class="keyword">val</span> iter_node</span> : <code class="type">(<a href="IntraCfg.html#TYPEnode">node</a> -> unit) -> <a href="IntraCfg.html#TYPEt">t</a> -> unit</code></pre>
+<pre><span id="VALiter_vertex"><span class="keyword">val</span> iter_vertex</span> : <code class="type">(<a href="IntraCfg.html#TYPEnode">node</a> -> unit) -> <a href="IntraCfg.html#TYPEt">t</a> -> unit</code></pre><h3 id="2_PredecessorsandSuccessors">Predecessors and Successors </h3>
+<pre><span id="VALpred"><span class="keyword">val</span> pred</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEnode">node</a> list</code></pre>
+<pre><span id="VALsucc"><span class="keyword">val</span> succ</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEnode">node</a> list</code></pre><h3 id="2_GraphManipulation">Graph Manipulation </h3>
+<pre><span id="VALadd_cmd"><span class="keyword">val</span> add_cmd</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEcmd">cmd</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEt">t</a></code></pre>
+<pre><span id="VALadd_new_node"><span class="keyword">val</span> add_new_node</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEcmd">cmd</a> -> <a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEt">t</a></code></pre>
+<pre><span id="VALadd_node_with_cmd"><span class="keyword">val</span> add_node_with_cmd</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEcmd">cmd</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEt">t</a></code></pre>
+<pre><span id="VALadd_edge"><span class="keyword">val</span> add_edge</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEt">t</a></code></pre>
+<pre><span id="VALremove_node"><span class="keyword">val</span> remove_node</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEt">t</a></code></pre><h3 id="2_Dominators">Dominators </h3>
+<pre><span id="VALcompute_dom"><span class="keyword">val</span> compute_dom</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEt">t</a></code></pre>
+<pre><span id="VALdom_fronts"><span class="keyword">val</span> dom_fronts</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> NodeSet.t</code></pre><div class="info ">
+<div class="info-desc">
+<p><code class="code">dom_fronts n g</code> returns dominance frontiers of node <code class="code">n</code> in graph <code class="code">g</code></p>
+</div>
+</div>
+
+<pre><span id="VALchildren_of_dom_tree"><span class="keyword">val</span> children_of_dom_tree</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> NodeSet.t</code></pre>
+<pre><span id="VALparent_of_dom_tree"><span class="keyword">val</span> parent_of_dom_tree</span> : <code class="type"><a href="IntraCfg.html#TYPEnode">node</a> -> <a href="IntraCfg.html#TYPEt">t</a> -> <a href="IntraCfg.html#TYPEnode">node</a> option</code></pre><h3 id="2_Print">Print </h3>
+<pre><span id="VALprint_dot"><span class="keyword">val</span> print_dot</span> : <code class="type">Pervasives.out_channel -> <a href="IntraCfg.html#TYPEt">t</a> -> unit</code></pre>
+<pre><span id="VALto_json"><span class="keyword">val</span> to_json</span> : <code class="type"><a href="IntraCfg.html#TYPEt">t</a> -> Yojson.Safe.json</code></pre></body></html>

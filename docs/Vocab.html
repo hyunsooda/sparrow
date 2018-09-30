@@ -1,0 +1,116 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="StepManager.html">
+<link rel="next" href="Main.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of class methods" rel=Appendix href="index_methods.html">
+<link title="Index of classes" rel=Appendix href="index_classes.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="CallGraph" rel="Chapter" href="CallGraph.html">
+<link title="InterCfg" rel="Chapter" href="InterCfg.html">
+<link title="IntraCfg" rel="Chapter" href="IntraCfg.html">
+<link title="AbsDom" rel="Chapter" href="AbsDom.html">
+<link title="MapDom" rel="Chapter" href="MapDom.html">
+<link title="PowDom" rel="Chapter" href="PowDom.html">
+<link title="ProdDom" rel="Chapter" href="ProdDom.html">
+<link title="ArrayBlk" rel="Chapter" href="ArrayBlk.html">
+<link title="Itv" rel="Chapter" href="Itv.html">
+<link title="StructBlk" rel="Chapter" href="StructBlk.html">
+<link title="InstrumentedMem" rel="Chapter" href="InstrumentedMem.html">
+<link title="ItvDom" rel="Chapter" href="ItvDom.html">
+<link title="OctDom" rel="Chapter" href="OctDom.html">
+<link title="OctImpactDom" rel="Chapter" href="OctImpactDom.html">
+<link title="TaintDom" rel="Chapter" href="TaintDom.html">
+<link title="AbsSem" rel="Chapter" href="AbsSem.html">
+<link title="ItvSem" rel="Chapter" href="ItvSem.html">
+<link title="OctImpactSem" rel="Chapter" href="OctImpactSem.html">
+<link title="OctSem" rel="Chapter" href="OctSem.html">
+<link title="TaintSem" rel="Chapter" href="TaintSem.html">
+<link title="Access" rel="Chapter" href="Access.html">
+<link title="AccessAnalysis" rel="Chapter" href="AccessAnalysis.html">
+<link title="AccessSem" rel="Chapter" href="AccessSem.html">
+<link title="Dug" rel="Chapter" href="Dug.html">
+<link title="SparseAnalysis" rel="Chapter" href="SparseAnalysis.html">
+<link title="SsaDug" rel="Chapter" href="SsaDug.html">
+<link title="Worklist" rel="Chapter" href="Worklist.html">
+<link title="PartialFlowSensitivity" rel="Chapter" href="PartialFlowSensitivity.html">
+<link title="UnsoundAlloc" rel="Chapter" href="UnsoundAlloc.html">
+<link title="UnsoundLib" rel="Chapter" href="UnsoundLib.html">
+<link title="UnsoundLoop" rel="Chapter" href="UnsoundLoop.html">
+<link title="ItvAnalysis" rel="Chapter" href="ItvAnalysis.html">
+<link title="OctAnalysis" rel="Chapter" href="OctAnalysis.html">
+<link title="OctImpactAnalysis" rel="Chapter" href="OctImpactAnalysis.html">
+<link title="TaintAnalysis" rel="Chapter" href="TaintAnalysis.html">
+<link title="AlarmExp" rel="Chapter" href="AlarmExp.html">
+<link title="Report" rel="Chapter" href="Report.html">
+<link title="Spec" rel="Chapter" href="Spec.html">
+<link title="Frontend" rel="Chapter" href="Frontend.html">
+<link title="PreAnalysis" rel="Chapter" href="PreAnalysis.html">
+<link title="Options" rel="Chapter" href="Options.html">
+<link title="CilHelper" rel="Chapter" href="CilHelper.html">
+<link title="Logging" rel="Chapter" href="Logging.html">
+<link title="MarshalManager" rel="Chapter" href="MarshalManager.html">
+<link title="Profiler" rel="Chapter" href="Profiler.html">
+<link title="StepManager" rel="Chapter" href="StepManager.html">
+<link title="Vocab" rel="Chapter" href="Vocab.html">
+<link title="Main" rel="Chapter" href="Main.html">
+<link title="Vis" rel="Chapter" href="Vis.html"><title>Vocab</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="StepManager.html" title="StepManager">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="Main.html" title="Main">Next</a>
+</div>
+<h1>Module <a href="type_Vocab.html">Vocab</a></h1>
+
+<pre><span id="MODULEVocab"><span class="keyword">module</span> Vocab</span>: <code class="code">sig</code> <a href="Vocab.html">..</a> <code class="code">end</code></pre><div class="info module top">
+<div class="info-desc">
+<p>Vocabularies</p>
+</div>
+</div>
+<hr width="100%">
+
+<pre><span id="VAL(<<<)"><span class="keyword">val</span> (&lt;&lt;&lt;)</span> : <code class="type">('a -> 'b) -> ('c -> 'a) -> 'c -> 'b</code></pre>
+<pre><span id="VAL(>>>)"><span class="keyword">val</span> (&gt;&gt;&gt;)</span> : <code class="type">('a -> 'b) -> ('b -> 'c) -> 'a -> 'c</code></pre>
+<pre><span id="VAL($>)"><span class="keyword">val</span> ($&gt;)</span> : <code class="type">'a option -> ('a -> 'b option) -> 'b option</code></pre>
+<pre><span id="VAL(&>)"><span class="keyword">val</span> (&amp;&gt;)</span> : <code class="type">'a option -> ('a -> 'b) -> 'b option</code></pre>
+<pre><span id="VAL(@)"><span class="keyword">val</span> (@)</span> : <code class="type">'a list -> 'a list -> 'a list</code></pre>
+<pre><span id="VALid"><span class="keyword">val</span> id</span> : <code class="type">'a -> 'a</code></pre>
+<pre><span id="VALflip"><span class="keyword">val</span> flip</span> : <code class="type">('a -> 'b -> 'c) -> 'b -> 'a -> 'c</code></pre>
+<pre><span id="VALcond"><span class="keyword">val</span> cond</span> : <code class="type">bool -> ('a -> 'b) -> ('a -> 'b) -> 'a -> 'b</code></pre>
+<pre><span id="VALopt"><span class="keyword">val</span> opt</span> : <code class="type">bool -> ('a -> 'a) -> 'a -> 'a</code></pre>
+<pre><span id="VALcase"><span class="keyword">val</span> case</span> : <code class="type">(bool * ('a -> 'b)) list -> ('a -> 'b) -> 'a -> 'b</code></pre>
+<pre><span id="VALtuple"><span class="keyword">val</span> tuple</span> : <code class="type">'a -> 'a * 'a</code></pre>
+<pre><span id="VALcompare_string"><span class="keyword">val</span> compare_string</span> : <code class="type">string -> string -> int</code></pre>
+<pre><span id="VALcompare_bool"><span class="keyword">val</span> compare_bool</span> : <code class="type">bool -> bool -> int</code></pre>
+<pre><span id="VALcompare_int"><span class="keyword">val</span> compare_int</span> : <code class="type">int -> int -> int</code></pre>
+<pre><span id="VALdomof"><span class="keyword">val</span> domof</span> : <code class="type">('a, 'b) BatMap.t -> 'a BatSet.t</code></pre>
+<pre><span id="VALlist_fold"><span class="keyword">val</span> list_fold</span> : <code class="type">('a -> 'b -> 'b) -> 'a list -> 'b -> 'b</code></pre>
+<pre><span id="VALlist_fold2"><span class="keyword">val</span> list_fold2</span> : <code class="type">('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c</code></pre>
+<pre><span id="VALlist_fold2_prefix"><span class="keyword">val</span> list_fold2_prefix</span> : <code class="type">('a -> 'b -> 'c -> 'c) -> 'a list -> 'b list -> 'c -> 'c</code></pre>
+<pre><span id="VALlist_rev"><span class="keyword">val</span> list_rev</span> : <code class="type">'a list -> 'a list</code></pre>
+<pre><span id="VALappend_opt"><span class="keyword">val</span> append_opt</span> : <code class="type">'a option -> 'a list -> 'a list</code></pre>
+<pre><span id="VALfind_opt"><span class="keyword">val</span> find_opt</span> : <code class="type">'a -> ('a, 'b) BatMap.t -> 'b option</code></pre>
+<pre><span id="VALfind_def"><span class="keyword">val</span> find_def</span> : <code class="type">'a -> ('a, 'b) BatMap.t -> 'b -> 'b</code></pre>
+<pre><span id="VALlink_by_sep"><span class="keyword">val</span> link_by_sep</span> : <code class="type">string -> string -> string -> string</code></pre>
+<pre><span id="VALstring_of_list"><span class="keyword">val</span> string_of_list</span> : <code class="type">?first:string -><br>       ?last:string -> ?sep:string -> ('a -> string) -> 'a list -> string</code></pre>
+<pre><span id="VALstring_of_set"><span class="keyword">val</span> string_of_set</span> : <code class="type">?first:string -><br>       ?last:string -> ?sep:string -> ('a -> string) -> 'a BatSet.t -> string</code></pre>
+<pre><span id="VALstring_of_map"><span class="keyword">val</span> string_of_map</span> : <code class="type">?first:string -><br>       ?last:string -><br>       ?sep:string -><br>       ?indent:string -><br>       ('a -> string) -> ('b -> string) -> ('a, 'b) BatMap.t -> string</code></pre>
+<pre><span id="VALi2s"><span class="keyword">val</span> i2s</span> : <code class="type">int -> string</code></pre>
+<pre><span id="VALlist2set"><span class="keyword">val</span> list2set</span> : <code class="type">'a list -> 'a BatSet.t</code></pre>
+<pre><span id="VALset2list"><span class="keyword">val</span> set2list</span> : <code class="type">'a BatSet.t -> 'a list</code></pre>
+<pre><span id="VALset_union_small_big"><span class="keyword">val</span> set_union_small_big</span> : <code class="type">'a BatSet.t -> 'a BatSet.t -> 'a BatSet.t</code></pre>
+<pre><span id="VALprerr_progressbar"><span class="keyword">val</span> prerr_progressbar</span> : <code class="type">?itv:int -> int -> int -> unit</code></pre>
+<pre><span id="VALfix"><span class="keyword">val</span> fix</span> : <code class="type">('a BatSet.t -> 'a BatSet.t) -> 'a BatSet.t -> 'a BatSet.t</code></pre>
+<pre><span id="VALmy_prerr_endline"><span class="keyword">val</span> my_prerr_endline</span> : <code class="type">string -> unit</code></pre>
+<pre><span id="VALmy_prerr_newline"><span class="keyword">val</span> my_prerr_newline</span> : <code class="type">unit -> unit</code></pre>
+<pre><span id="VALmy_prerr_string"><span class="keyword">val</span> my_prerr_string</span> : <code class="type">string -> unit</code></pre>
+<pre><span id="VALprerr_memory_usage"><span class="keyword">val</span> prerr_memory_usage</span> : <code class="type">unit -> unit</code></pre></body></html>

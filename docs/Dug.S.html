@@ -1,0 +1,101 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="Up" href="Dug.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of class methods" rel=Appendix href="index_methods.html">
+<link title="Index of classes" rel=Appendix href="index_classes.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="CallGraph" rel="Chapter" href="CallGraph.html">
+<link title="InterCfg" rel="Chapter" href="InterCfg.html">
+<link title="IntraCfg" rel="Chapter" href="IntraCfg.html">
+<link title="AbsDom" rel="Chapter" href="AbsDom.html">
+<link title="MapDom" rel="Chapter" href="MapDom.html">
+<link title="PowDom" rel="Chapter" href="PowDom.html">
+<link title="ProdDom" rel="Chapter" href="ProdDom.html">
+<link title="ArrayBlk" rel="Chapter" href="ArrayBlk.html">
+<link title="Itv" rel="Chapter" href="Itv.html">
+<link title="StructBlk" rel="Chapter" href="StructBlk.html">
+<link title="InstrumentedMem" rel="Chapter" href="InstrumentedMem.html">
+<link title="ItvDom" rel="Chapter" href="ItvDom.html">
+<link title="OctDom" rel="Chapter" href="OctDom.html">
+<link title="OctImpactDom" rel="Chapter" href="OctImpactDom.html">
+<link title="TaintDom" rel="Chapter" href="TaintDom.html">
+<link title="AbsSem" rel="Chapter" href="AbsSem.html">
+<link title="ItvSem" rel="Chapter" href="ItvSem.html">
+<link title="OctImpactSem" rel="Chapter" href="OctImpactSem.html">
+<link title="OctSem" rel="Chapter" href="OctSem.html">
+<link title="TaintSem" rel="Chapter" href="TaintSem.html">
+<link title="Access" rel="Chapter" href="Access.html">
+<link title="AccessAnalysis" rel="Chapter" href="AccessAnalysis.html">
+<link title="AccessSem" rel="Chapter" href="AccessSem.html">
+<link title="Dug" rel="Chapter" href="Dug.html">
+<link title="SparseAnalysis" rel="Chapter" href="SparseAnalysis.html">
+<link title="SsaDug" rel="Chapter" href="SsaDug.html">
+<link title="Worklist" rel="Chapter" href="Worklist.html">
+<link title="PartialFlowSensitivity" rel="Chapter" href="PartialFlowSensitivity.html">
+<link title="UnsoundAlloc" rel="Chapter" href="UnsoundAlloc.html">
+<link title="UnsoundLib" rel="Chapter" href="UnsoundLib.html">
+<link title="UnsoundLoop" rel="Chapter" href="UnsoundLoop.html">
+<link title="ItvAnalysis" rel="Chapter" href="ItvAnalysis.html">
+<link title="OctAnalysis" rel="Chapter" href="OctAnalysis.html">
+<link title="OctImpactAnalysis" rel="Chapter" href="OctImpactAnalysis.html">
+<link title="TaintAnalysis" rel="Chapter" href="TaintAnalysis.html">
+<link title="AlarmExp" rel="Chapter" href="AlarmExp.html">
+<link title="Report" rel="Chapter" href="Report.html">
+<link title="Spec" rel="Chapter" href="Spec.html">
+<link title="Frontend" rel="Chapter" href="Frontend.html">
+<link title="PreAnalysis" rel="Chapter" href="PreAnalysis.html">
+<link title="Options" rel="Chapter" href="Options.html">
+<link title="CilHelper" rel="Chapter" href="CilHelper.html">
+<link title="Logging" rel="Chapter" href="Logging.html">
+<link title="MarshalManager" rel="Chapter" href="MarshalManager.html">
+<link title="Profiler" rel="Chapter" href="Profiler.html">
+<link title="StepManager" rel="Chapter" href="StepManager.html">
+<link title="Vocab" rel="Chapter" href="Vocab.html">
+<link title="Main" rel="Chapter" href="Main.html">
+<link title="Vis" rel="Chapter" href="Vis.html"><link title="Iterator " rel="Section" href="#2_Iterator">
+<link title="Print " rel="Section" href="#2_Print">
+<title>Dug.S</title>
+</head>
+<body>
+<div class="navbar">&nbsp;<a class="up" href="Dug.html" title="Dug">Up</a>
+&nbsp;</div>
+<h1>Module type <a href="type_Dug.S.html">Dug.S</a></h1>
+
+<pre><span id="MODULETYPES"><span class="keyword">module type</span> S</span> = <code class="code">sig</code> <a href="Dug.S.html">..</a> <code class="code">end</code></pre><hr width="100%">
+
+<pre><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> </pre>
+
+
+<pre><span id="TYPEnode"><span class="keyword">type</span> <code class="type"></code>node</span> = <code class="type">BasicDom.Node.t</code> </pre>
+
+
+<pre><span id="MODULELoc"><span class="keyword">module</span> <a href="Dug.S.Loc.html">Loc</a></span>: <code class="type"><a href="AbsDom.SET.html">AbsDom.SET</a></code><code class="type"> </code></pre>
+<pre><span id="MODULEPowLoc"><span class="keyword">module</span> <a href="Dug.S.PowLoc.html">PowLoc</a></span>: <code class="type"><a href="PowDom.CPO.html">PowDom.CPO</a></code><code class="type">  with type elt = Loc.t</code></pre>
+<pre><span id="VALcreate"><span class="keyword">val</span> create</span> : <code class="type">?size:int -> unit -> <a href="Dug.S.html#TYPEt">t</a></code></pre>
+<pre><span id="VALnb_node"><span class="keyword">val</span> nb_node</span> : <code class="type"><a href="Dug.S.html#TYPEt">t</a> -> int</code></pre>
+<pre><span id="VALnb_loc"><span class="keyword">val</span> nb_loc</span> : <code class="type"><a href="Dug.S.html#TYPEt">t</a> -> int</code></pre>
+<pre><span id="VALnodesof"><span class="keyword">val</span> nodesof</span> : <code class="type"><a href="Dug.S.html#TYPEt">t</a> -> <a href="Dug.S.html#TYPEnode">node</a> BatSet.t</code></pre>
+<pre><span id="VALsucc"><span class="keyword">val</span> succ</span> : <code class="type"><a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEt">t</a> -> <a href="Dug.S.html#TYPEnode">node</a> list</code></pre>
+<pre><span id="VALpred"><span class="keyword">val</span> pred</span> : <code class="type"><a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEt">t</a> -> <a href="Dug.S.html#TYPEnode">node</a> list</code></pre>
+<pre><span id="VALadd_edge"><span class="keyword">val</span> add_edge</span> : <code class="type"><a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEt">t</a> -> <a href="Dug.S.html#TYPEt">t</a></code></pre>
+<pre><span id="VALremove_node"><span class="keyword">val</span> remove_node</span> : <code class="type"><a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEt">t</a> -> <a href="Dug.S.html#TYPEt">t</a></code></pre>
+<pre><span id="VALget_abslocs"><span class="keyword">val</span> get_abslocs</span> : <code class="type"><a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEt">t</a> -> PowLoc.t</code></pre>
+<pre><span id="VALmem_duset"><span class="keyword">val</span> mem_duset</span> : <code class="type">Loc.t -> PowLoc.t -> bool</code></pre>
+<pre><span id="VALadd_absloc"><span class="keyword">val</span> add_absloc</span> : <code class="type"><a href="Dug.S.html#TYPEnode">node</a> -> Loc.t -> <a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEt">t</a> -> <a href="Dug.S.html#TYPEt">t</a></code></pre>
+<pre><span id="VALadd_abslocs"><span class="keyword">val</span> add_abslocs</span> : <code class="type"><a href="Dug.S.html#TYPEnode">node</a> -> PowLoc.t -> <a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEt">t</a> -> <a href="Dug.S.html#TYPEt">t</a></code></pre><h3 id="2_Iterator">Iterator </h3>
+<pre><span id="VALfold_node"><span class="keyword">val</span> fold_node</span> : <code class="type">(<a href="Dug.S.html#TYPEnode">node</a> -> 'a -> 'a) -> <a href="Dug.S.html#TYPEt">t</a> -> 'a -> 'a</code></pre>
+<pre><span id="VALfold_edges"><span class="keyword">val</span> fold_edges</span> : <code class="type">(<a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEnode">node</a> -> 'a -> 'a) -> <a href="Dug.S.html#TYPEt">t</a> -> 'a -> 'a</code></pre>
+<pre><span id="VALiter_node"><span class="keyword">val</span> iter_node</span> : <code class="type">(<a href="Dug.S.html#TYPEnode">node</a> -> unit) -> <a href="Dug.S.html#TYPEt">t</a> -> unit</code></pre>
+<pre><span id="VALiter_edges"><span class="keyword">val</span> iter_edges</span> : <code class="type">(<a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEnode">node</a> -> unit) -> <a href="Dug.S.html#TYPEt">t</a> -> unit</code></pre>
+<pre><span id="VALiter_edges_e"><span class="keyword">val</span> iter_edges_e</span> : <code class="type">(<a href="Dug.S.html#TYPEnode">node</a> -> <a href="Dug.S.html#TYPEnode">node</a> -> PowLoc.t -> unit) -> <a href="Dug.S.html#TYPEt">t</a> -> unit</code></pre>
+<pre><span id="VALfold_succ"><span class="keyword">val</span> fold_succ</span> : <code class="type">(<a href="Dug.S.html#TYPEnode">node</a> -> 'a -> 'a) -> <a href="Dug.S.html#TYPEt">t</a> -> <a href="Dug.S.html#TYPEnode">node</a> -> 'a -> 'a</code></pre><h3 id="2_Print">Print </h3>
+<pre><span id="VALto_dot"><span class="keyword">val</span> to_dot</span> : <code class="type"><a href="Dug.S.html#TYPEt">t</a> -> string</code></pre>
+<pre><span id="VALto_json"><span class="keyword">val</span> to_json</span> : <code class="type"><a href="Dug.S.html#TYPEt">t</a> -> Yojson.Safe.json</code></pre></body></html>

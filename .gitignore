@@ -23,6 +23,9 @@ setup.log
 bin/sparrow*
 sparrow-out
 
+# document directory
+sparrow.docdir
+
 # vim swp files
 .*.swp
 .*.swo

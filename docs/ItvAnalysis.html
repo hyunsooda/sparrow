@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="previous" href="UnsoundLoop.html">
+<link rel="next" href="OctAnalysis.html">
+<link rel="Up" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of class methods" rel=Appendix href="index_methods.html">
+<link title="Index of classes" rel=Appendix href="index_classes.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="CallGraph" rel="Chapter" href="CallGraph.html">
+<link title="InterCfg" rel="Chapter" href="InterCfg.html">
+<link title="IntraCfg" rel="Chapter" href="IntraCfg.html">
+<link title="AbsDom" rel="Chapter" href="AbsDom.html">
+<link title="MapDom" rel="Chapter" href="MapDom.html">
+<link title="PowDom" rel="Chapter" href="PowDom.html">
+<link title="ProdDom" rel="Chapter" href="ProdDom.html">
+<link title="ArrayBlk" rel="Chapter" href="ArrayBlk.html">
+<link title="Itv" rel="Chapter" href="Itv.html">
+<link title="StructBlk" rel="Chapter" href="StructBlk.html">
+<link title="InstrumentedMem" rel="Chapter" href="InstrumentedMem.html">
+<link title="ItvDom" rel="Chapter" href="ItvDom.html">
+<link title="OctDom" rel="Chapter" href="OctDom.html">
+<link title="OctImpactDom" rel="Chapter" href="OctImpactDom.html">
+<link title="TaintDom" rel="Chapter" href="TaintDom.html">
+<link title="AbsSem" rel="Chapter" href="AbsSem.html">
+<link title="ItvSem" rel="Chapter" href="ItvSem.html">
+<link title="OctImpactSem" rel="Chapter" href="OctImpactSem.html">
+<link title="OctSem" rel="Chapter" href="OctSem.html">
+<link title="TaintSem" rel="Chapter" href="TaintSem.html">
+<link title="Access" rel="Chapter" href="Access.html">
+<link title="AccessAnalysis" rel="Chapter" href="AccessAnalysis.html">
+<link title="AccessSem" rel="Chapter" href="AccessSem.html">
+<link title="Dug" rel="Chapter" href="Dug.html">
+<link title="SparseAnalysis" rel="Chapter" href="SparseAnalysis.html">
+<link title="SsaDug" rel="Chapter" href="SsaDug.html">
+<link title="Worklist" rel="Chapter" href="Worklist.html">
+<link title="PartialFlowSensitivity" rel="Chapter" href="PartialFlowSensitivity.html">
+<link title="UnsoundAlloc" rel="Chapter" href="UnsoundAlloc.html">
+<link title="UnsoundLib" rel="Chapter" href="UnsoundLib.html">
+<link title="UnsoundLoop" rel="Chapter" href="UnsoundLoop.html">
+<link title="ItvAnalysis" rel="Chapter" href="ItvAnalysis.html">
+<link title="OctAnalysis" rel="Chapter" href="OctAnalysis.html">
+<link title="OctImpactAnalysis" rel="Chapter" href="OctImpactAnalysis.html">
+<link title="TaintAnalysis" rel="Chapter" href="TaintAnalysis.html">
+<link title="AlarmExp" rel="Chapter" href="AlarmExp.html">
+<link title="Report" rel="Chapter" href="Report.html">
+<link title="Spec" rel="Chapter" href="Spec.html">
+<link title="Frontend" rel="Chapter" href="Frontend.html">
+<link title="PreAnalysis" rel="Chapter" href="PreAnalysis.html">
+<link title="Options" rel="Chapter" href="Options.html">
+<link title="CilHelper" rel="Chapter" href="CilHelper.html">
+<link title="Logging" rel="Chapter" href="Logging.html">
+<link title="MarshalManager" rel="Chapter" href="MarshalManager.html">
+<link title="Profiler" rel="Chapter" href="Profiler.html">
+<link title="StepManager" rel="Chapter" href="StepManager.html">
+<link title="Vocab" rel="Chapter" href="Vocab.html">
+<link title="Main" rel="Chapter" href="Main.html">
+<link title="Vis" rel="Chapter" href="Vis.html"><title>ItvAnalysis</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="UnsoundLoop.html" title="UnsoundLoop">Previous</a>
+&nbsp;<a class="up" href="index.html" title="Index">Up</a>
+&nbsp;<a class="post" href="OctAnalysis.html" title="OctAnalysis">Next</a>
+</div>
+<h1>Module <a href="type_ItvAnalysis.html">ItvAnalysis</a> (<a href="code_ItvAnalysis.html">.ml</a>)</h1>
+
+<pre><span id="MODULEItvAnalysis"><span class="keyword">module</span> ItvAnalysis</span>: <code class="code">sig</code> <a href="ItvAnalysis.html">..</a> <code class="code">end</code></pre><hr width="100%">
+
+<pre><span id="VALanalysis"><span class="keyword">val</span> <a href="code_VALItvAnalysis.analysis.html">analysis</a></span> : <code class="type"><a href="Spec.html#TYPEanalysis">Spec.analysis</a></code></pre>
+<pre><span id="MODULEAnalysis"><span class="keyword">module</span> <a href="ItvAnalysis.Analysis.html">Analysis</a></span>: <code class="type"><a href="SparseAnalysis.Make.html">SparseAnalysis.Make</a></code><code class="code">(</code><code class="type"><a href="ItvSem.html">ItvSem</a></code><code class="code">)</code></pre>
+<pre><span id="MODULETable"><span class="keyword">module</span> <a href="ItvAnalysis.Table.html">Table</a></span>: <code class="type">Analysis.Table</code></pre>
+<pre><span id="MODULESpec"><span class="keyword">module</span> <a href="ItvAnalysis.Spec.html">Spec</a></span>: <code class="type">Analysis.Spec</code></pre>
+<pre><span id="VALprint_abslocs_info"><span class="keyword">val</span> <a href="code_VALItvAnalysis.print_abslocs_info.html">print_abslocs_info</a></span> : <code class="type">BasicDom.Loc.t BatSet.t -> unit</code></pre>
+<pre><span id="VALignore_alarm"><span class="keyword">val</span> <a href="code_VALItvAnalysis.ignore_alarm.html">ignore_alarm</a></span> : <code class="type">BasicDom.Allocsite.t -> <a href="ArrayBlk.ArrInfo.html#TYPEt">ArrayBlk.ArrInfo.t</a> -> Itv.t -> bool</code></pre>
+<pre><span id="VALcheck_bo"><span class="keyword">val</span> <a href="code_VALItvAnalysis.check_bo.html">check_bo</a></span> : <code class="type">ItvDom.Val.t -><br>       ItvDom.Val.t option -><br>       (<a href="Report.html#TYPEstatus">Report.status</a> * BasicDom.Allocsite.t option * string) list</code></pre>
+<pre><span id="VALcheck_nd"><span class="keyword">val</span> <a href="code_VALItvAnalysis.check_nd.html">check_nd</a></span> : <code class="type">ItvDom.Val.t -> (<a href="Report.html#TYPEstatus">Report.status</a> * BasicDom.Allocsite.t option * string) list</code></pre>
+<pre><span id="VALinspect_aexp_bo"><span class="keyword">val</span> <a href="code_VALItvAnalysis.inspect_aexp_bo.html">inspect_aexp_bo</a></span> : <code class="type"><a href="InterCfg.html#TYPEnode">InterCfg.node</a> -><br>       <a href="AlarmExp.html#TYPEt">AlarmExp.t</a> -> ItvDom.Mem.t -> <a href="Report.html#TYPEquery">Report.query</a> list -> <a href="Report.html#TYPEquery">Report.query</a> list</code></pre>
+<pre><span id="VALinspect_aexp_nd"><span class="keyword">val</span> <a href="code_VALItvAnalysis.inspect_aexp_nd.html">inspect_aexp_nd</a></span> : <code class="type"><a href="InterCfg.html#TYPEnode">InterCfg.node</a> -><br>       <a href="AlarmExp.html#TYPEt">AlarmExp.t</a> -> ItvDom.Mem.t -> <a href="Report.html#TYPEquery">Report.query</a> list -> <a href="Report.html#TYPEquery">Report.query</a> list</code></pre>
+<pre><span id="VALcheck_dz"><span class="keyword">val</span> <a href="code_VALItvAnalysis.check_dz.html">check_dz</a></span> : <code class="type">ItvDom.Val.t -> (<a href="Report.html#TYPEstatus">Report.status</a> * 'a option * string) list</code></pre>
+<pre><span id="VALinspect_aexp_dz"><span class="keyword">val</span> <a href="code_VALItvAnalysis.inspect_aexp_dz.html">inspect_aexp_dz</a></span> : <code class="type"><a href="InterCfg.html#TYPEnode">InterCfg.node</a> -><br>       <a href="AlarmExp.html#TYPEt">AlarmExp.t</a> -> ItvDom.Mem.t -> <a href="Report.html#TYPEquery">Report.query</a> list -> <a href="Report.html#TYPEquery">Report.query</a> list</code></pre>
+<pre><span id="VALmachine_gen_code"><span class="keyword">val</span> <a href="code_VALItvAnalysis.machine_gen_code.html">machine_gen_code</a></span> : <code class="type"><a href="Report.html#TYPEquery">Report.query</a> -> bool</code></pre>
+<pre><span id="VALunsound_exp"><span class="keyword">val</span> <a href="code_VALItvAnalysis.unsound_exp.html">unsound_exp</a></span> : <code class="type">Cil.exp -> bool</code></pre>
+<pre><span id="VALunsound_lv"><span class="keyword">val</span> <a href="code_VALItvAnalysis.unsound_lv.html">unsound_lv</a></span> : <code class="type">Cil.lval -> bool</code></pre>
+<pre><span id="VALis_global_integer"><span class="keyword">val</span> <a href="code_VALItvAnalysis.is_global_integer.html">is_global_integer</a></span> : <code class="type">Cil.varinfo -> bool</code></pre>
+<pre><span id="VALis_union"><span class="keyword">val</span> <a href="code_VALItvAnalysis.is_union.html">is_union</a></span> : <code class="type">Cil.typ -> bool</code></pre>
+<pre><span id="VALis_temp_integer"><span class="keyword">val</span> <a href="code_VALItvAnalysis.is_temp_integer.html">is_temp_integer</a></span> : <code class="type">Cil.varinfo -> bool</code></pre>
+<pre><span id="VALunsound_aexp"><span class="keyword">val</span> <a href="code_VALItvAnalysis.unsound_aexp.html">unsound_aexp</a></span> : <code class="type"><a href="AlarmExp.html#TYPEt">AlarmExp.t</a> -> bool</code></pre>
+<pre><span id="VALformal_param"><span class="keyword">val</span> <a href="code_VALItvAnalysis.formal_param.html">formal_param</a></span> : <code class="type">Global.t -> <a href="Report.html#TYPEquery">Report.query</a> -> bool</code></pre>
+<pre><span id="VALunsound_filter"><span class="keyword">val</span> <a href="code_VALItvAnalysis.unsound_filter.html">unsound_filter</a></span> : <code class="type">Global.t -> <a href="Report.html#TYPEquery">Report.query</a> list -> <a href="Report.html#TYPEquery">Report.query</a> list</code></pre>
+<pre><span id="VALfilter"><span class="keyword">val</span> <a href="code_VALItvAnalysis.filter.html">filter</a></span> : <code class="type"><a href="Report.html#TYPEquery">Report.query</a> list -> <a href="Report.html#TYPEstatus">Report.status</a> -> <a href="Report.html#TYPEquery">Report.query</a> list</code></pre>
+<pre><span id="VALgenerate"><span class="keyword">val</span> <a href="code_VALItvAnalysis.generate.html">generate</a></span> : <code class="type">Global.t * Table.t * <a href="Report.html#TYPEtarget">Report.target</a> -> <a href="Report.html#TYPEquery">Report.query</a> list</code></pre>
+<pre><span id="VALgenerate_with_mem"><span class="keyword">val</span> <a href="code_VALItvAnalysis.generate_with_mem.html">generate_with_mem</a></span> : <code class="type">Global.t * ItvDom.Mem.t * <a href="Report.html#TYPEtarget">Report.target</a> -> <a href="Report.html#TYPEquery">Report.query</a> list</code></pre>
+<pre><span id="VALmarshal_in"><span class="keyword">val</span> <a href="code_VALItvAnalysis.marshal_in.html">marshal_in</a></span> : <code class="type">Global.t -> Global.t * Table.t * Table.t</code></pre>
+<pre><span id="VALmarshal_out"><span class="keyword">val</span> <a href="code_VALItvAnalysis.marshal_out.html">marshal_out</a></span> : <code class="type">Global.t * Table.t * Table.t -> Global.t * Table.t * Table.t</code></pre>
+<pre><span id="VALinspect_alarm"><span class="keyword">val</span> <a href="code_VALItvAnalysis.inspect_alarm.html">inspect_alarm</a></span> : <code class="type">Global.t -> Spec.t -> Table.t -> <a href="Report.html#TYPEquery">Report.query</a> list</code></pre>
+<pre><span id="VALget_locset"><span class="keyword">val</span> <a href="code_VALItvAnalysis.get_locset.html">get_locset</a></span> : <code class="type">ItvDom.Mem.t -> BasicDom.PowLoc.t</code></pre>
+<pre><span id="VALdo_analysis"><span class="keyword">val</span> <a href="code_VALItvAnalysis.do_analysis.html">do_analysis</a></span> : <code class="type">Global.t -> Global.t * Table.t * Table.t * <a href="Report.html#TYPEquery">Report.query</a> list</code></pre></body></html>

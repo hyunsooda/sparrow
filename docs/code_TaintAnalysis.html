@@ -1,0 +1,163 @@
+<html><head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of class methods" rel=Appendix href="index_methods.html">
+<link title="Index of classes" rel=Appendix href="index_classes.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="CallGraph" rel="Chapter" href="CallGraph.html">
+<link title="InterCfg" rel="Chapter" href="InterCfg.html">
+<link title="IntraCfg" rel="Chapter" href="IntraCfg.html">
+<link title="AbsDom" rel="Chapter" href="AbsDom.html">
+<link title="MapDom" rel="Chapter" href="MapDom.html">
+<link title="PowDom" rel="Chapter" href="PowDom.html">
+<link title="ProdDom" rel="Chapter" href="ProdDom.html">
+<link title="ArrayBlk" rel="Chapter" href="ArrayBlk.html">
+<link title="Itv" rel="Chapter" href="Itv.html">
+<link title="StructBlk" rel="Chapter" href="StructBlk.html">
+<link title="InstrumentedMem" rel="Chapter" href="InstrumentedMem.html">
+<link title="ItvDom" rel="Chapter" href="ItvDom.html">
+<link title="OctDom" rel="Chapter" href="OctDom.html">
+<link title="OctImpactDom" rel="Chapter" href="OctImpactDom.html">
+<link title="TaintDom" rel="Chapter" href="TaintDom.html">
+<link title="AbsSem" rel="Chapter" href="AbsSem.html">
+<link title="ItvSem" rel="Chapter" href="ItvSem.html">
+<link title="OctImpactSem" rel="Chapter" href="OctImpactSem.html">
+<link title="OctSem" rel="Chapter" href="OctSem.html">
+<link title="TaintSem" rel="Chapter" href="TaintSem.html">
+<link title="Access" rel="Chapter" href="Access.html">
+<link title="AccessAnalysis" rel="Chapter" href="AccessAnalysis.html">
+<link title="AccessSem" rel="Chapter" href="AccessSem.html">
+<link title="Dug" rel="Chapter" href="Dug.html">
+<link title="SparseAnalysis" rel="Chapter" href="SparseAnalysis.html">
+<link title="SsaDug" rel="Chapter" href="SsaDug.html">
+<link title="Worklist" rel="Chapter" href="Worklist.html">
+<link title="PartialFlowSensitivity" rel="Chapter" href="PartialFlowSensitivity.html">
+<link title="UnsoundAlloc" rel="Chapter" href="UnsoundAlloc.html">
+<link title="UnsoundLib" rel="Chapter" href="UnsoundLib.html">
+<link title="UnsoundLoop" rel="Chapter" href="UnsoundLoop.html">
+<link title="ItvAnalysis" rel="Chapter" href="ItvAnalysis.html">
+<link title="OctAnalysis" rel="Chapter" href="OctAnalysis.html">
+<link title="OctImpactAnalysis" rel="Chapter" href="OctImpactAnalysis.html">
+<link title="TaintAnalysis" rel="Chapter" href="TaintAnalysis.html">
+<link title="AlarmExp" rel="Chapter" href="AlarmExp.html">
+<link title="Report" rel="Chapter" href="Report.html">
+<link title="Spec" rel="Chapter" href="Spec.html">
+<link title="Frontend" rel="Chapter" href="Frontend.html">
+<link title="PreAnalysis" rel="Chapter" href="PreAnalysis.html">
+<link title="Options" rel="Chapter" href="Options.html">
+<link title="CilHelper" rel="Chapter" href="CilHelper.html">
+<link title="Logging" rel="Chapter" href="Logging.html">
+<link title="MarshalManager" rel="Chapter" href="MarshalManager.html">
+<link title="Profiler" rel="Chapter" href="Profiler.html">
+<link title="StepManager" rel="Chapter" href="StepManager.html">
+<link title="Vocab" rel="Chapter" href="Vocab.html">
+<link title="Main" rel="Chapter" href="Main.html">
+<link title="Vis" rel="Chapter" href="Vis.html"><title>TaintAnalysis</title>
+</head>
+<body>
+<code class="code"><span class="keyword">open</span>&nbsp;<span class="constructor">AlarmExp</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">BasicDom</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Cil</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Global</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Report</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Vocab</span><br>
+<br>
+<span class="keyword">let</span>&nbsp;analysis&nbsp;=&nbsp;<span class="constructor">Spec</span>.<span class="constructor">Taint</span><br>
+<span class="keyword">module</span>&nbsp;<span class="constructor">Analysis</span>&nbsp;=&nbsp;<span class="constructor">SparseAnalysis</span>.<span class="constructor">Make</span>(<span class="constructor">TaintSem</span>)<br>
+<span class="keyword">module</span>&nbsp;<span class="constructor">Table</span>&nbsp;=&nbsp;<span class="constructor">Analysis</span>.<span class="constructor">Table</span><br>
+<span class="keyword">module</span>&nbsp;<span class="constructor">Spec</span>&nbsp;=&nbsp;<span class="constructor">Analysis</span>.<span class="constructor">Spec</span><br>
+<span class="keyword">module</span>&nbsp;<span class="constructor">Mem</span>&nbsp;=&nbsp;<span class="constructor">TaintDom</span>.<span class="constructor">Mem</span><br>
+<br>
+<span class="keyword">let</span>&nbsp;marshal_in&nbsp;global&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;filename&nbsp;=&nbsp;<span class="constructor">Filename</span>.basename&nbsp;global.file.fileName&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;global&nbsp;=&nbsp;<span class="constructor">MarshalManager</span>.input&nbsp;(filename&nbsp;^&nbsp;<span class="string">".taint.global"</span>)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;input&nbsp;=&nbsp;<span class="constructor">MarshalManager</span>.input&nbsp;(filename&nbsp;^&nbsp;<span class="string">".taint.input"</span>)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;output&nbsp;=&nbsp;<span class="constructor">MarshalManager</span>.input&nbsp;(filename&nbsp;^&nbsp;<span class="string">".taint.output"</span>)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;(global,input,output)<br>
+<br>
+<span class="keyword">let</span>&nbsp;marshal_out&nbsp;(global,input,output)&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;filename&nbsp;=&nbsp;<span class="constructor">Filename</span>.basename&nbsp;global.file.fileName&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="constructor">MarshalManager</span>.output&nbsp;(filename&nbsp;^&nbsp;<span class="string">".taint.global"</span>)&nbsp;global;<br>
+&nbsp;&nbsp;<span class="constructor">MarshalManager</span>.output&nbsp;(filename&nbsp;^&nbsp;<span class="string">".taint.input"</span>)&nbsp;input;<br>
+&nbsp;&nbsp;<span class="constructor">MarshalManager</span>.output&nbsp;(filename&nbsp;^&nbsp;<span class="string">".taint.output"</span>)&nbsp;output;<br>
+&nbsp;&nbsp;(global,input,output)<br>
+<br>
+<span class="keyword">let</span>&nbsp;inspect_aexp&nbsp;node&nbsp;aexp&nbsp;itvmem&nbsp;mem&nbsp;queries&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">match</span>&nbsp;aexp&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">AllocSize</span>&nbsp;(_,&nbsp;e,&nbsp;loc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;pid&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;size_itv&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;pid&nbsp;e&nbsp;itvmem&nbsp;|&gt;&nbsp;<span class="constructor">ItvDom</span>.<span class="constructor">Val</span>.itv_of_val&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;taint&nbsp;=&nbsp;<span class="constructor">TaintSem</span>.eval&nbsp;pid&nbsp;e&nbsp;itvmem&nbsp;mem&nbsp;|&gt;&nbsp;<span class="constructor">TaintDom</span>.<span class="constructor">Val</span>.user_input&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">TaintDom</span>.<span class="constructor">UserInput</span>.fold&nbsp;(<span class="keyword">fun</span>&nbsp;(src_node,&nbsp;src_loc)&nbsp;queries&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;size_ovfl&nbsp;=&nbsp;<span class="constructor">TaintSem</span>.eval&nbsp;pid&nbsp;e&nbsp;itvmem&nbsp;mem&nbsp;|&gt;&nbsp;<span class="constructor">TaintDom</span>.<span class="constructor">Val</span>.int_overflow&nbsp;|&gt;&nbsp;<span class="constructor">TaintDom</span>.<span class="constructor">IntOverflow</span>.is_bot&nbsp;|&gt;&nbsp;not&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;status&nbsp;=&nbsp;<span class="keyword">if</span>&nbsp;size_ovfl&nbsp;<span class="keyword">then</span>&nbsp;<span class="constructor">UnProven</span>&nbsp;<span class="keyword">else</span>&nbsp;<span class="constructor">Proven</span>&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;desc&nbsp;=&nbsp;<span class="string">"size&nbsp;=&nbsp;"</span>&nbsp;^&nbsp;<span class="constructor">Itv</span>.to_string&nbsp;size_itv<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;^&nbsp;<span class="string">",&nbsp;source&nbsp;=&nbsp;"</span>&nbsp;^&nbsp;<span class="constructor">Node</span>.to_string&nbsp;src_node&nbsp;^&nbsp;<span class="string">"&nbsp;@"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;^&nbsp;<span class="constructor">CilHelper</span>.s_location&nbsp;src_loc<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc;&nbsp;allocsite&nbsp;=&nbsp;<span class="constructor">None</span>;&nbsp;status;&nbsp;desc<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;src&nbsp;=&nbsp;<span class="constructor">Some</span>&nbsp;(src_node,&nbsp;src_loc)&nbsp;}&nbsp;::&nbsp;queries)&nbsp;taint&nbsp;queries<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Printf</span>&nbsp;(_,&nbsp;e,&nbsp;loc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;pid&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;taint&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;pid&nbsp;e&nbsp;itvmem&nbsp;|&gt;&nbsp;<span class="constructor">ItvDom</span>.<span class="constructor">Val</span>.all_locs&nbsp;|&gt;&nbsp;flip&nbsp;<span class="constructor">Mem</span>.lookup&nbsp;mem&nbsp;|&gt;&nbsp;<span class="constructor">TaintDom</span>.<span class="constructor">Val</span>.user_input&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">TaintDom</span>.<span class="constructor">UserInput</span>.fold&nbsp;(<span class="keyword">fun</span>&nbsp;(src_node,&nbsp;src_loc)&nbsp;queries&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;desc&nbsp;=&nbsp;<span class="string">"source&nbsp;=&nbsp;"</span>&nbsp;^&nbsp;<span class="constructor">Node</span>.to_string&nbsp;src_node&nbsp;^&nbsp;<span class="string">"&nbsp;@&nbsp;"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;^&nbsp;<span class="constructor">CilHelper</span>.s_location&nbsp;src_loc<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc;&nbsp;allocsite&nbsp;=&nbsp;<span class="constructor">None</span>;&nbsp;status&nbsp;=&nbsp;<span class="constructor">UnProven</span>;&nbsp;desc<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;src&nbsp;=&nbsp;<span class="constructor">Some</span>&nbsp;(src_node,&nbsp;src_loc)&nbsp;}&nbsp;::&nbsp;queries)&nbsp;taint&nbsp;queries<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;queries<br>
+<br>
+<span class="keyword">let</span>&nbsp;inspect_alarm&nbsp;global&nbsp;spec&nbsp;inputof&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;nodes&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.nodesof&nbsp;global.icfg&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;total&nbsp;=&nbsp;<span class="constructor">List</span>.length&nbsp;nodes&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;list_fold&nbsp;(<span class="keyword">fun</span>&nbsp;node&nbsp;(qs,k)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;prerr_progressbar&nbsp;~itv:1000&nbsp;k&nbsp;total;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;ptrmem&nbsp;=&nbsp;<span class="constructor">ItvDom</span>.<span class="constructor">Table</span>.find&nbsp;node&nbsp;spec.<span class="constructor">Spec</span>.ptrinfo&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;mem&nbsp;=&nbsp;<span class="constructor">Table</span>.find&nbsp;node&nbsp;inputof&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;cmd&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.cmdof&nbsp;global.icfg&nbsp;node&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;aexps&nbsp;=&nbsp;<span class="constructor">AlarmExp</span>.collect&nbsp;cmd&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;qs&nbsp;=&nbsp;list_fold&nbsp;(<span class="keyword">fun</span>&nbsp;aexp&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;ptrmem&nbsp;=&nbsp;<span class="constructor">ItvDom</span>.<span class="constructor">Mem</span>.bot&nbsp;<span class="keyword">then</span>&nbsp;id&nbsp;<span class="comment">(*&nbsp;dead&nbsp;code&nbsp;*)</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span>&nbsp;inspect_aexp&nbsp;node&nbsp;aexp&nbsp;ptrmem&nbsp;mem)&nbsp;aexps&nbsp;qs<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;(qs,&nbsp;k+1)<br>
+&nbsp;&nbsp;)&nbsp;nodes&nbsp;([],0)<br>
+&nbsp;&nbsp;|&gt;&nbsp;fst<br>
+<br>
+<span class="keyword">let</span>&nbsp;get_locset&nbsp;mem&nbsp;=<br>
+&nbsp;&nbsp;<span class="constructor">ItvDom</span>.<span class="constructor">Mem</span>.foldi&nbsp;(<span class="keyword">fun</span>&nbsp;l&nbsp;v&nbsp;locset&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;locset<br>
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span class="constructor">PowLoc</span>.add&nbsp;l<br>
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span class="constructor">PowLoc</span>.union&nbsp;(<span class="constructor">ItvDom</span>.<span class="constructor">Val</span>.pow_loc_of_val&nbsp;v)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span class="constructor">BatSet</span>.fold&nbsp;(<span class="keyword">fun</span>&nbsp;a&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">PowLoc</span>.add&nbsp;(<span class="constructor">Loc</span>.of_allocsite&nbsp;a))&nbsp;(<span class="constructor">ItvDom</span>.<span class="constructor">Val</span>.allocsites_of_val&nbsp;v)<br>
+&nbsp;&nbsp;)&nbsp;mem&nbsp;<span class="constructor">PowLoc</span>.empty<br>
+<br>
+<span class="keyword">let</span>&nbsp;make_top_mem&nbsp;locset&nbsp;=<br>
+&nbsp;&nbsp;<span class="constructor">PowLoc</span>.fold&nbsp;(<span class="keyword">fun</span>&nbsp;l&nbsp;mem&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Mem</span>.add&nbsp;l&nbsp;<span class="constructor">TaintDom</span>.<span class="constructor">Val</span>.top&nbsp;mem)&nbsp;locset&nbsp;<span class="constructor">Mem</span>.bot<br>
+<br>
+<span class="keyword">let</span>&nbsp;do_analysis&nbsp;(global,&nbsp;itvinputof)&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;global&nbsp;=&nbsp;{&nbsp;global&nbsp;<span class="keyword">with</span>&nbsp;table&nbsp;=&nbsp;itvinputof&nbsp;}&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;locset&nbsp;=&nbsp;get_locset&nbsp;global.mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;spec&nbsp;=<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;<span class="constructor">Spec</span>.empty&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;analysis<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;locset<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;locset_fs&nbsp;=&nbsp;locset<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;premem&nbsp;=&nbsp;make_top_mem&nbsp;locset<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;ptrinfo&nbsp;=&nbsp;itvinputof&nbsp;}<br>
+&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="comment">(*&nbsp;NOTE:&nbsp;fully&nbsp;flow-sensitive&nbsp;taint&nbsp;analysis&nbsp;*)</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;_&nbsp;=&nbsp;<span class="constructor">Options</span>.pfs&nbsp;:=&nbsp;100&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;cond&nbsp;!<span class="constructor">Options</span>.marshal_in&nbsp;marshal_in&nbsp;(<span class="constructor">Analysis</span>.perform&nbsp;spec)&nbsp;global<br>
+&nbsp;&nbsp;|&gt;&nbsp;opt&nbsp;!<span class="constructor">Options</span>.marshal_out&nbsp;marshal_out<br>
+&nbsp;&nbsp;|&gt;&nbsp;<span class="constructor">StepManager</span>.stepf&nbsp;<span class="keyword">true</span>&nbsp;<span class="string">"Generate&nbsp;Alarm&nbsp;Report"</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="keyword">fun</span>&nbsp;(global,inputof,outputof)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(global,inputof,outputof,inspect_alarm&nbsp;global&nbsp;spec&nbsp;inputof))<br>
+</code></body></html>

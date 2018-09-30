@@ -1,0 +1,412 @@
+<html><head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of class methods" rel=Appendix href="index_methods.html">
+<link title="Index of classes" rel=Appendix href="index_classes.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="CallGraph" rel="Chapter" href="CallGraph.html">
+<link title="InterCfg" rel="Chapter" href="InterCfg.html">
+<link title="IntraCfg" rel="Chapter" href="IntraCfg.html">
+<link title="AbsDom" rel="Chapter" href="AbsDom.html">
+<link title="MapDom" rel="Chapter" href="MapDom.html">
+<link title="PowDom" rel="Chapter" href="PowDom.html">
+<link title="ProdDom" rel="Chapter" href="ProdDom.html">
+<link title="ArrayBlk" rel="Chapter" href="ArrayBlk.html">
+<link title="Itv" rel="Chapter" href="Itv.html">
+<link title="StructBlk" rel="Chapter" href="StructBlk.html">
+<link title="InstrumentedMem" rel="Chapter" href="InstrumentedMem.html">
+<link title="ItvDom" rel="Chapter" href="ItvDom.html">
+<link title="OctDom" rel="Chapter" href="OctDom.html">
+<link title="OctImpactDom" rel="Chapter" href="OctImpactDom.html">
+<link title="TaintDom" rel="Chapter" href="TaintDom.html">
+<link title="AbsSem" rel="Chapter" href="AbsSem.html">
+<link title="ItvSem" rel="Chapter" href="ItvSem.html">
+<link title="OctImpactSem" rel="Chapter" href="OctImpactSem.html">
+<link title="OctSem" rel="Chapter" href="OctSem.html">
+<link title="TaintSem" rel="Chapter" href="TaintSem.html">
+<link title="Access" rel="Chapter" href="Access.html">
+<link title="AccessAnalysis" rel="Chapter" href="AccessAnalysis.html">
+<link title="AccessSem" rel="Chapter" href="AccessSem.html">
+<link title="Dug" rel="Chapter" href="Dug.html">
+<link title="SparseAnalysis" rel="Chapter" href="SparseAnalysis.html">
+<link title="SsaDug" rel="Chapter" href="SsaDug.html">
+<link title="Worklist" rel="Chapter" href="Worklist.html">
+<link title="PartialFlowSensitivity" rel="Chapter" href="PartialFlowSensitivity.html">
+<link title="UnsoundAlloc" rel="Chapter" href="UnsoundAlloc.html">
+<link title="UnsoundLib" rel="Chapter" href="UnsoundLib.html">
+<link title="UnsoundLoop" rel="Chapter" href="UnsoundLoop.html">
+<link title="ItvAnalysis" rel="Chapter" href="ItvAnalysis.html">
+<link title="OctAnalysis" rel="Chapter" href="OctAnalysis.html">
+<link title="OctImpactAnalysis" rel="Chapter" href="OctImpactAnalysis.html">
+<link title="TaintAnalysis" rel="Chapter" href="TaintAnalysis.html">
+<link title="AlarmExp" rel="Chapter" href="AlarmExp.html">
+<link title="Report" rel="Chapter" href="Report.html">
+<link title="Spec" rel="Chapter" href="Spec.html">
+<link title="Frontend" rel="Chapter" href="Frontend.html">
+<link title="PreAnalysis" rel="Chapter" href="PreAnalysis.html">
+<link title="Options" rel="Chapter" href="Options.html">
+<link title="CilHelper" rel="Chapter" href="CilHelper.html">
+<link title="Logging" rel="Chapter" href="Logging.html">
+<link title="MarshalManager" rel="Chapter" href="MarshalManager.html">
+<link title="Profiler" rel="Chapter" href="Profiler.html">
+<link title="StepManager" rel="Chapter" href="StepManager.html">
+<link title="Vocab" rel="Chapter" href="Vocab.html">
+<link title="Main" rel="Chapter" href="Main.html">
+<link title="Vis" rel="Chapter" href="Vis.html"><title>ItvAnalysis</title>
+</head>
+<body>
+<code class="code"></code><table><tr><td></td><td><span class="comment">(***********************************************************************)</span></td></tr></table><code class="code"><br>
+<span class="comment">(*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*)</span><br>
+<span class="comment">(*&nbsp;Copyright&nbsp;(c)&nbsp;2007-present.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*)</span><br>
+<span class="comment">(*&nbsp;Programming&nbsp;Research&nbsp;Laboratory&nbsp;(ROPAS),&nbsp;Seoul&nbsp;National&nbsp;University.&nbsp;*)</span><br>
+<span class="comment">(*&nbsp;All&nbsp;rights&nbsp;reserved.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*)</span><br>
+<span class="comment">(*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*)</span><br>
+<span class="comment">(*&nbsp;This&nbsp;software&nbsp;is&nbsp;distributed&nbsp;under&nbsp;the&nbsp;term&nbsp;of&nbsp;the&nbsp;BSD&nbsp;license.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*)</span><br>
+<span class="comment">(*&nbsp;See&nbsp;the&nbsp;LICENSE&nbsp;file&nbsp;for&nbsp;details.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*)</span><br>
+<span class="comment">(*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*)</span><br>
+</code><table><tr><td></td><td><span class="comment">(***********************************************************************)</span></td></tr></table><code class="code"><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Graph</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Cil</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Global</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">BasicDom</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Vocab</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Frontend</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">IntraCfg</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">ItvDom</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">ArrayBlk</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">AlarmExp</span><br>
+<span class="keyword">open</span>&nbsp;<span class="constructor">Report</span><br>
+<br>
+<span class="keyword">let</span>&nbsp;analysis&nbsp;=&nbsp;<span class="constructor">Spec</span>.<span class="constructor">Interval</span><br>
+<span class="keyword">module</span>&nbsp;<span class="constructor">Analysis</span>&nbsp;=&nbsp;<span class="constructor">SparseAnalysis</span>.<span class="constructor">Make</span>(<span class="constructor">ItvSem</span>)<br>
+<span class="keyword">module</span>&nbsp;<span class="constructor">Table</span>&nbsp;=&nbsp;<span class="constructor">Analysis</span>.<span class="constructor">Table</span><br>
+<span class="keyword">module</span>&nbsp;<span class="constructor">Spec</span>&nbsp;=&nbsp;<span class="constructor">Analysis</span>.<span class="constructor">Spec</span><br>
+<br>
+<span class="keyword">let</span>&nbsp;print_abslocs_info&nbsp;locs&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;lvars&nbsp;=&nbsp;<span class="constructor">BatSet</span>.filter&nbsp;<span class="constructor">Loc</span>.is_lvar&nbsp;locs&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;gvars&nbsp;=&nbsp;<span class="constructor">BatSet</span>.filter&nbsp;<span class="constructor">Loc</span>.is_gvar&nbsp;locs&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;allocsites&nbsp;=&nbsp;<span class="constructor">BatSet</span>.filter&nbsp;<span class="constructor">Loc</span>.is_allocsite&nbsp;locs&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;fields&nbsp;=&nbsp;<span class="constructor">BatSet</span>.filter&nbsp;<span class="constructor">Loc</span>.is_field&nbsp;locs&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;prerr_endline&nbsp;(<span class="string">"#abslocs&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;"</span>&nbsp;^&nbsp;i2s&nbsp;(<span class="constructor">BatSet</span>.cardinal&nbsp;locs));<br>
+&nbsp;&nbsp;&nbsp;&nbsp;prerr_endline&nbsp;(<span class="string">"#lvars&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;"</span>&nbsp;^&nbsp;i2s&nbsp;(<span class="constructor">BatSet</span>.cardinal&nbsp;lvars));<br>
+&nbsp;&nbsp;&nbsp;&nbsp;prerr_endline&nbsp;(<span class="string">"#gvars&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;"</span>&nbsp;^&nbsp;i2s&nbsp;(<span class="constructor">BatSet</span>.cardinal&nbsp;gvars));<br>
+&nbsp;&nbsp;&nbsp;&nbsp;prerr_endline&nbsp;(<span class="string">"#allocsites&nbsp;:&nbsp;"</span>&nbsp;^&nbsp;i2s&nbsp;(<span class="constructor">BatSet</span>.cardinal&nbsp;allocsites));<br>
+&nbsp;&nbsp;&nbsp;&nbsp;prerr_endline&nbsp;(<span class="string">"#fields&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;"</span>&nbsp;^&nbsp;i2s&nbsp;(<span class="constructor">BatSet</span>.cardinal&nbsp;fields))<br>
+<br>
+<span class="comment">(*&nbsp;****************&nbsp;*<br>
+&nbsp;*&nbsp;Alarm&nbsp;Inspection&nbsp;*<br>
+&nbsp;*&nbsp;****************&nbsp;*)</span><br>
+<span class="keyword">let</span>&nbsp;ignore_alarm&nbsp;a&nbsp;arr&nbsp;offset&nbsp;=<br>
+&nbsp;&nbsp;(!<span class="constructor">Options</span>.bugfinder&nbsp;&gt;=&nbsp;1<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;(<span class="constructor">Allocsite</span>.is_string_allocsite&nbsp;a<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">||</span>&nbsp;arr.<span class="constructor">ArrInfo</span>.size&nbsp;=&nbsp;<span class="constructor">Itv</span>.top<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">||</span>&nbsp;arr.<span class="constructor">ArrInfo</span>.size&nbsp;=&nbsp;<span class="constructor">Itv</span>.one<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">||</span>&nbsp;offset&nbsp;=&nbsp;<span class="constructor">Itv</span>.top&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;arr.<span class="constructor">ArrInfo</span>.size&nbsp;=&nbsp;<span class="constructor">Itv</span>.nat<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">||</span>&nbsp;offset&nbsp;=&nbsp;<span class="constructor">Itv</span>.zero))<br>
+&nbsp;&nbsp;<span class="keywordsign">||</span>&nbsp;(!<span class="constructor">Options</span>.bugfinder&nbsp;&gt;=&nbsp;2<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;not&nbsp;(<span class="constructor">Itv</span>.is_const&nbsp;arr.<span class="constructor">ArrInfo</span>.size))<br>
+&nbsp;&nbsp;<span class="keywordsign">||</span>&nbsp;(!<span class="constructor">Options</span>.bugfinder&nbsp;&gt;=&nbsp;3<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;(offset&nbsp;=&nbsp;<span class="constructor">Itv</span>.top<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">||</span>&nbsp;<span class="constructor">Itv</span>.meet&nbsp;arr.<span class="constructor">ArrInfo</span>.size&nbsp;<span class="constructor">Itv</span>.zero&nbsp;&lt;&gt;&nbsp;<span class="constructor">Itv</span>.bot<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">||</span>&nbsp;(offset&nbsp;=&nbsp;<span class="constructor">Itv</span>.top&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;arr.<span class="constructor">ArrInfo</span>.offset&nbsp;&lt;&gt;&nbsp;<span class="constructor">Itv</span>.top)))<br>
+<br>
+<br>
+<span class="keyword">let</span>&nbsp;check_bo&nbsp;v1&nbsp;v2opt&nbsp;:&nbsp;(status&nbsp;*&nbsp;<span class="constructor">Allocsite</span>.t&nbsp;option&nbsp;*&nbsp;string)&nbsp;list&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;arr&nbsp;=&nbsp;<span class="constructor">Val</span>.array_of_val&nbsp;v1&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;<span class="constructor">ArrayBlk</span>.eq&nbsp;arr&nbsp;<span class="constructor">ArrayBlk</span>.bot&nbsp;<span class="keyword">then</span>&nbsp;[(<span class="constructor">BotAlarm</span>,&nbsp;<span class="constructor">None</span>,&nbsp;<span class="string">"Array&nbsp;is&nbsp;Bot"</span>)]&nbsp;<span class="keyword">else</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">ArrayBlk</span>.foldi&nbsp;(<span class="keyword">fun</span>&nbsp;a&nbsp;arr&nbsp;lst&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;offset&nbsp;=<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">match</span>&nbsp;v2opt&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">None</span>&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;arr.<span class="constructor">ArrInfo</span>.offset<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Some</span>&nbsp;v2&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Itv</span>.plus&nbsp;arr.<span class="constructor">ArrInfo</span>.offset&nbsp;(<span class="constructor">Val</span>.itv_of_val&nbsp;v2)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;status&nbsp;=<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">try</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;<span class="constructor">Itv</span>.is_bot&nbsp;offset&nbsp;<span class="keywordsign">||</span>&nbsp;<span class="constructor">Itv</span>.is_bot&nbsp;arr.<span class="constructor">ArrInfo</span>.size&nbsp;<span class="keyword">then</span>&nbsp;<span class="constructor">BotAlarm</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span>&nbsp;<span class="keyword">if</span>&nbsp;ignore_alarm&nbsp;a&nbsp;arr&nbsp;offset&nbsp;<span class="keyword">then</span>&nbsp;<span class="constructor">Proven</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;(ol,&nbsp;ou)&nbsp;=&nbsp;(<span class="constructor">Itv</span>.lower&nbsp;offset,&nbsp;<span class="constructor">Itv</span>.upper&nbsp;offset)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;sl&nbsp;=&nbsp;<span class="constructor">Itv</span>.lower&nbsp;arr.<span class="constructor">ArrInfo</span>.size&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;ou&nbsp;&gt;=&nbsp;sl&nbsp;<span class="keywordsign">||</span>&nbsp;ol&nbsp;&lt;&nbsp;0&nbsp;<span class="keyword">then</span>&nbsp;<span class="constructor">UnProven</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span>&nbsp;<span class="constructor">Proven</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">with</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">UnProven</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(status,&nbsp;<span class="constructor">Some</span>&nbsp;a,&nbsp;string_of_alarminfo&nbsp;offset&nbsp;arr.<span class="constructor">ArrInfo</span>.size)::lst<br>
+&nbsp;&nbsp;&nbsp;&nbsp;)&nbsp;arr&nbsp;[]<br>
+<br>
+<span class="keyword">let</span>&nbsp;check_nd&nbsp;v1&nbsp;:&nbsp;(status&nbsp;*&nbsp;<span class="constructor">Allocsite</span>.t&nbsp;option&nbsp;*&nbsp;string)&nbsp;list&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;ploc&nbsp;=&nbsp;<span class="constructor">Val</span>.pow_loc_of_val&nbsp;v1&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;<span class="constructor">PowLoc</span>.eq&nbsp;ploc&nbsp;<span class="constructor">PowLoc</span>.bot&nbsp;<span class="keyword">then</span>&nbsp;[(<span class="constructor">BotAlarm</span>,&nbsp;<span class="constructor">None</span>,&nbsp;<span class="string">"PowLoc&nbsp;is&nbsp;Bot"</span>)]&nbsp;<span class="keyword">else</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;<span class="constructor">PowLoc</span>.mem&nbsp;<span class="constructor">Loc</span>.null&nbsp;ploc&nbsp;<span class="keyword">then</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[(<span class="constructor">UnProven</span>,&nbsp;<span class="constructor">None</span>,&nbsp;<span class="string">"Null&nbsp;Dereference"</span>)]<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span>&nbsp;[(<span class="constructor">Proven</span>,&nbsp;<span class="constructor">None</span>,&nbsp;<span class="string">""</span>)]<br>
+<br>
+<span class="keyword">let</span>&nbsp;inspect_aexp_bo&nbsp;:&nbsp;<span class="constructor">InterCfg</span>.node&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">AlarmExp</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Mem</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list<br>
+=<span class="keyword">fun</span>&nbsp;node&nbsp;aexp&nbsp;mem&nbsp;queries&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;(<span class="keyword">match</span>&nbsp;aexp&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">ArrayExp</span>&nbsp;(lv,e,loc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v1&nbsp;=&nbsp;<span class="constructor">Mem</span>.lookup&nbsp;(<span class="constructor">ItvSem</span>.eval_lv&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;lv&nbsp;mem)&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v2&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;lst&nbsp;=&nbsp;check_bo&nbsp;v1&nbsp;(<span class="constructor">Some</span>&nbsp;v2)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;(status,a,desc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status&nbsp;=&nbsp;status;&nbsp;desc&nbsp;=&nbsp;desc;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;})&nbsp;lst<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">DerefExp</span>&nbsp;(e,loc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;lst&nbsp;=&nbsp;check_bo&nbsp;v&nbsp;<span class="constructor">None</span>&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;<span class="constructor">Val</span>.eq&nbsp;<span class="constructor">Val</span>.bot&nbsp;v&nbsp;<span class="keyword">then</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;(status,a,desc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status&nbsp;=&nbsp;status;&nbsp;desc&nbsp;=&nbsp;desc;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;})&nbsp;lst<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;(status,a,desc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;status&nbsp;=&nbsp;<span class="constructor">BotAlarm</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">then</span>&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;status&nbsp;=&nbsp;<span class="constructor">Proven</span>;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;desc&nbsp;=&nbsp;<span class="string">"valid&nbsp;pointer&nbsp;dereference"</span>;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span>&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;status&nbsp;=&nbsp;status;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;desc&nbsp;=&nbsp;desc;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;})&nbsp;lst<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Strcpy</span>&nbsp;(e1,&nbsp;e2,&nbsp;loc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v1&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e1&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v2&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e2&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v2&nbsp;=&nbsp;<span class="constructor">Val</span>.of_itv&nbsp;(<span class="constructor">ArrayBlk</span>.nullof&nbsp;(<span class="constructor">Val</span>.array_of_val&nbsp;v2))&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;lst&nbsp;=&nbsp;check_bo&nbsp;v1&nbsp;(<span class="constructor">Some</span>&nbsp;v2)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;(status,a,desc)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status&nbsp;=&nbsp;status;&nbsp;desc&nbsp;=&nbsp;desc;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;})&nbsp;lst<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Strcat</span>&nbsp;(e1,&nbsp;e2,&nbsp;loc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v1&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e1&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v2&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e2&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;np1&nbsp;=&nbsp;<span class="constructor">ArrayBlk</span>.nullof&nbsp;(<span class="constructor">Val</span>.array_of_val&nbsp;v1)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;np2&nbsp;=&nbsp;<span class="constructor">ArrayBlk</span>.nullof&nbsp;(<span class="constructor">Val</span>.array_of_val&nbsp;v2)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;np&nbsp;=&nbsp;<span class="constructor">Val</span>.of_itv&nbsp;(<span class="constructor">Itv</span>.plus&nbsp;np1&nbsp;np2)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;lst&nbsp;=&nbsp;check_bo&nbsp;v1&nbsp;(<span class="constructor">Some</span>&nbsp;np)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;(status,a,desc)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status&nbsp;=&nbsp;status;&nbsp;desc&nbsp;=&nbsp;desc;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;})&nbsp;lst<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Strncpy</span>&nbsp;(e1,&nbsp;e2,&nbsp;e3,&nbsp;loc)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Memcpy</span>&nbsp;(e1,&nbsp;e2,&nbsp;e3,&nbsp;loc)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Memmove</span>&nbsp;(e1,&nbsp;e2,&nbsp;e3,&nbsp;loc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v1&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e1&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v2&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e2&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;e3_1&nbsp;=&nbsp;<span class="constructor">Cil</span>.<span class="constructor">BinOp</span>&nbsp;(<span class="constructor">Cil</span>.<span class="constructor">MinusA</span>,&nbsp;e3,&nbsp;<span class="constructor">Cil</span>.one,&nbsp;<span class="constructor">Cil</span>.intType)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v3&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e3_1&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;lst1&nbsp;=&nbsp;check_bo&nbsp;v1&nbsp;(<span class="constructor">Some</span>&nbsp;v3)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;lst2&nbsp;=&nbsp;check_bo&nbsp;v2&nbsp;(<span class="constructor">Some</span>&nbsp;v3)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;(status,a,desc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status&nbsp;=&nbsp;status;&nbsp;desc&nbsp;=&nbsp;desc;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;})&nbsp;(lst1@lst2)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;[])&nbsp;@&nbsp;queries<br>
+<br>
+<span class="keyword">let</span>&nbsp;inspect_aexp_nd&nbsp;:&nbsp;<span class="constructor">InterCfg</span>.node&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">AlarmExp</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Mem</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list<br>
+=<span class="keyword">fun</span>&nbsp;node&nbsp;aexp&nbsp;mem&nbsp;queries&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;(<span class="keyword">match</span>&nbsp;aexp&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">DerefExp</span>&nbsp;(e,loc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;lst&nbsp;=&nbsp;check_nd&nbsp;v&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;<span class="constructor">Val</span>.eq&nbsp;<span class="constructor">Val</span>.bot&nbsp;v&nbsp;<span class="keyword">then</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;(status,a,desc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status&nbsp;=&nbsp;status;&nbsp;desc&nbsp;=&nbsp;desc;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;})&nbsp;lst<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;(status,a,desc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;status&nbsp;=&nbsp;<span class="constructor">BotAlarm</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">then</span>&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;status&nbsp;=&nbsp;<span class="constructor">Proven</span>;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;desc&nbsp;=&nbsp;<span class="string">"valid&nbsp;pointer&nbsp;dereference"</span>;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;}<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span>&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;status&nbsp;=&nbsp;status;&nbsp;allocsite&nbsp;=&nbsp;a;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;desc&nbsp;=&nbsp;desc;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;})&nbsp;lst<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;[])&nbsp;@&nbsp;queries<br>
+<br>
+<span class="keyword">let</span>&nbsp;check_dz&nbsp;v&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v&nbsp;=&nbsp;<span class="constructor">Val</span>.itv_of_val&nbsp;v&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;<span class="constructor">Itv</span>.le&nbsp;<span class="constructor">Itv</span>.zero&nbsp;v&nbsp;<span class="keyword">then</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;[(<span class="constructor">UnProven</span>,&nbsp;<span class="constructor">None</span>,&nbsp;<span class="string">"Divide&nbsp;by&nbsp;"</span>^<span class="constructor">Itv</span>.to_string&nbsp;v)]<br>
+&nbsp;&nbsp;<span class="keyword">else</span>&nbsp;[(<span class="constructor">Proven</span>,&nbsp;<span class="constructor">None</span>,&nbsp;<span class="string">""</span>)]<br>
+<br>
+<span class="keyword">let</span>&nbsp;inspect_aexp_dz&nbsp;:&nbsp;<span class="constructor">InterCfg</span>.node&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">AlarmExp</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Mem</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;node&nbsp;aexp&nbsp;mem&nbsp;queries&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;(<span class="keyword">match</span>&nbsp;aexp&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">DivExp</span>&nbsp;(_,&nbsp;e,&nbsp;loc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;v&nbsp;=&nbsp;<span class="constructor">ItvSem</span>.eval&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;node)&nbsp;e&nbsp;mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;lst&nbsp;=&nbsp;check_dz&nbsp;v&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;(status,a,desc)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;node&nbsp;=&nbsp;node;&nbsp;exp&nbsp;=&nbsp;aexp;&nbsp;loc&nbsp;=&nbsp;loc;&nbsp;allocsite&nbsp;=&nbsp;<span class="constructor">None</span>;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;status&nbsp;=&nbsp;status;&nbsp;desc&nbsp;=&nbsp;desc;&nbsp;src&nbsp;=&nbsp;<span class="constructor">None</span>&nbsp;})&nbsp;lst<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;[])&nbsp;@&nbsp;queries<br>
+<br>
+<span class="keyword">let</span>&nbsp;machine_gen_code&nbsp;:&nbsp;query&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;q&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="comment">(*&nbsp;yacc-generated&nbsp;code&nbsp;*)</span><br>
+&nbsp;&nbsp;<span class="constructor">Filename</span>.check_suffix&nbsp;q.loc.<span class="constructor">Cil</span>.file&nbsp;<span class="string">".y"</span>&nbsp;<span class="keywordsign">||</span>&nbsp;<span class="constructor">Filename</span>.check_suffix&nbsp;q.loc.<span class="constructor">Cil</span>.file&nbsp;<span class="string">".yy.c"</span>&nbsp;<span class="keywordsign">||</span><br>
+&nbsp;&nbsp;<span class="constructor">Filename</span>.check_suffix&nbsp;q.loc.<span class="constructor">Cil</span>.file&nbsp;<span class="string">".simple"</span>&nbsp;<span class="keywordsign">||</span><br>
+&nbsp;&nbsp;<span class="comment">(*&nbsp;sparrow-generated&nbsp;code&nbsp;*)</span><br>
+&nbsp;&nbsp;<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;q.node&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.global_proc<br>
+<br>
+<span class="keyword">let</span>&nbsp;<span class="keyword">rec</span>&nbsp;unsound_exp&nbsp;:&nbsp;<span class="constructor">Cil</span>.exp&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;e&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="keyword">match</span>&nbsp;e&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Cil</span>.<span class="constructor">BinOp</span>&nbsp;(<span class="constructor">Cil</span>.<span class="constructor">PlusPI</span>,&nbsp;<span class="constructor">Cil</span>.<span class="constructor">Lval</span>&nbsp;(<span class="constructor">Cil</span>.<span class="constructor">Mem</span>&nbsp;_,&nbsp;_),&nbsp;_,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">true</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Cil</span>.<span class="constructor">BinOp</span>&nbsp;(b,&nbsp;_,&nbsp;_,&nbsp;_)&nbsp;<span class="keyword">when</span>&nbsp;b&nbsp;=&nbsp;<span class="constructor">Mod</span>&nbsp;<span class="keywordsign">||</span>&nbsp;b&nbsp;=&nbsp;<span class="constructor">Cil</span>.<span class="constructor">Shiftlt</span>&nbsp;<span class="keywordsign">||</span>&nbsp;b&nbsp;=&nbsp;<span class="constructor">Shiftrt</span>&nbsp;<span class="keywordsign">||</span>&nbsp;b&nbsp;=&nbsp;<span class="constructor">BAnd</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">||</span>&nbsp;b&nbsp;=&nbsp;<span class="constructor">BOr</span>&nbsp;<span class="keywordsign">||</span>&nbsp;b&nbsp;=&nbsp;<span class="constructor">BXor</span>&nbsp;<span class="keywordsign">||</span>&nbsp;b&nbsp;=&nbsp;<span class="constructor">LAnd</span>&nbsp;<span class="keywordsign">||</span>&nbsp;b&nbsp;=&nbsp;<span class="constructor">LOr</span>&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">true</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Cil</span>.<span class="constructor">BinOp</span>&nbsp;(bop,&nbsp;<span class="constructor">Cil</span>.<span class="constructor">Lval</span>&nbsp;(<span class="constructor">Cil</span>.<span class="constructor">Var</span>&nbsp;_,&nbsp;_),&nbsp;<span class="constructor">Cil</span>.<span class="constructor">Lval</span>&nbsp;(<span class="constructor">Cil</span>.<span class="constructor">Var</span>&nbsp;_,&nbsp;_),&nbsp;_)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">when</span>&nbsp;bop&nbsp;=&nbsp;<span class="constructor">Cil</span>.<span class="constructor">PlusA</span>&nbsp;<span class="keywordsign">||</span>&nbsp;bop&nbsp;=&nbsp;<span class="constructor">Cil</span>.<span class="constructor">MinusA</span>&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">true</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Cil</span>.<span class="constructor">BinOp</span>&nbsp;(_,&nbsp;e1,&nbsp;e2,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(unsound_exp&nbsp;e1)&nbsp;<span class="keywordsign">||</span>&nbsp;(unsound_exp&nbsp;e2)<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Cil</span>.<span class="constructor">CastE</span>&nbsp;(_,&nbsp;e)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unsound_exp&nbsp;e<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Cil</span>.<span class="constructor">Lval</span>&nbsp;lv&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unsound_lv&nbsp;lv<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">false</span><br>
+<br>
+<span class="keyword">and</span>&nbsp;unsound_lv&nbsp;:&nbsp;<span class="constructor">Cil</span>.lval&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool&nbsp;=&nbsp;<span class="keyword">function</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;(_,&nbsp;<span class="constructor">Cil</span>.<span class="constructor">Index</span>&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">true</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;(<span class="constructor">Cil</span>.<span class="constructor">Var</span>&nbsp;v,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;is_global_integer&nbsp;v&nbsp;<span class="keywordsign">||</span>&nbsp;is_union&nbsp;v.vtype&nbsp;<span class="keywordsign">||</span>&nbsp;is_temp_integer&nbsp;v<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;(<span class="constructor">Cil</span>.<span class="constructor">Mem</span>&nbsp;_,&nbsp;<span class="constructor">Cil</span>.<span class="constructor">NoOffset</span>)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">true</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;(_,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">false</span><br>
+<span class="keyword">and</span>&nbsp;is_global_integer&nbsp;v&nbsp;=&nbsp;v.vglob&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;<span class="constructor">Cil</span>.isIntegralType&nbsp;v.vtype<br>
+<span class="keyword">and</span>&nbsp;is_union&nbsp;typ&nbsp;=<br>
+&nbsp;&nbsp;<span class="keyword">match</span>&nbsp;<span class="constructor">Cil</span>.unrollTypeDeep&nbsp;typ&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Cil</span>.<span class="constructor">TPtr</span>&nbsp;(<span class="constructor">Cil</span>.<span class="constructor">TComp</span>&nbsp;(c,&nbsp;_),&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;not&nbsp;c.cstruct<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">false</span><br>
+<span class="keyword">and</span>&nbsp;is_temp_integer&nbsp;v&nbsp;=<br>
+&nbsp;&nbsp;!<span class="constructor">Options</span>.bugfinder&nbsp;&gt;=&nbsp;2<br>
+&nbsp;&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;(<span class="keyword">try</span>&nbsp;<span class="constructor">String</span>.sub&nbsp;v.vname&nbsp;0&nbsp;3&nbsp;=&nbsp;<span class="string">"tmp"</span>&nbsp;<span class="keyword">with</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">false</span>)<br>
+&nbsp;&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;<span class="constructor">Cil</span>.isIntegralType&nbsp;v.vtype<br>
+<br>
+<span class="keyword">let</span>&nbsp;unsound_aexp&nbsp;:&nbsp;<span class="constructor">AlarmExp</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool&nbsp;=&nbsp;<span class="keyword">function</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">ArrayExp</span>&nbsp;(lv,&nbsp;e,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unsound_exp&nbsp;e<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">DerefExp</span>&nbsp;(e,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unsound_exp&nbsp;e<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">false</span><br>
+<br>
+<span class="keyword">let</span>&nbsp;formal_param&nbsp;:&nbsp;<span class="constructor">Global</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;bool<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;global&nbsp;q&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;cfg&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.cfgof&nbsp;global.icfg&nbsp;(<span class="constructor">InterCfg</span>.<span class="constructor">Node</span>.get_pid&nbsp;q.node)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;formals&nbsp;=&nbsp;<span class="constructor">IntraCfg</span>.get_formals&nbsp;cfg&nbsp;|&gt;&nbsp;<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;x&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;x.<span class="constructor">Cil</span>.vname)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;<span class="keyword">rec</span>&nbsp;find_exp&nbsp;=&nbsp;<span class="keyword">function</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Cil</span>.<span class="constructor">BinOp</span>&nbsp;(_,&nbsp;e1,&nbsp;e2,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(find_exp&nbsp;e1)&nbsp;<span class="keywordsign">||</span>&nbsp;(find_exp&nbsp;e2)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Cil</span>.<span class="constructor">CastE</span>&nbsp;(_,&nbsp;e)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;find_exp&nbsp;e<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Cil</span>.<span class="constructor">Lval</span>&nbsp;lv&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;find_lv&nbsp;lv<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">false</span><br>
+&nbsp;&nbsp;<span class="keyword">and</span>&nbsp;find_lv&nbsp;=&nbsp;<span class="keyword">function</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;(<span class="constructor">Cil</span>.<span class="constructor">Var</span>&nbsp;v,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;(<span class="constructor">List</span>.mem&nbsp;v.vname&nbsp;formals)&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;<span class="constructor">Cil</span>.isIntegralType&nbsp;v.vtype<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;(_,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">false</span><br>
+&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">match</span>&nbsp;q.exp&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">ArrayExp</span>&nbsp;(_,&nbsp;e,&nbsp;_)&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">DerefExp</span>&nbsp;(e,&nbsp;_)&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;find_exp&nbsp;e<br>
+&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keyword">false</span><br>
+<br>
+<span class="keyword">let</span>&nbsp;unsound_filter&nbsp;:&nbsp;<span class="constructor">Global</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;global&nbsp;ql&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;filtered&nbsp;=<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">List</span>.filter&nbsp;(<span class="keyword">fun</span>&nbsp;q&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;not&nbsp;(machine_gen_code&nbsp;q)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">&amp;&amp;</span>&nbsp;not&nbsp;(unsound_aexp&nbsp;q.exp)<br>
+<span class="comment">(*&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;not&nbsp;(formal_param&nbsp;global&nbsp;q)*)</span>)&nbsp;ql<br>
+&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;partition&nbsp;=<br>
+&nbsp;&nbsp;&nbsp;&nbsp;list_fold&nbsp;(<span class="keyword">fun</span>&nbsp;q&nbsp;m&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;p_als&nbsp;=&nbsp;<span class="keyword">try</span>&nbsp;<span class="constructor">BatMap</span>.find&nbsp;(q.loc,q.node)&nbsp;m&nbsp;<span class="keyword">with</span>&nbsp;_&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;[]&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">BatMap</span>.add&nbsp;(q.loc,q.node)&nbsp;(q::p_als)&nbsp;m<br>
+&nbsp;&nbsp;&nbsp;&nbsp;)&nbsp;filtered&nbsp;<span class="constructor">BatMap</span>.empty<br>
+&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="constructor">BatMap</span>.fold&nbsp;(<span class="keyword">fun</span>&nbsp;ql&nbsp;result&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;<span class="constructor">List</span>.length&nbsp;(<span class="constructor">Report</span>.get&nbsp;ql&nbsp;<span class="constructor">UnProven</span>)&nbsp;&gt;&nbsp;3&nbsp;<span class="keyword">then</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">List</span>.map&nbsp;(<span class="keyword">fun</span>&nbsp;q&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;{&nbsp;q&nbsp;<span class="keyword">with</span>&nbsp;status&nbsp;=&nbsp;<span class="constructor">Proven</span>})&nbsp;ql)@result<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span>&nbsp;ql@result)&nbsp;partition&nbsp;[]<br>
+<br>
+<span class="keyword">let</span>&nbsp;filter&nbsp;:&nbsp;query&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;status&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;qs&nbsp;s&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">List</span>.filter&nbsp;(<span class="keyword">fun</span>&nbsp;q&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;q.status&nbsp;=&nbsp;s)&nbsp;qs<br>
+<br>
+<span class="keyword">let</span>&nbsp;generate&nbsp;:&nbsp;<span class="constructor">Global</span>.t&nbsp;*&nbsp;<span class="constructor">Table</span>.t&nbsp;*&nbsp;target&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list<br>
+=<span class="keyword">fun</span>&nbsp;(global,inputof,target)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;nodes&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.nodesof&nbsp;global.icfg&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;total&nbsp;=&nbsp;<span class="constructor">List</span>.length&nbsp;nodes&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;list_fold&nbsp;(<span class="keyword">fun</span>&nbsp;node&nbsp;(qs,k)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;prerr_progressbar&nbsp;~itv:1000&nbsp;k&nbsp;total;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;mem&nbsp;=&nbsp;<span class="constructor">Table</span>.find&nbsp;node&nbsp;inputof&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;cmd&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.cmdof&nbsp;global.icfg&nbsp;node&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;aexps&nbsp;=&nbsp;<span class="constructor">AlarmExp</span>.collect&nbsp;cmd&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;qs&nbsp;=&nbsp;list_fold&nbsp;(<span class="keyword">fun</span>&nbsp;aexp&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;mem&nbsp;=&nbsp;<span class="constructor">Mem</span>.bot&nbsp;<span class="keyword">then</span>&nbsp;id&nbsp;<span class="comment">(*&nbsp;dead&nbsp;code&nbsp;*)</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">match</span>&nbsp;target&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">BO</span>&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;inspect_aexp_bo&nbsp;node&nbsp;aexp&nbsp;mem<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">ND</span>&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;inspect_aexp_nd&nbsp;node&nbsp;aexp&nbsp;mem<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">DZ</span>&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;inspect_aexp_dz&nbsp;node&nbsp;aexp&nbsp;mem<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)&nbsp;aexps&nbsp;qs<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;(qs,&nbsp;k+1)<br>
+&nbsp;&nbsp;)&nbsp;nodes&nbsp;([],0)<br>
+&nbsp;&nbsp;|&gt;&nbsp;fst<br>
+&nbsp;&nbsp;|&gt;&nbsp;opt&nbsp;(!<span class="constructor">Options</span>.bugfinder&nbsp;&gt;&nbsp;0)&nbsp;(unsound_filter&nbsp;global)<br>
+<br>
+<span class="keyword">let</span>&nbsp;generate_with_mem&nbsp;:&nbsp;<span class="constructor">Global</span>.t&nbsp;*&nbsp;<span class="constructor">Mem</span>.t&nbsp;*&nbsp;target&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;query&nbsp;list<br>
+=<span class="keyword">fun</span>&nbsp;(global,mem,target)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;nodes&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.nodesof&nbsp;global.icfg&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;list_fold&nbsp;(<span class="keyword">fun</span>&nbsp;node&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;cmd&nbsp;=&nbsp;<span class="constructor">InterCfg</span>.cmdof&nbsp;global.icfg&nbsp;node&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;aexps&nbsp;=&nbsp;<span class="constructor">AlarmExp</span>.collect&nbsp;cmd&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span>&nbsp;mem&nbsp;=&nbsp;<span class="constructor">Mem</span>.bot&nbsp;<span class="keyword">then</span>&nbsp;id&nbsp;<span class="comment">(*&nbsp;dead&nbsp;code&nbsp;*)</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">else</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">match</span>&nbsp;target&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">BO</span>&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;list_fold&nbsp;(<span class="keyword">fun</span>&nbsp;aexp&nbsp;&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;inspect_aexp_bo&nbsp;node&nbsp;aexp&nbsp;mem)&nbsp;aexps<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">ND</span>&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;list_fold&nbsp;(<span class="keyword">fun</span>&nbsp;aexp&nbsp;&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;inspect_aexp_nd&nbsp;node&nbsp;aexp&nbsp;mem)&nbsp;aexps<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">DZ</span>&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;list_fold&nbsp;(<span class="keyword">fun</span>&nbsp;aexp&nbsp;&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;inspect_aexp_dz&nbsp;node&nbsp;aexp&nbsp;mem)&nbsp;aexps<br>
+&nbsp;&nbsp;&nbsp;&nbsp;)&nbsp;nodes&nbsp;[]<br>
+<br>
+<span class="comment">(*&nbsp;**********&nbsp;*<br>
+&nbsp;*&nbsp;Marshaling&nbsp;*<br>
+&nbsp;*&nbsp;**********&nbsp;*)</span><br>
+<br>
+<span class="keyword">let</span>&nbsp;marshal_in&nbsp;:&nbsp;<span class="constructor">Global</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Global</span>.t&nbsp;*&nbsp;<span class="constructor">Table</span>.t&nbsp;*&nbsp;<span class="constructor">Table</span>.t<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;global&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;filename&nbsp;=&nbsp;<span class="constructor">Filename</span>.basename&nbsp;global.file.fileName&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;global&nbsp;=&nbsp;<span class="constructor">MarshalManager</span>.input&nbsp;(filename&nbsp;^&nbsp;<span class="string">".itv.global"</span>)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;input&nbsp;=&nbsp;<span class="constructor">MarshalManager</span>.input&nbsp;(filename&nbsp;^&nbsp;<span class="string">".itv.input"</span>)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;output&nbsp;=&nbsp;<span class="constructor">MarshalManager</span>.input&nbsp;(filename&nbsp;^&nbsp;<span class="string">".itv.output"</span>)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;(global,input,output)<br>
+<br>
+<span class="keyword">let</span>&nbsp;marshal_out&nbsp;:&nbsp;<span class="constructor">Global</span>.t&nbsp;*&nbsp;<span class="constructor">Table</span>.t&nbsp;*&nbsp;<span class="constructor">Table</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Global</span>.t&nbsp;*&nbsp;<span class="constructor">Table</span>.t&nbsp;*&nbsp;<span class="constructor">Table</span>.t<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;(global,input,output)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;filename&nbsp;=&nbsp;<span class="constructor">Filename</span>.basename&nbsp;global.file.fileName&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="constructor">MarshalManager</span>.output&nbsp;(filename&nbsp;^&nbsp;<span class="string">".itv.global"</span>)&nbsp;global;<br>
+&nbsp;&nbsp;<span class="constructor">MarshalManager</span>.output&nbsp;(filename&nbsp;^&nbsp;<span class="string">".itv.input"</span>)&nbsp;input;<br>
+&nbsp;&nbsp;<span class="constructor">MarshalManager</span>.output&nbsp;(filename&nbsp;^&nbsp;<span class="string">".itv.output"</span>)&nbsp;output;<br>
+&nbsp;&nbsp;(global,input,output)<br>
+<br>
+<span class="keyword">let</span>&nbsp;inspect_alarm&nbsp;:&nbsp;<span class="constructor">Global</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Spec</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Table</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Report</span>.query&nbsp;list<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;global&nbsp;_&nbsp;inputof&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;(<span class="keyword">if</span>&nbsp;!<span class="constructor">Options</span>.bo&nbsp;<span class="keyword">then</span>&nbsp;generate&nbsp;(global,inputof,<span class="constructor">Report</span>.<span class="constructor">BO</span>)&nbsp;<span class="keyword">else</span>&nbsp;[])<br>
+&nbsp;&nbsp;@&nbsp;(<span class="keyword">if</span>&nbsp;!<span class="constructor">Options</span>.nd&nbsp;<span class="keyword">then</span>&nbsp;generate&nbsp;(global,inputof,<span class="constructor">Report</span>.<span class="constructor">ND</span>)&nbsp;<span class="keyword">else</span>&nbsp;[])<br>
+&nbsp;&nbsp;@&nbsp;(<span class="keyword">if</span>&nbsp;!<span class="constructor">Options</span>.dz&nbsp;<span class="keyword">then</span>&nbsp;&nbsp;generate&nbsp;(global,inputof,<span class="constructor">Report</span>.<span class="constructor">DZ</span>)&nbsp;<span class="keyword">else</span>&nbsp;[])<br>
+<br>
+<span class="keyword">let</span>&nbsp;get_locset&nbsp;mem&nbsp;=<br>
+&nbsp;&nbsp;<span class="constructor">ItvDom</span>.<span class="constructor">Mem</span>.foldi&nbsp;(<span class="keyword">fun</span>&nbsp;l&nbsp;v&nbsp;locset&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;locset<br>
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span class="constructor">PowLoc</span>.add&nbsp;l<br>
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span class="constructor">PowLoc</span>.union&nbsp;(<span class="constructor">Val</span>.pow_loc_of_val&nbsp;v)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;|&gt;&nbsp;<span class="constructor">BatSet</span>.fold&nbsp;(<span class="keyword">fun</span>&nbsp;a&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">PowLoc</span>.add&nbsp;(<span class="constructor">Loc</span>.of_allocsite&nbsp;a))&nbsp;(<span class="constructor">Val</span>.allocsites_of_val&nbsp;v)<br>
+&nbsp;&nbsp;)&nbsp;mem&nbsp;<span class="constructor">PowLoc</span>.empty<br>
+<br>
+<span class="keyword">let</span>&nbsp;do_analysis&nbsp;:&nbsp;<span class="constructor">Global</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Global</span>.t&nbsp;*&nbsp;<span class="constructor">Table</span>.t&nbsp;*&nbsp;<span class="constructor">Table</span>.t&nbsp;*&nbsp;<span class="constructor">Report</span>.query&nbsp;list<br>
+=&nbsp;<span class="keyword">fun</span>&nbsp;global&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;_&nbsp;=&nbsp;prerr_memory_usage&nbsp;()&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;locset&nbsp;=&nbsp;get_locset&nbsp;global.mem&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;locset_fs&nbsp;=&nbsp;<span class="constructor">PartialFlowSensitivity</span>.select&nbsp;global&nbsp;locset&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;unsound_lib&nbsp;=&nbsp;<span class="constructor">UnsoundLib</span>.collect&nbsp;global&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;unsound_update&nbsp;=&nbsp;(!<span class="constructor">Options</span>.bugfinder&nbsp;&gt;=&nbsp;2)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;unsound_bitwise&nbsp;=&nbsp;(!<span class="constructor">Options</span>.bugfinder&nbsp;&gt;=&nbsp;1)&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;<span class="keyword">let</span>&nbsp;spec&nbsp;=<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;<span class="constructor">Spec</span>.empty&nbsp;<span class="keyword">with</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;analysis<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;locset<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;locset_fs<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;premem&nbsp;=&nbsp;global.mem<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;unsound_lib<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;unsound_update<br>
+&nbsp;&nbsp;&nbsp;&nbsp;;&nbsp;unsound_bitwise&nbsp;}<br>
+&nbsp;&nbsp;<span class="keyword">in</span><br>
+&nbsp;&nbsp;cond&nbsp;!<span class="constructor">Options</span>.marshal_in&nbsp;marshal_in&nbsp;(<span class="constructor">Analysis</span>.perform&nbsp;spec)&nbsp;global<br>
+&nbsp;&nbsp;|&gt;&nbsp;opt&nbsp;!<span class="constructor">Options</span>.marshal_out&nbsp;marshal_out<br>
+&nbsp;&nbsp;|&gt;&nbsp;<span class="constructor">StepManager</span>.stepf&nbsp;<span class="keyword">true</span>&nbsp;<span class="string">"Generate&nbsp;Alarm&nbsp;Report"</span>&nbsp;(<span class="keyword">fun</span>&nbsp;(global,inputof,outputof)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(global,inputof,outputof,inspect_alarm&nbsp;global&nbsp;spec&nbsp;inputof))<br>
+</code></body></html>
