@@ -48,6 +48,7 @@ module Loc : sig
   val is_local_of : Proc.t -> t -> bool
   val get_proc : t -> Proc.t
   val typ : t -> Cil.typ option
+  val to_json : t -> Yojson.Safe.json
 end
 
 module PowLoc : sig

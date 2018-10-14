@@ -19,6 +19,7 @@ let id x = x
 let flip f = fun y x -> f x y
 let cond c f g x = if c then f x else g x
 let opt c f x = if c then f x else x
+let opt_unit c f x = if c then (f x; x) else x
 let rec case cases default x =
   match cases with
   | (cond, f) :: t when cond -> f x

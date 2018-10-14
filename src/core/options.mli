@@ -79,6 +79,7 @@ val verbose : int ref
 val outdir : string ref
 val marshal_in : bool ref
 val marshal_out : bool ref
+val export_result : bool ref
 
 (** {2 Options lists } *)
 

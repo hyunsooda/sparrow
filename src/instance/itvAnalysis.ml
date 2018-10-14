@@ -20,6 +20,8 @@ open ArrayBlk
 open AlarmExp
 open Report
 
+module F = Format
+
 let analysis = Spec.Interval
 module Analysis = SparseAnalysis.Make(ItvSem)
 module Table = Analysis.Table
@@ -325,6 +327,27 @@ let get_locset mem =
     |> BatSet.fold (fun a -> PowLoc.add (Loc.of_allocsite a)) (Val.allocsites_of_val v)
   ) mem PowLoc.empty
 
+let export_result (global, input, output) =
+  F.printf "%a\n" Table.pp input;
+  let oc = open_out (!Options.outdir ^ "/result.json") in
+  let input_json :Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json ->
+      let cmd = InterCfg.cmdof global.icfg node in
+      let location = IntraCfg.Cmd.location_of cmd in
+      let mem_json : Yojson.Safe.json =
+        `Assoc (Mem.foldi (fun loc v mem_json ->
+          let ploc_json =
+            `List (PowLoc.fold (fun l lst -> `String (Loc.to_string l) :: lst)
+                     (Val.all_locs v) [])
+          in
+          (Loc.to_string loc, ploc_json) :: mem_json)
+          mem [])
+      in
+      (CilHelper.s_location location, mem_json) :: json
+    ) input [])
+  in
+  Yojson.Safe.pretty_to_channel oc input_json;
+  close_out oc
+
 let do_analysis : Global.t -> Global.t * Table.t * Table.t * Report.query list
 = fun global ->
   let _ = prerr_memory_usage () in
@@ -345,5 +368,6 @@ let do_analysis : Global.t -> Global.t * Table.t * Table.t * Report.query list
   in
   cond !Options.marshal_in marshal_in (Analysis.perform spec) global
   |> opt !Options.marshal_out marshal_out
+  |> opt_unit !Options.export_result export_result
   |> StepManager.stepf true "Generate Alarm Report" (fun (global,inputof,outputof) ->
       (global,inputof,outputof,inspect_alarm global spec inputof))

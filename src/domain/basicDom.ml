@@ -104,6 +104,14 @@ struct
 
   let pp fmt x = Format.fprintf fmt "%s" (to_string x)
 
+  let to_json = function
+    | GVar (g, _) -> `List [`String "GVar"; `String g]
+    | LVar (p, x, _) -> `List [`String "LVar"; `String p; `String x]
+    | Allocsite a ->
+      `List [`String "Allocsite"; `String (Allocsite.to_string a)]
+    | Field (l, f, _) ->
+      `List [`String "Field"; `String (to_string l); `String f]
+
   let dummy = GVar ("__dummy__", Cil.voidType)
   let null = GVar ("NULL", Cil.voidPtrType)
 

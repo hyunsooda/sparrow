@@ -72,7 +72,21 @@ let filter_allocsite = ref BatSet.empty
 let outdir = ref "sparrow-out"
 let marshal_in = ref false
 let marshal_out = ref false
+let export_result = ref false
 
+let io_opts =
+  [ ("-outdir",
+     Arg.Set_string outdir,
+     "Output directory (default: sparrow-out)")
+  ; ("-marshal_in",
+     Arg.Set marshal_in,
+    "Read analysis results from marshaled data")
+  ; ("-marshal_out",
+     Arg.Set marshal_out,
+     "Write analysis results to marshaled data")
+  ; ("-export_result",
+     Arg.Set export_result,
+     "Export analysis results in the JSON format") ]
 
 (* Debug *)
 let debug = ref false
@@ -133,9 +147,5 @@ let opts =
   ("-filter_rec", (Arg.Set filter_rec), "Filter alarms from recursive call cycles");
   ("-optil", (Arg.Set optil), "Optimize IL (default)");
   ("-no_optil", (Arg.Clear optil), "Do not optimize IL");
-  ("-marshal_in", (Arg.Set marshal_in), "Read analysis results from marshaled data");
-  ("-marshal_out", (Arg.Set marshal_out), "Write analysis results to marshaled data");
-  ("-outdir", (Arg.Set_string outdir),
-   "Output directory (default: sparrow-out)");
   ("-int_overflow", (Arg.Set int_overflow), "Consider integer overflow");
-  ]
+  ] @ io_opts

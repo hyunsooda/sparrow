@@ -41,6 +41,7 @@ module Cmd : sig
   and static = bool
 
   val fromCilStmt : Cil.stmtkind -> t
+  val location_of : t -> Cil.location
   val to_string : t -> string
 end
 
