@@ -105,7 +105,7 @@ let s_location_full : location -> string
     let len = String.length loc.file in
       String.sub loc.file (idx+1) (len-idx-1)
     with _ -> loc.file
-  in file ^ ":" ^ string_of_int loc.line ^ string_of_int loc.byte
+  in file ^ ":" ^ string_of_int loc.line ^ ":" ^ string_of_int loc.byte
 
 
 let eq_lval : lval -> lval -> bool
