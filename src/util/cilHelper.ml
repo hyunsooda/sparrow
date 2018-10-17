@@ -98,6 +98,16 @@ let s_location : location -> string
     with _ -> loc.file
   in file ^ ":" ^ string_of_int loc.line
 
+let s_location_full : location -> string
+=fun loc ->
+  let file = try
+    let idx = String.rindex loc.file '/' in
+    let len = String.length loc.file in
+      String.sub loc.file (idx+1) (len-idx-1)
+    with _ -> loc.file
+  in file ^ ":" ^ string_of_int loc.line ^ string_of_int loc.byte
+
+
 let eq_lval : lval -> lval -> bool
 = fun l1 l2 -> (s_lv l1) = (s_lv l2)
 

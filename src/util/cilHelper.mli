@@ -24,6 +24,7 @@ val s_bop : Cil.binop -> string
 val s_instr : Cil.instr -> string
 val s_instrs : Cil.instr list -> string
 val s_location : Cil.location -> string
+val s_location_full : Cil.location -> string
 val eq_lval : Cil.lval -> Cil.lval -> bool
 
 val rev_binop : Cil.binop -> Cil.binop

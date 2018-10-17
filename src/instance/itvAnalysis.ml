@@ -328,7 +328,6 @@ let get_locset mem =
   ) mem PowLoc.empty
 
 let export_result (global, input, output) =
-  F.printf "%a\n" Table.pp input;
   let oc = open_out (!Options.outdir ^ "/result.json") in
   let input_json :Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json ->
       let cmd = InterCfg.cmdof global.icfg node in
@@ -342,7 +341,7 @@ let export_result (global, input, output) =
           (Loc.to_string loc, ploc_json) :: mem_json)
           mem [])
       in
-      (CilHelper.s_location location, mem_json) :: json
+      (CilHelper.s_location_full location, mem_json) :: json
     ) input [])
   in
   Yojson.Safe.pretty_to_channel oc input_json;
