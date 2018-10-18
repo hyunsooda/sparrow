@@ -341,7 +341,7 @@ let export_result (global, input, output) =
           (Loc.to_string loc, ploc_json) :: mem_json)
           mem [])
       in
-      (CilHelper.s_location_full location, mem_json) :: json
+      (CilHelper.s_location location ^ ":" ^ InterCfg.Node.to_string node, mem_json) :: json
     ) input [])
   in
   Yojson.Safe.pretty_to_channel oc input_json;
