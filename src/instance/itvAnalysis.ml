@@ -328,7 +328,7 @@ let get_locset mem =
   ) mem PowLoc.empty
 
 let export_result (global, input, output) =
-  let oc = open_out (!Options.outdir ^ "/result.json") in
+  let oc = open_out (!Options.outdir ^ "/points-to.json") in
   let input_json :Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json ->
       let cmd = InterCfg.cmdof global.icfg node in
       let location = IntraCfg.Cmd.location_of cmd in

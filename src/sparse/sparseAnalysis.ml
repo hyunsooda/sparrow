@@ -252,6 +252,19 @@ struct
   =fun spec global ->
     print_spec spec;
     let access = StepManager.stepf false "Access Analysis" (AccessAnalysis.perform global spec.Spec.locset (Sem.run Strong spec)) spec.Spec.premem in
+    if !Options.export_result then begin
+      let powproc = ItvDom.Mem.fold (fun _ v -> PowProc.join
+          (ItvDom.Val.pow_proc_of_val v)) global.mem PowProc.empty in
+      let oc = open_out (!Options.outdir ^ "/defs.json") in
+      let json = `Assoc (PowProc.fold (fun f def_json ->
+        let defs = Access.Info.defof (Access.find_proc_reach_wo_local f access) in
+        let ploc_json : Yojson.Safe.json =
+          `List (PowLoc.fold (fun l lst -> `String (PowLoc.A.to_string l)::lst)
+          defs []) in
+        (Proc.to_string f, ploc_json) :: def_json) powproc []) in
+      Yojson.Safe.pretty_to_channel oc json;
+      close_out oc
+    end;
     let dug = StepManager.stepf false "Def-use graph construction" SsaDug.make (global, access, spec.Spec.locset_fs) in
     print_dug (access,global,dug);
     let worklist = StepManager.stepf false "Workorder computation" Worklist.init dug in
