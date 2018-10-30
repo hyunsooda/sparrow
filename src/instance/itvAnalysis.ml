@@ -345,6 +345,22 @@ let export_result (global, input, output) =
     ) input [])
   in
   Yojson.Safe.pretty_to_channel oc input_json;
+  close_out oc;
+  let oc = open_out (!Options.outdir ^ "/reachable.json") in
+  let intra_json : Yojson.Safe.json = `Assoc (InterCfg.fold_cfgs (fun pid g json ->
+      let trans = IntraCfg.compute_trans_closure g in
+      let reachable_json : Yojson.Safe.json = `Assoc (IntraCfg.fold_node (fun node json ->
+          let reachable = IntraCfg.succ_reachable node trans |> List.map (fun x -> `String (pid ^ "-" ^ Node.to_string x)) in
+          (pid ^ "-" ^ Node.to_string node, `List reachable)::json
+        ) g [])
+      in
+      (pid, reachable_json)::json) global.icfg [])
+  in
+  let inter_json : Yojson.Safe.json = `Assoc (InterCfg.fold_cfgs (fun pid _ json ->
+      let trans_callees = CallGraph.trans_callees pid global.callgraph |> flip (PowProc.fold (fun x l -> (`String x)::l)) [] in
+      (pid, `List trans_callees)::json) global.icfg [])
+  in
+  Yojson.Safe.pretty_to_channel oc (`Assoc [("global", inter_json); ("local", intra_json)]);
   close_out oc
 
 let do_analysis : Global.t -> Global.t * Table.t * Table.t * Report.query list

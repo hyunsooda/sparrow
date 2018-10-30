@@ -74,6 +74,7 @@ val find_cmd : node -> t ->  cmd
 val unreachable_node : t -> NodeSet.t
 
 val compute_scc : t -> t
+val compute_trans_closure : t -> t
 
 val optimize : t -> t
 
@@ -86,6 +87,7 @@ val iter_vertex : (node -> unit) -> t -> unit
 
 val pred : node -> t -> node list
 val succ : node -> t -> node list
+val succ_reachable : node -> t -> node list
 
 (** {2 Graph Manipulation } *)
 

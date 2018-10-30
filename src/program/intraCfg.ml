@@ -148,7 +148,8 @@ type t =
   ; cmd_map         : (node, cmd) BatMap.t
   ; dom_fronts      : dom_fronts
   ; dom_tree        : dom_tree
-  ; scc_list        : node list list }
+  ; scc_list        : node list list
+  ; trans_closure   : G.t }
 and dom_fronts = (Node.t, NodeSet.t) BatMap.t
 and dom_tree = G.t
 
@@ -158,7 +159,8 @@ let empty fd =
   ; cmd_map         = BatMap.empty
   ; dom_fronts      = BatMap.empty
   ; dom_tree        = G.empty
-  ; scc_list        = [] }
+  ; scc_list        = []
+  ; trans_closure   = G.empty }
 
 let get_pid g = g.fd.svar.vname
 
@@ -670,6 +672,10 @@ let compute_dom g =
   ; dom_fronts = dom_fronts }
 
 let compute_scc g = { g with scc_list = Scc.scc_list g.graph }
+
+module Oper = Graph.Oper.P(G)
+let compute_trans_closure g = { g with trans_closure = Oper.transitive_closure g.graph }
+let succ_reachable n g = G.succ g.trans_closure n
 
 let process_gvardecl fd lv loc entry g =
   match Cil.unrollTypeDeep (Cil.typeOfLval lv) with
