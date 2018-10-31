@@ -327,9 +327,20 @@ let get_locset mem =
     |> BatSet.fold (fun a -> PowLoc.add (Loc.of_allocsite a)) (Val.allocsites_of_val v)
   ) mem PowLoc.empty
 
+module LocGraph = Graph.Persistent.Digraph.ConcreteBidirectional(Loc)
 let export_result (global, input, output) =
   let oc = open_out (!Options.outdir ^ "/points-to.json") in
-  let input_json :Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json ->
+  let g = Table.fold (fun _ mem g ->
+      Mem.foldi (fun loc v g ->
+          PowLoc.fold (fun l g -> LocGraph.add_edge g loc l) (Val.all_locs v) g) mem g) input LocGraph.empty in
+  let pred_list, succ_list = LocGraph.fold_vertex (fun loc (pred_list, succ_list) ->
+      let preds = LocGraph.pred g loc |> List.map Loc.to_string |> List.map (fun x -> `String x) in
+      let succs = LocGraph.succ g loc |> List.map Loc.to_string |> List.map (fun x -> `String x) in
+      let loc_string = Loc.to_string loc in
+      ((loc_string, `List preds)::pred_list, (loc_string, `List succs)::succ_list)) g ([], [])
+  in
+  let input_json : Yojson.Safe.json = `Assoc [("pred", `Assoc pred_list); ("succ", `Assoc succ_list)] in
+(*  let input_json :Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json ->
       let cmd = InterCfg.cmdof global.icfg node in
       let location = IntraCfg.Cmd.location_of cmd in
       let mem_json : Yojson.Safe.json =
@@ -343,7 +354,7 @@ let export_result (global, input, output) =
       in
       (CilHelper.s_location location ^ ":" ^ InterCfg.Node.to_string node, mem_json) :: json
     ) input [])
-  in
+  in*)
   Yojson.Safe.pretty_to_channel oc input_json;
   close_out oc;
   let oc = open_out (!Options.outdir ^ "/reachable.json") in
