@@ -255,14 +255,45 @@ struct
     if !Options.export_result then begin
       let powproc = ItvDom.Mem.fold (fun _ v -> PowProc.join
           (ItvDom.Val.pow_proc_of_val v)) global.mem PowProc.empty in
-      let oc = open_out (!Options.outdir ^ "/defs.json") in
-      let json = `Assoc (PowProc.fold (fun f def_json ->
+      let oc = open_out (!Options.outdir ^ "/defuse.json") in
+      let global_json = `Assoc (PowProc.fold (fun f def_json ->
         let defs = Access.Info.defof (Access.find_proc_reach_wo_local f access) in
         let ploc_json : Yojson.Safe.json =
           `List (PowLoc.fold (fun l lst -> `String (PowLoc.A.to_string l)::lst)
           defs []) in
         (Proc.to_string f, ploc_json) :: def_json) powproc []) in
-      Yojson.Safe.pretty_to_channel oc json;
+      let local_json = `Assoc (List.fold_left (fun json node ->
+          let defs = Access.Info.defof (Access.find_node node access) in
+          let uses = Access.Info.useof (Access.find_node node access) in
+          let defs_json : Yojson.Safe.json =
+            `List (PowLoc.fold (fun l lst -> `String (PowLoc.A.to_string l)::lst)
+                     defs []) in
+          let uses_json : Yojson.Safe.json =
+            `List (PowLoc.fold (fun l lst -> `String (PowLoc.A.to_string l)::lst)
+                     uses []) in
+          let location = InterCfg.cmdof global.icfg node |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
+          (location ^ ":" ^ Node.to_string node, `Assoc [("def", defs_json); ("use", uses_json)])::json
+        ) [] (InterCfg.nodesof global.icfg))
+      in
+      let loc2def = `Assoc (PowLoc.fold (fun loc json ->
+          let nodes = Access.find_def_nodes loc access in
+          let nodes = PowNode.fold (fun n l ->
+              let location = InterCfg.cmdof global.icfg n |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
+              `String (location ^ ":" ^ Node.to_string n)::l) nodes []
+          in
+          (PowLoc.A.to_string loc, `List nodes)::json) spec.Spec.locset [])
+      in
+      let loc2use = `Assoc (PowLoc.fold (fun loc json ->
+          let nodes = Access.find_use_nodes loc access in
+          let nodes = PowNode.fold (fun n l ->
+              let location = InterCfg.cmdof global.icfg n |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
+              `String (location ^ ":" ^ Node.to_string n)::l) nodes []
+          in
+          (PowLoc.A.to_string loc, `List nodes)::json) spec.Spec.locset [])
+      in
+      Yojson.Safe.pretty_to_channel oc
+        (`Assoc [ ("global", global_json); ("local", local_json)
+                ; ("loc2def", loc2def); ("loc2use", loc2use) ]);
       close_out oc
     end;
     let dug = StepManager.stepf false "Def-use graph construction" SsaDug.make (global, access, spec.Spec.locset_fs) in

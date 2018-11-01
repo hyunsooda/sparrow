@@ -361,8 +361,15 @@ let export_result (global, input, output) =
   let intra_json : Yojson.Safe.json = `Assoc (InterCfg.fold_cfgs (fun pid g json ->
       let trans = IntraCfg.compute_trans_closure g in
       let reachable_json : Yojson.Safe.json = `Assoc (IntraCfg.fold_node (fun node json ->
-          let reachable = IntraCfg.succ_reachable node trans |> List.map (fun x -> `String (pid ^ "-" ^ Node.to_string x)) in
-          (pid ^ "-" ^ Node.to_string node, `List reachable)::json
+          let reachable = IntraCfg.succ_reachable node trans
+                          |> List.map (fun x ->
+                              let location = IntraCfg.find_cmd x g
+                                             |> IntraCfg.Cmd.location_of
+                                             |> CilHelper.s_location in
+                              `String (location ^ ":" ^ pid ^ "-" ^ Node.to_string x)) in
+          let cmd = IntraCfg.find_cmd node g in
+          let location = IntraCfg.Cmd.location_of cmd |> CilHelper.s_location in
+          (location ^ ":" ^ pid ^ "-" ^ Node.to_string node, `List reachable)::json
         ) g [])
       in
       (pid, reachable_json)::json) global.icfg [])
