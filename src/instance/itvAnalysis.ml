@@ -339,8 +339,7 @@ let export_result (global, input, output) =
       let loc_string = Loc.to_string loc in
       ((loc_string, `List preds)::pred_list, (loc_string, `List succs)::succ_list)) g ([], [])
   in
-  let input_json : Yojson.Safe.json = `Assoc [("pred", `Assoc pred_list); ("succ", `Assoc succ_list)] in
-(*  let input_json :Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json ->
+  let points_to :Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json ->
       let cmd = InterCfg.cmdof global.icfg node in
       let location = IntraCfg.Cmd.location_of cmd in
       let mem_json : Yojson.Safe.json =
@@ -354,7 +353,9 @@ let export_result (global, input, output) =
       in
       (CilHelper.s_location location ^ ":" ^ InterCfg.Node.to_string node, mem_json) :: json
     ) input [])
-  in*)
+  in
+  let input_json : Yojson.Safe.json = `Assoc [("pred", `Assoc pred_list); ("succ", `Assoc succ_list)
+                                             ;("points_to", points_to)] in
   Yojson.Safe.pretty_to_channel oc input_json;
   close_out oc;
   let oc = open_out (!Options.outdir ^ "/reachable.json") in
@@ -374,9 +375,21 @@ let export_result (global, input, output) =
       in
       (pid, reachable_json)::json) global.icfg [])
   in
-  let inter_json : Yojson.Safe.json = `Assoc (InterCfg.fold_cfgs (fun pid _ json ->
-      let trans_callees = CallGraph.trans_callees pid global.callgraph |> flip (PowProc.fold (fun x l -> (`String x)::l)) [] in
-      (pid, `List trans_callees)::json) global.icfg [])
+  let inter_json : Yojson.Safe.json =
+    `Assoc (List.fold_left (fun json call_node ->
+        let callees = InterCfg.get_callees call_node global.icfg in
+        let trans_callees =
+          InterCfg.ProcSet.fold (fun pid set ->
+              let callees = CallGraph.trans_callees pid global.callgraph in
+              PowProc.fold InterCfg.ProcSet.add callees set) callees callees
+        in
+        let trans_callees =
+          InterCfg.ProcSet.fold (fun pid l -> (`String pid)::l) trans_callees []
+        in
+        let cmd = InterCfg.cmdof global.icfg call_node in
+        let location = IntraCfg.Cmd.location_of cmd |> CilHelper.s_location in
+        (location ^ ":" ^ InterCfg.Node.to_string call_node, `List trans_callees)::json
+      ) [] (InterCfg.callnodesof global.icfg))
   in
   Yojson.Safe.pretty_to_channel oc (`Assoc [("global", inter_json); ("local", intra_json)]);
   close_out oc
