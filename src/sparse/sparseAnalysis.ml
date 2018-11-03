@@ -255,7 +255,7 @@ struct
     if !Options.export_result then begin
       let powproc = ItvDom.Mem.fold (fun _ v -> PowProc.join
           (ItvDom.Val.pow_proc_of_val v)) global.mem PowProc.empty in
-      let oc = open_out (!Options.outdir ^ "/defuse.json") in
+      let oc = open_out (!Options.outdir ^ "/points-to.json") in
       let global_json = `Assoc (PowProc.fold (fun f def_json ->
         let defs = Access.Info.defof (Access.find_proc_reach_wo_local f access) in
         let ploc_json : Yojson.Safe.json =
@@ -292,8 +292,8 @@ struct
           (PowLoc.A.to_string loc, `List nodes)::json) spec.Spec.locset [])
       in
       Yojson.Safe.pretty_to_channel oc
-        (`Assoc [ ("global", global_json); ("local", local_json)
-                ; ("loc2def", loc2def); ("loc2use", loc2use) ]);
+        (`Assoc [ ("GlobalAccess", global_json); ("LocalAccess", local_json)
+                ; ("VarToDef", loc2def); ("VarToUse", loc2use) ]);
       close_out oc
     end;
     let dug = StepManager.stepf false "Def-use graph construction" SsaDug.make (global, access, spec.Spec.locset_fs) in

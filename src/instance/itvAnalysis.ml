@@ -327,8 +327,25 @@ let get_locset mem =
     |> BatSet.fold (fun a -> PowLoc.add (Loc.of_allocsite a)) (Val.allocsites_of_val v)
   ) mem PowLoc.empty
 
+module LvalMap = Map.Make(Loc)
+let lval_map = ref LvalMap.empty
+class collectLvalVisitor (pid: string) (mem: Mem.t) = object(self)
+  inherit nopCilVisitor
+  method vlval lval =
+    let powloc = ItvSem.eval_lv pid lval mem in
+    PowLoc.iter (fun loc ->
+        let lvset = try LvalMap.find loc !lval_map with _ -> BatSet.empty in
+        let lv = CilHelper.s_lv lval in
+        let lv = if String.get lv 0 == '@' then String.sub lv 1 (String.length lv - 1) else lv in
+        let lvset = BatSet.add lv lvset in
+        lval_map := LvalMap.add loc lvset !lval_map
+      ) powloc;
+    Cil.DoChildren
+end
+
 module LocGraph = Graph.Persistent.Digraph.ConcreteBidirectional(Loc)
 let export_result (global, input, output) =
+  let json = Yojson.Safe.from_file (!Options.outdir ^ "/points-to.json") in
   let oc = open_out (!Options.outdir ^ "/points-to.json") in
   let g = Table.fold (fun _ mem g ->
       Mem.foldi (fun loc v g ->
@@ -354,8 +371,51 @@ let export_result (global, input, output) =
       (CilHelper.s_location location ^ ":" ^ InterCfg.Node.to_string node, mem_json) :: json
     ) input [])
   in
-  let input_json : Yojson.Safe.json = `Assoc [("pred", `Assoc pred_list); ("succ", `Assoc succ_list)
-                                             ;("points_to", points_to)] in
+  let lval_json : Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json_map ->
+      let cmd = InterCfg.cmdof global.icfg node in
+      let location = IntraCfg.Cmd.location_of cmd in
+      let pid = InterCfg.Node.get_pid node in
+      ignore (match cmd with
+       | IntraCfg.Cmd.Cset (lv, exp, _)
+       | IntraCfg.Cmd.Calloc (lv, Array exp, _, _) ->
+         lval_map := LvalMap.empty;
+         let vis = new collectLvalVisitor pid mem in
+         ignore(Cil.visitCilLval vis lv);
+         ignore(Cil.visitCilExpr vis exp)
+       | IntraCfg.Cmd.Csalloc (lv, _, _) ->
+         lval_map := LvalMap.empty;
+         let vis = new collectLvalVisitor pid mem in
+         ignore(Cil.visitCilLval vis lv);
+       | IntraCfg.Cmd.Cassume (exp, _) | Creturn (Some exp, _) ->
+         lval_map := LvalMap.empty;
+         let vis = new collectLvalVisitor pid mem in
+         ignore(Cil.visitCilExpr vis exp)
+       | IntraCfg.Cmd.Ccall (Some lval, e, el, _) ->
+         lval_map := LvalMap.empty;
+         let vis = new collectLvalVisitor pid mem in
+         ignore(Cil.visitCilLval vis lval);
+         ignore(Cil.visitCilExpr vis e);
+         (List.iter (fun e -> ignore(Cil.visitCilExpr vis e)) el)
+       | IntraCfg.Cmd.Ccall (None, e, el, _) ->
+         lval_map := LvalMap.empty;
+         let vis = new collectLvalVisitor pid mem in
+         ignore(Cil.visitCilExpr vis e);
+         (List.iter (fun e -> ignore(Cil.visitCilExpr vis e)) el)
+       | _ -> lval_map := LvalMap.empty);
+      let json =
+        `Assoc (LvalMap.fold (fun l s json ->
+            (Loc.to_string l, `List (BatSet.fold (fun x l -> (`String x)::l) s []))::json) !lval_map [])
+      in
+      (CilHelper.s_location location ^ ":" ^ InterCfg.Node.to_string node, json)::json_map
+    ) input [])
+  in
+  let input_json : Yojson.Safe.json =
+    match json with
+    | `Assoc l ->
+        `Assoc (l@[ ("pred", `Assoc pred_list); ("succ", `Assoc succ_list)
+                 ; ("points_to", points_to); ("LvalExp", lval_json)])
+    | _ -> failwith "invalid"
+  in
   Yojson.Safe.pretty_to_channel oc input_json;
   close_out oc;
   let oc = open_out (!Options.outdir ^ "/reachable.json") in
