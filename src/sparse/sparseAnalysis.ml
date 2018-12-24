@@ -261,7 +261,7 @@ struct
         let ploc_json : Yojson.Safe.json =
           `List (PowLoc.fold (fun l lst -> `String (PowLoc.A.to_string l)::lst)
           defs []) in
-        (Proc.to_string f, ploc_json) :: def_json) powproc []) in
+        (Proc.to_string f, `Assoc [("def", ploc_json)]) :: def_json) powproc []) in
       let local_json = `Assoc (List.fold_left (fun json node ->
           let defs = Access.Info.defof (Access.find_node node access) in
           let uses = Access.Info.useof (Access.find_node node access) in
