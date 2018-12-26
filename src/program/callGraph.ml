@@ -61,6 +61,8 @@ let is_rec : t -> InterCfg.pid -> bool = fun callgraph pid ->
     List.mem pid trans
   with _ -> true (* conservative answer for exceptional cases (e.g., unreachable functions) *)
 
+let fold_vertex f cg a = G.fold_vertex f cg.graph a
+
 let to_json : t -> json
 = fun g ->
   let nodes = `List (G.fold_vertex (fun v nodes ->

@@ -66,6 +66,8 @@ let get_callees : Node.t -> t -> ProcSet.t
 = fun call_node g ->
   try BatMap.find call_node g.call_edges with _ -> ProcSet.empty
 
+let get_call_edges g = g.call_edges
+
 let global_proc = "_G_"
 let start_node = Node.make global_proc IntraCfg.Node.entry
 

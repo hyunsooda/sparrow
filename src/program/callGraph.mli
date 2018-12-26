@@ -25,6 +25,8 @@ val is_rec : t -> InterCfg.pid -> bool
 
 val compute_trans_calls : t -> t
 
+val fold_vertex : (InterCfg.pid -> 'a -> 'a) -> t -> 'a -> 'a
+
 (** {2 Print } *)
 
 val to_json : t -> Yojson.Safe.json

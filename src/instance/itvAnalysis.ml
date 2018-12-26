@@ -347,16 +347,26 @@ module LocGraph = Graph.Persistent.Digraph.ConcreteBidirectional(Loc)
 let export_result (global, input, output) =
   let json = Yojson.Safe.from_file (!Options.outdir ^ "/points-to.json") in
   let oc = open_out (!Options.outdir ^ "/points-to.json") in
-  let g = Table.fold (fun _ mem g ->
+(*  let g = Table.fold (fun _ mem g ->
       Mem.foldi (fun loc v g ->
-          PowLoc.fold (fun l g -> LocGraph.add_edge g loc l) (Val.all_locs v) g) mem g) input LocGraph.empty in
+          PowLoc.fold (fun l g -> LocGraph.add_edge g loc l) (Val.all_locs v) g) mem g) output LocGraph.empty in
   let pred_list, succ_list = LocGraph.fold_vertex (fun loc (pred_list, succ_list) ->
       let preds = LocGraph.pred g loc |> List.map Loc.to_string |> List.map (fun x -> `String x) in
       let succs = LocGraph.succ g loc |> List.map Loc.to_string |> List.map (fun x -> `String x) in
       let loc_string = Loc.to_string loc in
       ((loc_string, `List preds)::pred_list, (loc_string, `List succs)::succ_list)) g ([], [])
+  in*)
+  let trans_callee : Yojson.Safe.json = `Assoc (CallGraph.fold_vertex (fun pid json ->
+      let trans = CallGraph.trans_callees pid global.callgraph in
+      let trans_json = `List (PowProc.fold (fun f trans_json -> `String f :: trans_json) trans []) in
+      (pid, trans_json)::json) global.callgraph [])
   in
-  let points_to :Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json ->
+  let call_site : Yojson.Safe.json = `Assoc (BatMap.foldi (fun node procset json ->
+      let callee = `List (InterCfg.ProcSet.fold (fun f json -> `String f :: json) procset []) in
+      let location = InterCfg.cmdof global.icfg node |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
+      (location ^":"^ InterCfg.Node.to_string node, callee) :: json) (InterCfg.get_call_edges global.icfg) [])
+  in
+(*  let points_to :Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json ->
       let cmd = InterCfg.cmdof global.icfg node in
       let location = IntraCfg.Cmd.location_of cmd in
       let mem_json : Yojson.Safe.json =
@@ -369,9 +379,10 @@ let export_result (global, input, output) =
           mem [])
       in
       (CilHelper.s_location location ^ ":" ^ InterCfg.Node.to_string node, mem_json) :: json
-    ) input [])
-  in
-  let lval_json : Yojson.Safe.json = `Assoc (Table.foldi (fun node mem json_map ->
+    ) output [])
+  in*)
+  let lval_json : Yojson.Safe.json = `Assoc (List.fold_left (fun json_map node ->
+      let mem = Table.find node input in
       let cmd = InterCfg.cmdof global.icfg node in
       let location = IntraCfg.Cmd.location_of cmd in
       let pid = InterCfg.Node.get_pid node in
@@ -406,14 +417,16 @@ let export_result (global, input, output) =
         `Assoc (LvalMap.fold (fun l s json ->
             (Loc.to_string l, `List (BatSet.fold (fun x l -> (`String x)::l) s []))::json) !lval_map [])
       in
-      (CilHelper.s_location location ^ ":" ^ InterCfg.Node.to_string node, json)::json_map
-    ) input [])
+      if json = `Assoc [] then json_map
+      else
+        (CilHelper.s_location location ^ ":" ^ InterCfg.Node.to_string node, json)::json_map
+    ) [] (InterCfg.nodesof global.icfg))
   in
   let input_json : Yojson.Safe.json =
     match json with
     | `Assoc l ->
-        `Assoc (l@[ ("pred", `Assoc pred_list); ("succ", `Assoc succ_list)
-                 ; ("points_to", points_to); ("LvalExp", lval_json)])
+      `Assoc (l@[ ("TransCallees", trans_callee); ("CallSite", call_site)
+                ; ("LvalExp", lval_json)])
     | _ -> failwith "invalid"
   in
   Yojson.Safe.pretty_to_channel oc input_json;

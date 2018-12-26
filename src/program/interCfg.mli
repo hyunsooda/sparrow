@@ -54,6 +54,7 @@ val callnodesof : t -> node list
 
 val add_call_edge : Node.t -> Proc.t -> t -> t
 val get_callees : Node.t -> t -> ProcSet.t
+val get_call_edges :  t -> (Node.t, ProcSet.t) BatMap.t
 val is_undef : pid -> t -> bool
 
 
