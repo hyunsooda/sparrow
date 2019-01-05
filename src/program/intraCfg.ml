@@ -189,7 +189,8 @@ let add_node n g = { g with graph = G.add_vertex g.graph n }
 
 let find_cmd n g =
   try
-    if n = Node.ENTRY || n = Node.EXIT then Cmd.Cskip Cil.locUnknown
+    if n = Node.ENTRY then Cmd.Cskip g.fd.svar.vdecl
+    else if n = Node.EXIT then Cmd.Cskip Cil.locUnknown
     else BatMap.find n g.cmd_map
   with _ ->
     raise (Failure ("Can't find cmd of " ^ Node.to_string n))
