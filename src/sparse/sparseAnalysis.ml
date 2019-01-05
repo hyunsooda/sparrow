@@ -299,8 +299,10 @@ struct
       let loc2use = `Assoc (PowLoc.fold (fun loc json ->
           let nodes = Access.find_use_nodes loc access in
           let nodes = PowNode.fold (fun n l ->
-              let location = InterCfg.cmdof global.icfg n |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
-              `String (location ^ ":" ^ Node.to_string n)::l) nodes []
+              if Node.get_pid n = "_G_" || n = (Node.make "main" IntraCfg.Node.entry) then l
+              else
+                let location = InterCfg.cmdof global.icfg n |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
+                `String (location ^ ":" ^ Node.to_string n)::l) nodes []
           in
           (PowLoc.A.to_string loc, `List nodes)::json) spec.Spec.locset [])
       in
