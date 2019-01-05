@@ -297,7 +297,6 @@ struct
           (PowLoc.A.to_string loc, `List nodes)::json) spec.Spec.locset [])
       in
       let main_location = InterCfg.cmdof global.icfg (Node.make "main" IntraCfg.Node.entry) |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
-      prerr_endline main_location;
       let loc2use = `Assoc (PowLoc.fold (fun loc json ->
           let nodes = Access.find_use_nodes loc access in
           let nodes = PowNode.fold (fun n l ->
