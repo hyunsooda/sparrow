@@ -23,11 +23,11 @@ let rec s_exps : exp list -> string = fun es ->
 and s_exp : exp -> string = function
   | Const c -> s_const c
   | Lval l -> s_lv l
-  | SizeOf t -> "SizeOf(" ^ s_type t ^ ")"
-  | SizeOfE e -> "SizeOfE(" ^ s_exp e ^ ")"
-  | SizeOfStr s -> "SizeOfStr(" ^ s ^ ")"
-  | AlignOf t -> "AlignOf(" ^ s_type t ^ ")"
-  | AlignOfE e -> "AlignOfE(" ^ s_exp e ^ ")"
+  | SizeOf t -> "sizeof(" ^ s_type t ^ ")"
+  | SizeOfE e -> "sizeof(" ^ s_exp e ^ ")"
+  | SizeOfStr s -> "sizeof(" ^ s ^ ")"
+  | AlignOf t -> "alignof(" ^ s_type t ^ ")"
+  | AlignOfE e -> "alignof(" ^ s_exp e ^ ")"
   | UnOp (u, e, _) -> s_uop u ^ s_exp_paren e
   | BinOp (b, e1, e2, _) -> s_exp_paren e1 ^ s_bop b ^ s_exp_paren e2
   | Question (c, e1, e2, _) ->
@@ -59,7 +59,7 @@ and s_lv : lval -> string = fun (lh, offset) ->
   | _ -> s_lhost lh ^ s_offset offset
 
 and s_lhost : lhost -> string = function
-  | Var vi -> (if vi.vglob then "@" else "") ^ vi.vname
+  | Var vi -> vi.vname
   | Mem e -> "*" ^ s_exp_paren2 e
 
 and s_exp_paren2 : exp -> string
