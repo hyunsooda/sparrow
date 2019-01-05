@@ -304,7 +304,9 @@ struct
                 let location = InterCfg.cmdof global.icfg n |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
                 `String (location ^ ":" ^ Node.to_string n)::l) nodes []
           in
-          (PowLoc.A.to_string loc, `List nodes)::json) spec.Spec.locset [])
+          if nodes = [] then json
+          else
+            (PowLoc.A.to_string loc, `List nodes)::json) spec.Spec.locset [])
       in
       Yojson.Safe.pretty_to_channel oc
         (`Assoc [ ("GlobalAccess", global_json); ("LocalAccess", local_json)
