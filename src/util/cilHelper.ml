@@ -53,7 +53,10 @@ and s_stmt : stmt -> string
 = fun s -> tostring (d_stmt () s)
 
 and s_lv : lval -> string = fun (lh, offset) ->
-  s_lhost lh ^ s_offset offset
+  match lh, offset with
+  | Mem _, Field (_, _)
+  | Mem _, Index (_, _) -> "(" ^ s_lhost lh ^ ")" ^ s_offset offset
+  | _ -> s_lhost lh ^ s_offset offset
 
 and s_lhost : lhost -> string = function
   | Var vi -> (if vi.vglob then "@" else "") ^ vi.vname
