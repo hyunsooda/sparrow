@@ -132,10 +132,10 @@ struct
         match opt_v1, opt_v2 with
         | None, None -> None
         | None, Some v
-        | Some v, None -> if B.eq v B.bot then None else Some v
+        | Some v, None -> (* if B.eq v B.bot then None else*) Some v
         | Some v1, Some v2 ->
           let joined_v = B.join v1 v2 in
-          if B.eq joined_v B.bot then None else Some joined_v in
+          (*if B.eq joined_v B.bot then None else*) Some joined_v in
       BatMap.merge join' x y
 
   let meet : t -> t -> t = fun x y ->
@@ -157,10 +157,10 @@ struct
         match opt_v1, opt_v2 with
         | None, None -> None
         | None, Some v
-        | Some v, None -> if B.eq v B.bot then None else Some v
+        | Some v, None -> (*if B.eq v B.bot then None else*) Some v
         | Some v1, Some v2 ->
           let widened_v = B.widen v1 v2 in
-          if B.eq widened_v B.bot then None else Some widened_v in
+          (*if B.eq widened_v B.bot then None else*) Some widened_v in
       BatMap.merge widen' x y
 
   let narrow : t -> t -> t = fun x y ->
@@ -184,17 +184,17 @@ struct
   let find : A.t -> t -> B.t = fun k a -> try BatMap.find k a with _ -> B.bot
 
   let add : A.t -> B.t -> t -> t = fun k v x ->
-    if B.eq v B.bot then BatMap.remove k x else BatMap.add k v x
+    (* if B.eq v B.bot then BatMap.remove k x else *)BatMap.add k v x
 
   let weak_add : A.t -> B.t -> t -> t = fun k v x ->
-    if B.eq v B.bot then x else
+    (* if B.eq v B.bot then x else *)
       BatMap.modify_def v k (fun orig_v ->
         if B.le v orig_v then orig_v
         else if B.le orig_v v then v
         else B.join orig_v v) x
 
   let widen_add : A.t -> B.t -> t -> t = fun k v x ->
-    if B.eq v B.bot then x else
+    (*if B.eq v B.bot then x else*)
       BatMap.modify_def v k (fun orig_v ->
         if B.le v orig_v then orig_v
         else B.widen orig_v v) x
@@ -245,7 +245,7 @@ struct
         if cmp < 0 then
           loop (BatEnum.get e_old) kv2 unstb
         else if cmp > 0 then
-          if v2 <> B.bot && PowA.mem k2 candidate then
+          if (*v2 <> B.bot &&*) PowA.mem k2 candidate then
             loop kv1 (BatEnum.get e_new) ((k2,B.bot,v2)::unstb)
           else
             loop kv1 (BatEnum.get e_new) unstb
@@ -262,7 +262,7 @@ struct
 
   let add_pairs : (A.t -> B.t -> t -> t) -> (A.t * B.t) list -> t -> t
   = fun add_f pairs m ->
-    let add_pair (k, v) m = if B.eq v B.bot then m else add_f k v m in
+    let add_pair (k, v) m = (* if B.eq v B.bot then m else*) add_f k v m in
     list_fold add_pair pairs m
 
   let join_pairs : (A.t * B.t) list -> t -> t = add_pairs weak_add
