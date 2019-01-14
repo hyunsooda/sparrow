@@ -35,7 +35,7 @@ and s_exp : exp -> string = function
   | CastE (t, e) -> "(" ^ s_type t ^ ")" ^ s_exp_paren e
   | AddrOf l -> "&" ^ s_lv l
   | AddrOfLabel _ -> invalid_arg "AddrOfLabel is not supported."
-  | StartOf l -> "StartOf(" ^ s_lv l ^ ")"
+  | StartOf l -> s_lv l
 
 and s_exp_paren : exp -> string
 = fun e ->
