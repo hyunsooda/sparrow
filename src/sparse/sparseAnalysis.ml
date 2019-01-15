@@ -274,22 +274,26 @@ struct
           in
           (Proc.to_string f, function_json) :: global_json) powproc []) in
       let local_json = `Assoc (List.fold_left (fun json node ->
-          let defs = Access.Info.defof (Access.find_node node access) in
-          let uses = Access.Info.useof (Access.find_node node access) in
-          let defs_json : Yojson.Safe.json =
-            `List (PowLoc.fold (fun l lst -> `String (PowLoc.A.to_string l)::lst)
-                     defs []) in
-          let uses_json : Yojson.Safe.json =
-            `List (PowLoc.fold (fun l lst -> `String (PowLoc.A.to_string l)::lst)
-                     uses []) in
-          if defs_json = `List [] && uses_json = `List [] then json
-          else
-            let location = InterCfg.cmdof global.icfg node |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
-            (location ^ ":" ^ Node.to_string node, `Assoc [("def", defs_json); ("use", uses_json)])::json
+          match InterCfg.cmdof global.icfg node with
+          | IntraCfg.Cmd.Cskip _ -> json
+          | _ ->
+            let defs = Access.Info.defof (Access.find_node node access) in
+            let uses = Access.Info.useof (Access.find_node node access) in
+            let defs_json : Yojson.Safe.json =
+              `List (PowLoc.fold (fun l lst -> `String (PowLoc.A.to_string l)::lst)
+                       defs []) in
+            let uses_json : Yojson.Safe.json =
+              `List (PowLoc.fold (fun l lst -> `String (PowLoc.A.to_string l)::lst)
+                       uses []) in
+            if defs_json = `List [] && uses_json = `List [] then json
+            else
+              let location = InterCfg.cmdof global.icfg node |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
+              (location ^ ":" ^ Node.to_string node, `Assoc [("def", defs_json); ("use", uses_json)])::json
         ) [] (InterCfg.nodesof global.icfg))
       in
       let loc2def = `Assoc (PowLoc.fold (fun loc json ->
           let nodes = Access.find_def_nodes loc access in
+          let nodes = PowNode.filter (fun n -> match InterCfg.cmdof global.icfg n with IntraCfg.Cmd.Cskip _ -> false | _ -> true) nodes in
           let nodes = PowNode.fold (fun n l ->
               let location = InterCfg.cmdof global.icfg n |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
               `String (location ^ ":" ^ Node.to_string n)::l) nodes []
@@ -299,6 +303,7 @@ struct
       let main_location = InterCfg.cmdof global.icfg (Node.make "main" IntraCfg.Node.entry) |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
       let loc2use = `Assoc (PowLoc.fold (fun loc json ->
           let nodes = Access.find_use_nodes loc access in
+          let nodes = PowNode.filter (fun n -> match InterCfg.cmdof global.icfg n with IntraCfg.Cmd.Cskip _ -> false | _ -> true) nodes in
           let nodes = PowNode.fold (fun n l ->
               let location = InterCfg.cmdof global.icfg n |> IntraCfg.Cmd.location_of |> CilHelper.s_location in
               if Node.get_pid n = "_G_" || main_location = location then l
