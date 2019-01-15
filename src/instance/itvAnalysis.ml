@@ -329,15 +329,20 @@ let get_locset mem =
 
 module LvalMap = Map.Make(Loc)
 let lval_map = ref LvalMap.empty
+let class_of_type = function
+  | Cil.TInt _ | Cil.TFloat _ | Cil.TPtr _ | Cil.TArray _ -> "scala"
+  | _ -> "other"
 class collectLvalVisitor (pid: string) (mem: Mem.t) = object(self)
   inherit nopCilVisitor
   method vlval lval =
     let powloc = ItvSem.eval_lv pid lval mem in
+    let typ = try Cil.typeOfLval lval |> Cil.unrollTypeDeep |> class_of_type
+      with _ -> prerr_endline (CilHelper.s_lv lval); "unknown" in
     PowLoc.iter (fun loc ->
         let lvset = try LvalMap.find loc !lval_map with _ -> BatSet.empty in
         let lv = CilHelper.s_lv lval in
         let lv = if String.get lv 0 == '@' then String.sub lv 1 (String.length lv - 1) else lv in
-        let lvset = BatSet.add lv lvset in
+        let lvset = BatSet.add (lv, typ) lvset in
         lval_map := LvalMap.add loc lvset !lval_map
       ) powloc;
     Cil.DoChildren
@@ -415,7 +420,9 @@ let export_result (global, input, output) =
        | _ -> lval_map := LvalMap.empty);
       let json =
         `Assoc (LvalMap.fold (fun l s json ->
-            (Loc.to_string l, `List (BatSet.fold (fun x l -> (`String x)::l) s []))::json) !lval_map [])
+            (Loc.to_string l,
+             `List (BatSet.fold (fun (x, t) l ->
+                 (`List [(`String x); (`String t)])::l) s []))::json) !lval_map [])
       in
       if json = `Assoc [] then json_map
       else

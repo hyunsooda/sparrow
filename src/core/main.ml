@@ -117,7 +117,7 @@ let initialize () =
 let main () =
   let t0 = Sys.time () in
   initialize ();
-  try
+(*   try *)
     StepManager.stepf true "Front-end" Frontend.parse ()
     |> Frontend.makeCFGinfo
     |> opt !Options.il print_il
@@ -130,9 +130,11 @@ let main () =
               (!Options.taint, taint_analysis) ] (fun (global,_,_,alarm) -> (global, alarm))
     |> (fun (global, alarm) -> Report.print global alarm)
     |> (fun () -> finalize t0)
+(*
   with exc ->
     L.error "\n%s\n" (Printexc.to_string exc);
     L.error "%s\n" (Printexc.get_backtrace ());
     exit 1
 
+*)
 let _ = main ()
