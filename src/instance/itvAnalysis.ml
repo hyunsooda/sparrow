@@ -330,7 +330,7 @@ let get_locset mem =
 module LvalMap = Map.Make(Loc)
 let lval_map = ref LvalMap.empty
 let class_of_type = function
-  | Cil.TInt _ | Cil.TFloat _ | Cil.TPtr _ | Cil.TArray _ -> "scala"
+  | Cil.TInt _ | Cil.TFloat _ | Cil.TPtr _ | Cil.TArray _ | Cil.TEnum _ -> "scala"
   | _ -> "other"
 class collectLvalVisitor (pid: string) (mem: Mem.t) = object(self)
   inherit nopCilVisitor
