@@ -458,7 +458,8 @@ let rec generate_allocs fd vl entry g =
       | TComp (comp, _) ->
         let lv = (Cil.Var varinfo, Cil.NoOffset) in
         let (term, g) = make_struct fd lv comp varinfo.vdecl entry g in
-        let (term, g) = generate_allocs_field comp.cfields lv fd varinfo.vdecl term g in
+        (* unknwon location for Chisel not to add assertion for declaration *)
+        let (term, g) = generate_allocs_field comp.cfields lv fd (* varinfo.vdecl *) Cil.locUnknown term g in
         generate_allocs fd t term g
       | _ -> generate_allocs fd t entry g
     end

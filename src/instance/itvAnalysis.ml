@@ -425,6 +425,7 @@ let export_result (global, input, output) =
                  (`List [(`String x); (`String t)])::l) s []))::json) !lval_map [])
       in
       if json = `Assoc [] then json_map
+      else if (InterCfg.cmdof global.icfg node |> IntraCfg.Cmd.location_of = Cil.locUnknown) then json_map
       else
         (CilHelper.s_location location ^ ":" ^ InterCfg.Node.to_string node, json)::json_map
     ) [] (InterCfg.nodesof global.icfg))
