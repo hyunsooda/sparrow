@@ -401,7 +401,7 @@ let rec make_nested_array fd lv typ exp loc entry initialize g =
     let f assume_node element g =
       (* tmp = malloc(size); lv[i] = tmp *)
       let (term, g) = make_struct fd element comp loc assume_node g in
-      generate_allocs_field comp.cfields element fd term g
+      generate_allocs_field comp.cfields element fd loc term g
     in
     make_init_loop fd lv exp loc entry f g
   | _ when initialize ->
@@ -414,7 +414,7 @@ let rec make_nested_array fd lv typ exp loc entry initialize g =
     make_init_loop fd lv exp loc entry f g
   | _ -> (entry, g)
 
-and generate_allocs_field fl lv fd entry g =
+and generate_allocs_field fl lv fd loc entry g =
   match fl with
   | [] -> (entry, g)
   | fieldinfo::t -> begin
@@ -422,18 +422,18 @@ and generate_allocs_field fl lv fd entry g =
       | TArray (typ, Some exp, _) ->
         let field = addOffsetLval (Cil.Field (fieldinfo, Cil.NoOffset)) lv in
         let tmp = (Cil.Var (Cil.makeTempVar fd Cil.voidPtrType), Cil.NoOffset) in
-        let (term, g) = make_array fd tmp typ exp fieldinfo.floc entry g in
+        let (term, g) = make_array fd tmp typ exp loc entry g in
         let cast_node = Node.make () in
-        let cast_cmd = Cmd.Cset (field, Cil.CastE (Cil.TPtr (typ, []), Cil.Lval tmp), fieldinfo.floc) in
+        let cast_cmd = Cmd.Cset (field, Cil.CastE (Cil.TPtr (typ, []), Cil.Lval tmp), loc) in
         let g = g |> add_cmd cast_node cast_cmd |> add_edge term cast_node in
-        let (term, g) = make_nested_array fd field typ exp fieldinfo.floc cast_node false g in
-        generate_allocs_field t lv fd term g
+        let (term, g) = make_nested_array fd field typ exp loc cast_node false g in
+        generate_allocs_field t lv fd loc term g
       | TComp (comp, _) ->
         let field = addOffsetLval (Cil.Field (fieldinfo, Cil.NoOffset)) lv in
-        let (term, g) = make_struct fd field comp fieldinfo.floc entry g in
-        let (term, g) = generate_allocs_field comp.cfields field fd term g in
-        generate_allocs_field t lv fd term g
-      | _ -> generate_allocs_field t lv fd entry g
+        let (term, g) = make_struct fd field comp loc entry g in
+        let (term, g) = generate_allocs_field comp.cfields field fd loc term g in
+        generate_allocs_field t lv fd loc term g
+      | _ -> generate_allocs_field t lv fd loc entry g
     end
 
 and get_base_type = function
@@ -458,7 +458,7 @@ let rec generate_allocs fd vl entry g =
       | TComp (comp, _) ->
         let lv = (Cil.Var varinfo, Cil.NoOffset) in
         let (term, g) = make_struct fd lv comp varinfo.vdecl entry g in
-        let (term, g) = generate_allocs_field comp.cfields lv fd term g in
+        let (term, g) = generate_allocs_field comp.cfields lv fd varinfo.vdecl term g in
         generate_allocs fd t term g
       | _ -> generate_allocs fd t entry g
     end
@@ -597,7 +597,7 @@ let transform_allocs fd g =
           |> add_cmd node (Cmd.Calloc (lv, Cmd.Array exp, false, loc))
           |> add_cmd cast_node cast_cmd
           |> add_edge node cast_node
-          |> generate_allocs_field comp.cfields (Mem (Lval lv), NoOffset) fd cast_node
+          |> generate_allocs_field comp.cfields (Mem (Lval lv), NoOffset) fd loc cast_node
         | _, _ ->
           let cmd = Cmd.Calloc (lv, Cmd.Array exp, false, loc) in
           let g = add_cmd node cmd g in
@@ -694,7 +694,7 @@ let process_gvardecl fd lv loc entry g =
     (node, g |> add_cmd node cmd |> add_edge entry node)
   | TComp (comp, _) ->
     let (term, g) = make_struct fd lv comp loc entry g in
-    let (term, g) = generate_allocs_field comp.cfields lv fd term g in
+    let (term, g) = generate_allocs_field comp.cfields lv fd loc term g in
     (term, g)
   | _ -> (entry, g)
 
