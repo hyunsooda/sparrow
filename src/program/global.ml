@@ -12,6 +12,9 @@ open Yojson.Safe
 open Vocab
 open BasicDom
 open InterCfg
+open Cil
+open Pretty
+open Cilglobal
 
 type t = {
   file : Cil.file;
@@ -49,6 +52,28 @@ let remove_unreachable_nodes : t -> t
   prerr_endline (string_of_set InterCfg.Node.to_string unreachable); *)
   global
 
+class simpleCilPrinterClass = object (self)
+inherit Cil.defaultCilPrinterClass as super
+method pLineDirective ?(forcefile=false) l = Pretty.nil
+method pGlobal () global =
+match global with
+| Cil.GVarDecl (vi, l) when Hashtbl.mem Cil.builtinFunctions vi.vname ->
+Pretty.nil
+| Cil.GVarDecl (vi, l) ->
+(match vi.vtype with
+ | TFun (_, _, _, attr) ->
+ if List.mem (Cil.Attr ("missingproto", [])) attr then Pretty.nil
+ else (super#pVDecl () vi) ++ text ";\n"
+ | _ -> (super#pVDecl () vi) ++ text ";\n")
+| _ -> super#pGlobal () global
+end
+
+let dumpFile pp out file =
+Pretty.fastMode := true;
+Cil.iterGlobals file (fun g -> Cil.dumpGlobal pp out g);
+flush out
+
+
 let remove_unreachable_functions : t -> t
 =fun global ->
   let pids_all = PowProc.of_list (InterCfg.pidsof global.icfg) in
@@ -62,6 +87,26 @@ let remove_unreachable_functions : t -> t
   if PowProc.cardinal recursive > 0 then my_prerr_endline (PowProc.to_string recursive);
   my_prerr_endline ("#unreachable   : " ^ string_of_int (PowProc.cardinal unreachable));
   if PowProc.cardinal unreachable > 0 then my_prerr_endline (PowProc.to_string unreachable);
+  let oc = open_out "tmp.c" in
+  let globals = global.file.globals in 
+  my_prerr_endline ("#old   : " ^ string_of_int (List.length globals));
+  let _,globals =
+    List.fold_left (fun (set, lst) glob ->
+        match glob with
+          Cil.GFun(fundec,_) ->
+          if (PowProc.mem fundec.svar.vname unreachable) || (GlobalSet.mem glob set) then (set, lst)
+          else (GlobalSet.add glob set, lst@[glob])
+        | Cil.GVarDecl(vardecl,_) ->
+          if (PowProc.mem vardecl.vname unreachable) || (GlobalSet.mem glob set) then (set, lst)
+          else (GlobalSet.add glob set, lst@[glob])
+        | _ -> (GlobalSet.add glob set, lst@[glob])
+      ) (GlobalSet.empty,[]) globals
+  in
+  let _ = global.file.globals <- globals in 
+  my_prerr_endline ("#new   : " ^ string_of_int (List.length globals));
+  let _ = dumpFile (new simpleCilPrinterClass (*Cil.defaultCilPrinterClass*)) oc global.file in
+  close_out oc;
+  exit 0;
   global
 
 let init file =

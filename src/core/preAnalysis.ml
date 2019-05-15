@@ -37,8 +37,10 @@ let callees_of : InterCfg.t -> InterCfg.Node.t -> Mem.t -> PowProc.t
   let pid = InterCfg.Node.get_pid node in
   let c = InterCfg.cmdof icfg node in
   match c with
-  | IntraCfg.Cmd.Ccall (_, e, _, _) ->
-    Val.pow_proc_of_val (ItvSem.eval pid e mem)
+  | IntraCfg.Cmd.Ccall (_, e, args, _) ->
+    PowProc.join (Val.pow_proc_of_val (ItvSem.eval pid e mem))
+    (List.fold_left (fun plocs e -> PowProc.join plocs (Val.pow_proc_of_val (ItvSem.eval pid (Cil.Lval (Cil.Mem e, Cil.NoOffset)) mem)))
+       PowProc.empty args)
   | _ -> PowProc.bot
 
 let draw_call_edges : InterCfg.Node.t list -> Mem.t -> Global.t -> Global.t
