@@ -1,5 +1,9 @@
 #!/bin/bash
-$sparrow -il -frontend clang $1 > resultclang
-$sparrow -il -frontend cli $1 > resultcli
 
-vim -c o $1 -c "vsp resultclang" -c "sp resultcli"
+clang=resultclang.c
+cli=resultcli.c
+
+$sparrow -il -frontend clang $1 > $clang
+$sparrow -il -frontend cli $1 > $cli
+
+vim -c o $1 -c "vsp $clang" -c "sp $cli"
