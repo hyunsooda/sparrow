@@ -237,14 +237,18 @@ let rec trans_type ?(compinfo = None) scope typ =
   | C.Ast.FunctionType ft -> trans_function_type scope ft
   | C.Ast.Typedef td -> Scope.find_type ~compinfo (name_of_ident_ref td) scope
   | C.Ast.Elaborated et -> trans_type ~compinfo scope et.named_type
-  | C.Ast.Record rt -> Scope.find_type ~compinfo (name_of_ident_ref rt) scope
+  | C.Ast.Record rt -> 
+          Printf.printf "Record start\n";
+          Scope.find_type ~compinfo (name_of_ident_ref rt) scope
   | C.Ast.Enum et -> Scope.find_type ~compinfo (name_of_ident_ref et) scope
   | C.Ast.InvalidType -> failwith "invalid type"
   | C.Ast.Vector _ -> failwith "vector type"
-  | C.Ast.BuiltinType _ -> trans_builtin_type scope typ
-  | x -> trans_builtin_type scope typ
+  | C.Ast.BuiltinType _ -> trans_builtin_type ~compinfo scope typ
+  | x -> 
+          Printf.printf "any tpye...\n";
+          trans_builtin_type ~compinfo scope typ
 
-and trans_builtin_type scope t =
+and trans_builtin_type ?(compinfo = None) scope t =
   let k = C.get_type_kind t.C.Ast.cxtype in
   let attr = trans_attribute t in
   match k with
@@ -260,16 +264,18 @@ and trans_builtin_type scope t =
   | C.FunctionNoProto -> failwith "typedef"
   | C.FunctionProto -> failwith "typedef"
   | C.ConstantArray ->
+      Printf.printf "constant array\n";
       let size = C.get_array_size t.cxtype |> Cil.integer in
       let elem_type =
         C.get_array_element_type t.cxtype
-        |> C.Type.of_cxtype |> trans_type scope
+        |> C.Type.of_cxtype |> trans_type ~compinfo scope
       in
       Cil.TArray (elem_type, Some size, attr)
   | C.VariableArray | C.IncompleteArray ->
+      Printf.printf "variable array\n";
       let elem_type =
         C.get_array_element_type t.cxtype
-        |> C.Type.of_cxtype |> trans_type scope
+        |> C.Type.of_cxtype |> trans_type ~compinfo scope
       in
       Cil.TArray (elem_type, None, attr)
   | Invalid | Unexposed | Char16 | Char32 -> failwith "type 1"
@@ -394,6 +400,7 @@ let rec trans_expr ?(allow_undef = false) scope fundec_opt loc action
   try
     match expr.C.Ast.desc with
     | C.Ast.IntegerLiteral il ->
+        Printf.printf "integer literal expr \n";
         ([], Some (trans_integer_literal expr.decoration il))
     | C.Ast.FloatingLiteral fl ->
         ([], Some (trans_floating_literal expr.decoration fl))
@@ -427,10 +434,12 @@ let rec trans_expr ?(allow_undef = false) scope fundec_opt loc action
         else if should_ignore_implicit_cast2 e typ then (sl, Some e)
         else (sl, Some (Cil.CastE (typ, e)))
     | C.Ast.Member mem ->
+        Printf.printf "Member expr @@\n";
         ( [],
           Some (trans_member scope fundec_opt loc mem.base mem.arrow mem.field)
         )
     | C.Ast.ArraySubscript arr ->
+        Printf.printf "array subscript @@\n";
         let sl1, base = trans_expr scope fundec_opt loc action arr.base in
         let sl2, idx = trans_expr scope fundec_opt loc action arr.index in
         let base =
@@ -452,7 +461,9 @@ let rec trans_expr ?(allow_undef = false) scope fundec_opt loc action
         trans_cond_op scope fundec_opt loc co.cond co.then_branch co.else_branch
     | C.Ast.UnaryExpr ue ->
         trans_unary_expr scope fundec_opt loc ue.kind ue.argument
-    | C.Ast.InitList el -> failwith "init list"
+    | C.Ast.InitList el ->
+            Printf.printf "real init list\n"; 
+            failwith "init list"
     | C.Ast.ImaginaryLiteral _ ->
         failwith "Unsupported syntax (ImaginaryLiteral)"
     | C.Ast.BoolLiteral _ -> failwith "Unsupported syntax (BoolLiteral)"
@@ -553,14 +564,14 @@ and trans_binary_operator scope fundec_opt loc action typ kind lhs rhs =
   | C.ShlAssign | C.ShrAssign | C.AndAssign | C.XorAssign | C.OrAssign ->
       let drop_assign = function
         | C.MulAssign -> C.Mul
-        | C.DivAssign -> C.Mul
-        | C.RemAssign -> C.Mul
-        | C.AddAssign -> C.Mul
-        | C.SubAssign -> C.Mul
-        | C.ShlAssign -> C.Mul
-        | C.ShrAssign -> C.Mul
-        | C.AndAssign -> C.Mul
-        | C.XorAssign -> C.Mul
+        | C.DivAssign -> C.Div
+        | C.RemAssign -> C.Rem
+        | C.AddAssign -> C.Add
+        | C.SubAssign -> C.Sub
+        | C.ShlAssign -> C.Shl
+        | C.ShrAssign -> C.Shr
+        | C.AndAssign -> C.And
+        | C.XorAssign -> C.Xor
         | C.OrAssign -> C.Or
         | _ -> failwith "Invalid syntaxk"
       in
@@ -608,6 +619,7 @@ and trans_call scope fundec_opt loc action callee args =
   (callee_insts @ args_insts @ [ stmt ], retvar_exp)
 
 and trans_member scope fundec_opt loc base arrow field =
+  Printf.printf "trans_member function\n";
   match base with
   | Some b -> (
       let _, bexp = trans_expr scope fundec_opt loc ADrop b in
@@ -825,10 +837,13 @@ let rec trans_stmt scope fundec (stmt : C.Ast.stmt) : Chunk.t * Scope.t =
       in
       ({ Chunk.empty with stmts }, scope)
   | C.Ast.Decl dl ->
+      Printf.printf "var decl@@\n";
+                 
       let stmts, scope = trans_var_decl_list scope fundec loc AExp dl in
       ({ Chunk.empty with stmts }, scope)
   | C.Ast.Expr e ->
       let stmts, _ = trans_expr scope (Some fundec) loc ADrop e in
+      Printf.printf "expr\n";
       ({ Chunk.empty with stmts }, scope)
   | C.Ast.Try _ ->
       failwith ("Unsupported syntax (Try): " ^ CilHelper.s_location loc)
@@ -870,8 +885,19 @@ and trans_var_decl (scope : Scope.t) fundec loc action
           let sl, _ =
             List.fold_left
               (fun (sl, o) i ->
+                Printf.printf "init list start\n";
                 let _, expr_opt = trans_expr scope (Some fundec) loc action i in
                 let expr = get_opt "var_decl" expr_opt in
+
+
+                let _ = 
+                match typ with
+                | Cil.TArray(_,_,_) -> Printf.printf "init list is used for ARRAY\n"
+                | Cil.TComp(_,_) -> Printf.printf "init list is used for struct\n"
+                | _ -> Printf.printf "init list is used with unformal style\n"
+                in
+
+
                 let var =
                   (Cil.Var varinfo, Cil.Index (Cil.integer o, Cil.NoOffset))
                 in
@@ -883,6 +909,7 @@ and trans_var_decl (scope : Scope.t) fundec loc action
           in
           (sl, scope)
       | _ ->
+          Printf.printf "not init list@@?\n";
           let sl_expr, expr_opt = trans_expr scope (Some fundec) loc action e in
           let expr = get_opt "var_decl" expr_opt in
           let var = (Cil.Var varinfo, Cil.NoOffset) in
