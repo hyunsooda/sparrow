@@ -173,6 +173,11 @@ let trans_location node =
     byte = location.C.Ast.column;
   }
 
+let get_compinfo typ =
+  match Cil.unrollType typ with
+  | Cil.TComp (ci, _) -> ci
+  | _ -> failwith ("invalid type: " ^ CilHelper.s_type typ)
+
 let trans_int_kind : C.Ast.builtin_type -> Cil.ikind = function
   | C.Int | C.Bool -> Cil.IInt
   | C.Char_U | C.UChar -> Cil.IUChar
@@ -882,32 +887,46 @@ and trans_var_decl (scope : Scope.t) fundec loc action
   | Some e -> (
       match e.C.Ast.desc with
       | C.Ast.InitList el ->
-          let sl, _ =
-            List.fold_left
-              (fun (sl, o) i ->
-                Printf.printf "init list start\n";
-                let _, expr_opt = trans_expr scope (Some fundec) loc action i in
-                let expr = get_opt "var_decl" expr_opt in
-
-
-                let _ = 
-                match typ with
-                | Cil.TArray(_,_,_) -> Printf.printf "init list is used for ARRAY\n"
-                | Cil.TComp(_,_) -> Printf.printf "init list is used for struct\n"
-                | _ -> Printf.printf "init list is used with unformal style\n"
-                in
-
-
-                let var =
-                  (Cil.Var varinfo, Cil.Index (Cil.integer o, Cil.NoOffset))
-                in
-                let stmt =
-                  Cil.mkStmt (Cil.Instr [ Cil.Set (var, expr, loc) ])
-                in
-                (sl @ [ stmt ], o + 1))
-              ([], 0) el
-          in
-          (sl, scope)
+            (match typ with
+            | Cil.TArray(_,_,_) -> 
+                  let sl, _ =
+                    List.fold_left
+                      (fun (sl, o) i ->
+                        Printf.printf "init list start\n";
+                        let _, expr_opt = trans_expr scope (Some fundec) loc action i in
+                        let expr = get_opt "var_decl" expr_opt in
+                        let var =
+                          (Cil.Var varinfo, Cil.Index (Cil.integer o, Cil.NoOffset))
+                        in
+                        let stmt =
+                          Cil.mkStmt (Cil.Instr [ Cil.Set (var, expr, loc) ])
+                        in
+                        (sl @ [ stmt ], o + 1))
+                    ([], 0) el
+                  in
+                  (sl, scope)
+            | Cil.TComp(_,_) ->
+                    let prev_ci = get_compinfo typ in
+                    let fields = prev_ci.cfields in 
+                    let sl, _ =
+                      List.fold_left
+                        (fun (sl, o) i ->
+                          let fieldinfo = List.nth fields o in
+                          let _, expr_opt = trans_expr scope (Some fundec) loc action i in
+                          let expr = get_opt "var_decl" expr_opt in
+                          let var =
+                            (Cil.Var varinfo, Cil.Field(fieldinfo, Cil.NoOffset))
+                          in
+                          let stmt =
+                            Cil.mkStmt (Cil.Instr [ Cil.Set (var, expr, loc) ]) in
+                          let field_name = (List.nth fields 1) in
+                          Printf.printf "init list is used for struct %s\n" field_name.fname;
+                          (sl @ [ stmt ], o + 1))
+                      ([], 0) el
+                    in
+                    (sl, scope)
+            | _ -> 
+                    failwith "initialize list can be only used with {array, struct}\n")
       | _ ->
           Printf.printf "not init list@@?\n";
           let sl_expr, expr_opt = trans_expr scope (Some fundec) loc action e in
@@ -1175,10 +1194,6 @@ let trans_function_body scope fundec body =
     bstmts = List.map (Cil.visitCilStmt vis) chunk.Chunk.stmts;
   }
 
-let get_compinfo typ =
-  match Cil.unrollType typ with
-  | Cil.TComp (ci, _) -> ci
-  | _ -> failwith ("invalid type: " ^ CilHelper.s_type typ)
 
 let trans_decl_attribute decl =
   let attrs = ref [] in
