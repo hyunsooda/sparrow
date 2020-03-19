@@ -879,6 +879,31 @@ and trans_var_decl_list scope fundec loc action (dl : C.Ast.decl list) =
       | _ -> (sl, scope))
     ([], scope) dl
 
+and remove_comp_elem target_elem_list fields =
+    (*
+    | Cil.{fcomp; fname; ftype; fbitfield; fattr; floc}::tl  ->
+        if fname = target_fname then tl
+        else Cil.{fcomp; fname; ftype; fbitfield; fattr; floc} ::
+                             (remove_comp_elem target_fname tl)  
+    | _ -> []
+    *)
+    match fields with
+    | Cil.{fcomp; fname; ftype; fbitfield; fattr; floc} :: tl ->
+        let is_contain = 
+            List.fold_left
+              (fun is_contain target_name ->
+                if target_name = fname then true
+                else is_contain || false)
+            false target_elem_list
+        in
+        if is_contain = false
+        then
+            Cil.{fcomp; fname; ftype; fbitfield; fattr; floc} :: 
+                         (remove_comp_elem target_elem_list tl)
+        else remove_comp_elem target_elem_list tl
+    | _ -> [] 
+
+
 and trans_var_decl (scope : Scope.t) fundec loc action
     (desc : C.Ast.var_decl_desc) =
   let typ = trans_type scope desc.C.Ast.var_type in
@@ -908,6 +933,7 @@ and trans_var_decl (scope : Scope.t) fundec loc action
             | Cil.TComp(_,_) ->
                     let prev_ci = get_compinfo typ in
                     let fields = prev_ci.cfields in 
+                    let initialized_elems = ref [] in 
                     let sl, _ =
                       List.fold_left
                         (fun (sl, o) i ->
@@ -919,12 +945,28 @@ and trans_var_decl (scope : Scope.t) fundec loc action
                           in
                           let stmt =
                             Cil.mkStmt (Cil.Instr [ Cil.Set (var, expr, loc) ]) in
-                          let field_name = (List.nth fields 1) in
-                          Printf.printf "init list is used for struct %s\n" field_name.fname;
+                          let nth_field = (List.nth fields o) in
+                          initialized_elems := nth_field.fname :: !initialized_elems; 
+                          Printf.printf "init list is used for struct %s\n" nth_field.fname;
                           (sl @ [ stmt ], o + 1))
                       ([], 0) el
                     in
-                    (sl, scope)
+                    let uninitialized_elems = 
+                      remove_comp_elem !initialized_elems fields in
+                      let uninitialized_exprs = 
+                        List.fold_left
+                          (fun el fieldinfo ->
+                            let var =
+                              (Cil.Var varinfo, Cil.Field(fieldinfo, Cil.NoOffset))
+                            in
+                            (* TODO: match ftype with ... | Cil.integer -> ... | Cil.float -> ...*)
+                            let expr = Cil.integer 0 in
+                            let stmt =
+                              Cil.mkStmt (Cil.Instr [ Cil.Set (var, expr, loc) ]) in 
+                            el @ [ stmt ])
+                        [] uninitialized_elems
+                    in
+                    (sl @ uninitialized_exprs, scope)
             | _ -> 
                     failwith "initialize list can be only used with {array, struct}\n")
       | _ ->
