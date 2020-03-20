@@ -1253,6 +1253,15 @@ and mk_struct_init scope loc fi =
         fst el
     | Cil.TInt(ikind,_) -> [ Cil.SingleInit (Cil.kinteger ikind 0) ]
     | Cil.TFloat(fkind,_) -> [ Cil.SingleInit (Cil.Const (Cil.CReal (0., fkind, None))) ]
+    | Cil.TPtr(typ, _) ->
+        (match typ with
+        (*
+        | Cil.charPtrType ->
+        | Cil.charConstPtrType
+        | Cil.voidPtrType
+        | Cil.uintPtrType *)
+        | TInt(IInt,[]) -> (*intPtrType*) 
+            [ Cil.SingleInit (Cil.CastE (Cil.integer 0), loc) ])
 
 let failwith_decl (decl : C.Ast.decl) =
   match decl.C.Ast.desc with
