@@ -242,14 +242,14 @@ let rec trans_type ?(compinfo = None) scope typ =
   | C.Ast.FunctionType ft -> trans_function_type scope ft
   | C.Ast.Typedef td -> Scope.find_type ~compinfo (name_of_ident_ref td) scope
   | C.Ast.Elaborated et -> trans_type ~compinfo scope et.named_type
-  | C.Ast.Record rt -> 
+  | C.Ast.Record rt ->
           Printf.printf "Record start\n";
           Scope.find_type ~compinfo (name_of_ident_ref rt) scope
   | C.Ast.Enum et -> Scope.find_type ~compinfo (name_of_ident_ref et) scope
   | C.Ast.InvalidType -> failwith "invalid type"
   | C.Ast.Vector _ -> failwith "vector type"
   | C.Ast.BuiltinType _ -> trans_builtin_type ~compinfo scope typ
-  | x -> 
+  | x ->
           Printf.printf "any tpye...\n";
           trans_builtin_type ~compinfo scope typ
 
@@ -467,8 +467,14 @@ let rec trans_expr ?(allow_undef = false) scope fundec_opt loc action
     | C.Ast.UnaryExpr ue ->
         trans_unary_expr scope fundec_opt loc ue.kind ue.argument
     | C.Ast.InitList el ->
-            Printf.printf "real init list\n"; 
-            failwith "init list"
+        Printf.printf "real init list\n";
+        (*
+        List.map
+          (fun e ->
+            trans_expr scope fundec_opt loc action e)
+        el
+        *)
+        failwith "init list"
     | C.Ast.ImaginaryLiteral _ ->
         failwith "Unsupported syntax (ImaginaryLiteral)"
     | C.Ast.BoolLiteral _ -> failwith "Unsupported syntax (BoolLiteral)"
@@ -843,7 +849,7 @@ let rec trans_stmt scope fundec (stmt : C.Ast.stmt) : Chunk.t * Scope.t =
       ({ Chunk.empty with stmts }, scope)
   | C.Ast.Decl dl ->
       Printf.printf "var decl@@\n";
-                 
+
       let stmts, scope = trans_var_decl_list scope fundec loc AExp dl in
       ({ Chunk.empty with stmts }, scope)
   | C.Ast.Expr e ->
@@ -884,12 +890,12 @@ and remove_comp_elem target_elem_list fields =
     | Cil.{fcomp; fname; ftype; fbitfield; fattr; floc}::tl  ->
         if fname = target_fname then tl
         else Cil.{fcomp; fname; ftype; fbitfield; fattr; floc} ::
-                             (remove_comp_elem target_fname tl)  
+                             (remove_comp_elem target_fname tl)
     | _ -> []
     *)
     match fields with
     | Cil.{fcomp; fname; ftype; fbitfield; fattr; floc} :: tl ->
-        let is_contain = 
+        let is_contain =
             List.fold_left
               (fun is_contain target_name ->
                 if target_name = fname then true
@@ -898,10 +904,10 @@ and remove_comp_elem target_elem_list fields =
         in
         if is_contain = false
         then
-            Cil.{fcomp; fname; ftype; fbitfield; fattr; floc} :: 
+            Cil.{fcomp; fname; ftype; fbitfield; fattr; floc} ::
                          (remove_comp_elem target_elem_list tl)
         else remove_comp_elem target_elem_list tl
-    | _ -> [] 
+    | _ -> []
 
 
 and trans_var_decl (scope : Scope.t) fundec loc action
@@ -913,7 +919,7 @@ and trans_var_decl (scope : Scope.t) fundec loc action
       match e.C.Ast.desc with
       | C.Ast.InitList el ->
             (match typ with
-            | Cil.TArray(_,_,_) -> 
+            | Cil.TArray(_,_,_) ->
                   let sl, _ =
                     List.fold_left
                       (fun (sl, o) i ->
@@ -930,10 +936,10 @@ and trans_var_decl (scope : Scope.t) fundec loc action
                     ([], 0) el
                   in
                   (sl, scope)
-            | Cil.TComp(_,_) ->
+            | Cil.TComp(ci, _) ->
                     let prev_ci = get_compinfo typ in
-                    let fields = prev_ci.cfields in 
-                    let initialized_elems = ref [] in 
+                    let fields = prev_ci.cfields in
+                    let initialized_elems = ref [] in
                     let sl, _ =
                       List.fold_left
                         (fun (sl, o) i ->
@@ -946,29 +952,33 @@ and trans_var_decl (scope : Scope.t) fundec loc action
                           let stmt =
                             Cil.mkStmt (Cil.Instr [ Cil.Set (var, expr, loc) ]) in
                           let nth_field = (List.nth fields o) in
-                          initialized_elems := nth_field.fname :: !initialized_elems; 
+                          initialized_elems := nth_field.fname :: !initialized_elems;
                           Printf.printf "init list is used for struct %s\n" nth_field.fname;
                           (sl @ [ stmt ], o + 1))
                       ([], 0) el
                     in
-                    let uninitialized_elems = 
+                    let uninitialized_elems =
                       remove_comp_elem !initialized_elems fields in
-                      let uninitialized_exprs = 
+                      let uninitialized_exprs =
                         List.fold_left
                           (fun el fieldinfo ->
                             let var =
                               (Cil.Var varinfo, Cil.Field(fieldinfo, Cil.NoOffset))
                             in
                             (* TODO: match ftype with ... | Cil.integer -> ... | Cil.float -> ...*)
-                            let expr = Cil.integer 0 in
+
+                            let expr = match fieldinfo.ftype with
+                            | Cil.TInt(_,_) -> Cil.integer 0
+                            | _ -> failwith "asd"
+                            in
                             let stmt =
-                              Cil.mkStmt (Cil.Instr [ Cil.Set (var, expr, loc) ]) in 
+                              Cil.mkStmt (Cil.Instr [ Cil.Set (var, expr, loc) ]) in
                             el @ [ stmt ])
                         [] uninitialized_elems
                     in
                     (sl @ uninitialized_exprs, scope)
-            | _ -> 
-                    failwith "initialize list can be only used with {array, struct}\n")
+            | _ ->
+                    failwith "not expected\n")
       | _ ->
           Printf.printf "not init list@@?\n";
           let sl_expr, expr_opt = trans_expr scope (Some fundec) loc action e in
@@ -1179,14 +1189,16 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
       in
       Cil.CompoundInit (typ, init_list)
   | C.Ast.InitList el, Cil.TComp (ci, _) ->
-      let el, fields =
+      let el, fields, uninitialized_fields =
         if List.length el > List.length ci.cfields then
           let _ = L.warn "Field initializations do not match the delcaration" in
-          (BatList.take (List.length ci.cfields) el, ci.cfields)
+          (BatList.take (List.length ci.cfields) el, ci.cfields, [])
         else if List.length el < List.length ci.cfields then
           let _ = L.warn "Field initializations do not match the delcaration" in
-          (el, BatList.take (List.length el) ci.cfields)
-        else (el, ci.cfields)
+          (el,
+           BatList.take (List.length el) ci.cfields,
+           BatList.drop (List.length el) ci.cfields)
+        else (el, ci.cfields, [])
       in
       let init_list =
         List.fold_left2
@@ -1195,11 +1207,52 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
             r @ [ (Cil.Field (fi, Cil.NoOffset), init) ])
           [] el fields
       in
-      Cil.CompoundInit (typ, init_list)
-  | _ ->
+      let uninit_list =
+        List.fold_left
+          (fun (el, idx) fi ->
+            let nfi = List.nth ci.cfields idx in
+            let uninit = mk_struct_init scope loc nfi in
+            let concat_uninit =
+             List.fold_left
+                (fun acc item ->
+                  (Cil.Field (fi, Cil.NoOffset), item) :: acc)
+             [] uninit
+            in
+            (el @ concat_uninit, idx+1))
+        ([], 0) ci.cfields
+      in
+      let uninits = BatList.drop (List.length init_list) (fst uninit_list) in
+      Cil.CompoundInit (typ, init_list @ uninits)
+  | C.Ast.InitList el, _ ->
+      let e = List.nth el 0 in (* accept only first scalar and ignore reminader *)
       let _, expr_opt = trans_expr scope None loc ADrop e in
       let expr = Option.get expr_opt in
       Cil.SingleInit expr
+  | _ ->
+      Printf.printf "here?\n";
+      let _, expr_opt = trans_expr scope None loc ADrop e in
+      let expr = Option.get expr_opt in
+      Cil.SingleInit expr
+
+and mk_struct_init scope loc fi =
+    match fi.ftype with
+    | Cil.TComp(ci, _) -> (* when struct in struct *)
+        let el =
+        List.fold_left
+          (fun (inits, idx) nfi ->
+            let nfi = List.nth ci.cfields idx in
+            let init =
+            match nfi.ftype with
+            | Cil.TInt(ikind,_) -> [ Cil.SingleInit (Cil.kinteger ikind 0) ]
+            | Cil.TFloat(fkind,_) -> [ Cil.SingleInit (Cil.Const (Cil.CReal (0., fkind, None))) ]
+            | Cil.TComp(ci, _) -> mk_struct_init scope loc nfi
+            in
+            (init @ inits), idx+1)
+        ([], 0) ci.cfields
+        in
+        fst el
+    | Cil.TInt(ikind,_) -> [ Cil.SingleInit (Cil.kinteger ikind 0) ]
+    | Cil.TFloat(fkind,_) -> [ Cil.SingleInit (Cil.Const (Cil.CReal (0., fkind, None))) ]
 
 let failwith_decl (decl : C.Ast.decl) =
   match decl.C.Ast.desc with
