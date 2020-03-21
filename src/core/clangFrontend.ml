@@ -1236,17 +1236,12 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
 
 and mk_struct_init scope loc fi =
     match fi.ftype with
-    | Cil.TComp(ci, _) -> (* when struct in struct *)
+    | Cil.TComp(ci, _) -> 
         let el =
         List.fold_left
           (fun (inits, idx) nfi ->
             let nfi = List.nth ci.cfields idx in
-            let init =
-            match nfi.ftype with
-            | Cil.TInt(ikind,_) -> [ Cil.SingleInit (Cil.kinteger ikind 0) ]
-            | Cil.TFloat(fkind,_) -> [ Cil.SingleInit (Cil.Const (Cil.CReal (0., fkind, None))) ]
-            | Cil.TComp(ci, _) -> mk_struct_init scope loc nfi
-            in
+            let init = mk_struct_init scope loc nfi in
             (init @ inits), idx+1)
         ([], 0) ci.cfields
         in
@@ -1261,10 +1256,11 @@ and mk_struct_init scope loc fi =
         let len_exp = Option.get arr_exp in
         let arr_len =
         ( match len_exp with
-        | Const c ->
-            (match c with
-            | CInt64 (v, _, _) -> Int64.to_int v
-            | _ -> failwith "not expected"))
+          | Const c ->
+              (match c with
+              | CInt64 (v, _, _) -> Int64.to_int v
+              | _ -> failwith "not expected")
+          | _ -> failwith "not expected" )
         in
         let arr_init_list = ref []
         in
@@ -1275,7 +1271,7 @@ and mk_struct_init scope loc fi =
     | Cil.TFun(_, _, _, _) -> failwith "not expected"
     | Cil.TEnum(einfo, _) ->
         [ Cil.SingleInit (Cil.integer 0) ]
-  
+    | Cil.TVoid _ | TBuiltin_va_list _ -> failwith "not expected"
 
 let failwith_decl (decl : C.Ast.decl) =
   match decl.C.Ast.desc with
