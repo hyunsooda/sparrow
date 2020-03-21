@@ -1255,6 +1255,27 @@ and mk_struct_init scope loc fi =
     | Cil.TFloat(fkind,_) -> [ Cil.SingleInit (Cil.Const (Cil.CReal (0., fkind, None))) ]
     | Cil.TPtr(typ, _) ->
         [ Cil.SingleInit (Cil.CastE (TPtr(typ,[]), (Cil.integer 0))) ]
+    | Cil.TNamed(typeinfo, _) ->
+        [ Cil.SingleInit (Cil.CastE (typeinfo.ttype, (Cil.integer 0))) ]
+    | Cil.TArray(arr_type, arr_exp, _) ->
+        let len_exp = Option.get arr_exp in
+        let arr_len =
+        ( match len_exp with
+        | Const c ->
+            (match c with
+            | CInt64 (v, _, _) -> Int64.to_int v
+            | _ -> failwith "not expected"))
+        in
+        let arr_init_list = ref []
+        in
+        for i=0 to (arr_len - 1) do
+            arr_init_list := Cil.SingleInit (Cil.CastE (arr_type, (Cil.integer 0))) :: !arr_init_list
+        done;
+        !arr_init_list
+    | Cil.TFun(_, _, _, _) -> failwith "not expected"
+    | Cil.TEnum(einfo, _) ->
+        [ Cil.SingleInit (Cil.integer 0) ]
+  
 
 let failwith_decl (decl : C.Ast.decl) =
   match decl.C.Ast.desc with
