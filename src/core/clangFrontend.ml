@@ -1078,10 +1078,29 @@ and trans_stmt_opt scope fundec = function
   | Some s -> trans_stmt scope fundec s
   | None -> (Chunk.empty, scope)
 
+let mk_uninit_arr_remainder ?(arr_len = 0) typ =
+  match typ with
+  | Cil.TArray (arr_type, arr_exp, _) ->
+      let len_exp = Option.get arr_exp in
+      let arr_len =
+        if arr_len <> 0 then arr_len
+        else
+          match len_exp with
+          | Const c -> (
+              match c with
+              | CInt64 (v, _, _) -> Int64.to_int v
+              | _ -> failwith "not expected" )
+          | _ -> failwith "not expected"
+      in
+      List.init arr_len (fun x -> x)
+      |> List.map (fun _ ->
+             Cil.SingleInit (Cil.CastE (arr_type, Cil.integer 0)))
+  | _ -> failwith "not expected"
+
 let rec trans_global_init scope loc (e : C.Ast.expr) =
   let typ = type_of_expr e |> trans_type scope in
   match (e.C.Ast.desc, typ) with
-  | C.Ast.InitList el, Cil.TArray (_, _, _) ->
+  | C.Ast.InitList el, Cil.TArray (arr_typ, arr_exp, attr) ->
       let init_list, _ =
         List.fold_left
           (fun (r, o) i ->
@@ -1089,29 +1108,99 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
             (r @ [ (Cil.Index (Cil.integer o, Cil.NoOffset), init) ], o + 1))
           ([], 0) el
       in
-      Cil.CompoundInit (typ, init_list)
+      let len_exp = Option.get arr_exp in
+      let arr'_len =
+        match len_exp with
+        | Const c -> (
+            match c with
+            | CInt64 (v, _, _) -> Int64.to_int v
+            | _ -> failwith "not expected" )
+        | _ -> failwith "not expected"
+      in
+      let arr' = Cil.TArray (arr_typ, arr_exp, attr) in
+      let remainder =
+        mk_uninit_arr_remainder ~arr_len:(arr'_len - List.length el) arr'
+      in
+      let uninits =
+        List.map
+          (fun init -> (Cil.Index (Cil.integer 0, NoOffset), init))
+          remainder
+      in
+      Cil.CompoundInit (typ, init_list @ uninits)
   | C.Ast.InitList el, Cil.TComp (ci, _) ->
-      let el, fields =
-        if List.length el > List.length ci.cfields then
-          let _ = L.warn "Field initializations do not match the delcaration" in
-          (BatList.take (List.length ci.cfields) el, ci.cfields)
-        else if List.length el < List.length ci.cfields then
-          let _ = L.warn "Field initializations do not match the delcaration" in
-          (el, BatList.take (List.length el) ci.cfields)
-        else (el, ci.cfields)
+      let total_fields =
+        List.fold_left
+          (fun fis fi ->
+            let uninit, fis' = trans_uninits scope loc fi in
+            fis @ fis')
+          [] ci.cfields
       in
       let init_list =
-        List.fold_left2
-          (fun r i fi ->
-            let init = trans_global_init scope loc i in
-            r @ [ (Cil.Field (fi, Cil.NoOffset), init) ])
-          [] el fields
+        List.fold_left
+          (fun (expl, fis) e ->
+            let init = trans_global_init scope loc e in
+            if List.length fis > 0 then
+              let fi = List.nth fis 0 in
+              let expl' = expl @ [ (Cil.Field (fi, Cil.NoOffset), init) ] in
+              (expl', BatList.drop 1 fis)
+            else (expl, BatList.drop 1 fis))
+          ([], total_fields) el
       in
-      Cil.CompoundInit (typ, init_list)
+      let uninit_list =
+        List.fold_left
+          (fun (el, idx) fi ->
+            let nfi = List.nth ci.cfields idx in
+            let uninit, fis = trans_uninits scope loc nfi in
+            let concat_uninit =
+              List.fold_left
+                (fun acc item -> (Cil.Field (fi, Cil.NoOffset), item) :: acc)
+                [] uninit
+            in
+            (el @ concat_uninit, idx + 1))
+          ([], 0) ci.cfields
+      in
+      let init_list = fst init_list in
+      let uninits = BatList.drop (List.length init_list) (fst uninit_list) in
+      Cil.CompoundInit (typ, init_list @ uninits)
+  | C.Ast.InitList el, _ ->
+      let e = List.nth el 0 in
+      (*accept only first scalar and ignore reminader*)
+      let _, expr_opt = trans_expr scope None loc ADrop e in
+      let expr = Option.get expr_opt in
+      Cil.SingleInit expr
   | _ ->
       let _, expr_opt = trans_expr scope None loc ADrop e in
       let expr = Option.get expr_opt in
       Cil.SingleInit expr
+
+and trans_uninits ?(arr_len = 0) scope loc fi =
+  match fi.ftype with
+  | Cil.TComp (ci, _) ->
+      (* struct in struct *)
+      let fis = ref [] in
+      let el =
+        List.fold_left
+          (fun (inits, idx) nfi ->
+            let nfi = List.nth ci.cfields idx in
+            let init, fi' = trans_uninits scope loc nfi in
+            fis := fi' @ !fis;
+            (init @ inits, idx + 1))
+          ([], 0) ci.cfields
+      in
+      (fst el, !fis)
+  | Cil.TInt (ikind, _) -> ([ Cil.SingleInit (Cil.kinteger ikind 0) ], [ fi ])
+  | Cil.TFloat (fkind, _) ->
+      ([ Cil.SingleInit (Cil.Const (Cil.CReal (0., fkind, None))) ], [ fi ])
+  | Cil.TPtr (typ, _) ->
+      ([ Cil.SingleInit (Cil.CastE (TPtr (typ, []), Cil.integer 0)) ], [ fi ])
+  | Cil.TNamed (typeinfo, _) ->
+      ([ Cil.SingleInit (Cil.CastE (typeinfo.ttype, Cil.integer 0)) ], [ fi ])
+  | Cil.TArray (arr_type, arr_exp, _) ->
+      let init = mk_uninit_arr_remainder fi.ftype in
+      (init, [ fi ])
+  | Cil.TFun (_, _, _, _) -> failwith "not expected"
+  | Cil.TEnum (einfo, _) -> ([ Cil.SingleInit (Cil.integer 0) ], [ fi ])
+  | Cil.TVoid _ | TBuiltin_va_list _ -> failwith "not expected"
 
 let failwith_decl (decl : C.Ast.decl) =
   match decl.C.Ast.desc with
