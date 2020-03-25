@@ -1204,6 +1204,19 @@ let rec mk_init expr scope loc fi =
   | Cil.TVoid _ when expr <> [] -> failwith "not expected"
   | Cil.TBuiltin_va_list _ when expr <> [] -> failwith "not expected"
 
+  (* Can't reach below patterns *)
+  | Cil.TComp (_, _)  
+  | Cil.TInt (_, _)  
+  | Cil.TFloat (_, _) 
+  | Cil.TPtr (_, _) 
+  | Cil.TNamed (_, _) 
+  | Cil.TArray (_, _, _) 
+  | Cil.TFun (_, _, _, _) 
+  | Cil.TEnum (_, _) 
+  | Cil.TVoid _ 
+  | Cil.TBuiltin_va_list _ -> failwith "not expected" 
+
+
 let rec trans_global_init scope loc (e : C.Ast.expr) =
   let typ = type_of_expr e |> trans_type scope in
   match (e.C.Ast.desc, typ) with
