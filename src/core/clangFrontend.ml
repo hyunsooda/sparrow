@@ -1110,7 +1110,7 @@ let pp_which_cil_type = function
   | Cil.TBuiltin_va_list _ -> "va_list"
 
 let rec mk_init expr scope loc fi =
-  (* logic for uninitaiized *)
+  (* for uninitaiized *)
   match fi.Cil.ftype with
   | Cil.TComp (ci, _) when expr = [] ->
       (* struct in struct *)
@@ -1120,8 +1120,8 @@ let rec mk_init expr scope loc fi =
           (fun (inits, idx) nfi ->
             let nfi = List.nth ci.cfields idx in
             let (init, fi', _) = mk_init expr scope loc nfi in
-            ignore(fis := !fis @ [fi']);
-            (inits @ [init], idx + 1))
+            ignore(fis := fi' :: !fis);
+            (init :: inits, idx + 1))
           ([], 0) ci.cfields
       in
       let inits =
@@ -1131,7 +1131,7 @@ let rec mk_init expr scope loc fi =
           )
         [] (fst el) !fis
       in
-      (Cil.CompoundInit(fi.Cil.ftype, List.rev inits), fi, [])
+      (Cil.CompoundInit(fi.Cil.ftype, inits), fi, [])
   | Cil.TInt (ikind, _) when expr = [] -> 
       ((Cil.SingleInit (Cil.kinteger ikind 0)), fi, [])
   | Cil.TFloat (fkind, _) when expr = [] ->
@@ -1145,14 +1145,9 @@ let rec mk_init expr scope loc fi =
   | Cil.TVoid _ when expr = [] -> failwith "not expected"
   | Cil.TBuiltin_va_list _ when expr = [] -> failwith "not expected"
 
-  (* logic for initaiized *)
+  (* for initaiized *)
   | Cil.TComp (ci, _) when expr <> [] ->
       (* struct in struct *)
-          (*
-      let e = Option.get expr in
-      let _, expr_opt = trans_expr scope None loc ADrop e in
-      let expr = Option.get expr_opt in
-*)
       let expr = ref expr in
       let fis = ref [] in
       let el =
@@ -1161,9 +1156,9 @@ let rec mk_init expr scope loc fi =
             Printf.printf "HI@@@ %d %s\n" (List.length !expr) nfi.Cil.fname;
             let nfi = List.nth ci.cfields idx in
             let (init, fi', expr_remainders) = mk_init !expr scope loc nfi in
-            ignore(fis := !fis @ [fi']);
+            ignore(fis := fi' :: !fis);
             ignore(expr := expr_remainders);
-            (inits @ [init], idx + 1))
+            (init :: inits, idx + 1))
           ([], 0) ci.cfields
       in
       let inits =
@@ -1173,7 +1168,7 @@ let rec mk_init expr scope loc fi =
           )
         [] (fst el) !fis
       in
-      (Cil.CompoundInit(fi.Cil.ftype, List.rev inits), fi, !expr)
+      (Cil.CompoundInit(fi.Cil.ftype, inits), fi, !expr)
   | Cil.TInt (ikind, _) when expr <> [] ->
       let e = List.hd expr in
       let _, expr_opt = trans_expr scope None loc ADrop e in
@@ -1194,7 +1189,35 @@ let rec mk_init expr scope loc fi =
       let _, expr_opt = trans_expr scope None loc ADrop e in
       let e = Option.get expr_opt in
       (Cil.SingleInit e, fi, List.tl expr)
-  | Cil.TArray (arr_type, arr_exp, _) when expr <> [] -> failwith "not implemented"
+  | Cil.TArray (arr_type, arr_exp, _) when expr <> [] ->
+	  (*
+		1. count length
+		2. loop with count
+		*) 
+	  let len_exp = Option.get arr_exp in
+      let arr_len =
+        match len_exp with
+        | Const c -> (
+            match c with
+            | CInt64 (v, _, _) -> Int64.to_int v
+            | _ -> failwith "not expected" )
+        | _ -> failwith "not expected"
+      in
+	  let empty_list = List.init arr_len (fun idx -> idx) in
+	  let inits, expr_remainders, _ = 
+		  List.fold_left
+			(fun (inits, expr_remainders, o) _ ->
+			  let e = List.hd expr_remainders in
+			  let _, expr_opt = trans_expr scope None loc ADrop e in
+			  let e = Option.get expr_opt in
+			  let init = Cil.SingleInit e in
+			  let init_with_idx = (Cil.Index (Cil.integer o, Cil.NoOffset), init) in 
+			  (init_with_idx :: inits, List.tl expr_remainders , o + 1) 
+			)
+		  ([], expr, 0) empty_list
+	  in
+	  (Cil.CompoundInit(fi.Cil.ftype, List.rev inits), fi, expr_remainders)	
+
   | Cil.TFun (_, _, _, _) when expr <> [] -> failwith "not expected"
   | Cil.TEnum (einfo, _) when expr <> [] ->
       let e = List.hd expr in
@@ -1221,15 +1244,8 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
   let typ = type_of_expr e |> trans_type scope in
   match (e.C.Ast.desc, typ) with
   | C.Ast.InitList el, Cil.TArray (arr_typ, arr_exp, attr) ->
-      let init_list, _ =
-        List.fold_left
-          (fun (r, o) i ->
-            let (_, init) = trans_global_init scope loc i in
-            (r @ [ (Cil.Index (Cil.integer o, Cil.NoOffset), init) ], o + 1))
-          ([], 0) el
-      in
-      let len_exp = Option.get arr_exp in
-      let arr'_len =
+	  let len_exp = Option.get arr_exp in
+      let arr_len =
         match len_exp with
         | Const c -> (
             match c with
@@ -1237,16 +1253,19 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
             | _ -> failwith "not expected" )
         | _ -> failwith "not expected"
       in
-      let arr' = Cil.TArray (arr_typ, arr_exp, attr) in
-      let remainder =
-        mk_uninit_arr_remainder ~arr_len:(arr'_len - List.length el) arr'
+      let el =
+        if List.length el > arr_len then
+          BatList.take arr_len el
+        else el
+	  in
+      let init_list, _ =
+        List.fold_left
+          (fun (r, o) i ->
+            let (_, init) = trans_global_init scope loc i in
+            (r @ [ (Cil.Index (Cil.integer o, Cil.NoOffset), init) ], o + 1))
+          ([], 0) el
       in
-      let uninits =
-        List.map
-          (fun init -> (Cil.Index (Cil.integer 0, NoOffset), init))
-          remainder
-      in
-      (typ, Cil.CompoundInit (typ, init_list @ uninits))
+      (typ, Cil.CompoundInit (typ, init_list))
   | C.Ast.InitList el, Cil.TComp (ci, _) ->
       let all_exprs = el in 
       let init_list =
@@ -1257,7 +1276,7 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
               (* let compound_init = Cil.CompoundInit(field_typ, [(Cil.Field(fi, Cil.NoOffset), init)]) in *)
               let (cil_init, _, exprs_remainders) = mk_init all_exprs' scope loc fi in
               let _ = Printf.printf "%s %s \n" (pp_which_cil_type fi.Cil.ftype) fi.Cil.fname in
-              let expl' = [ cil_init ] @ expl in
+              let expl' =  expl @ [ cil_init ] in
               (expl', BatList.drop 1 fis, exprs_remainders)
             else (expl, BatList.drop 1 fis, all_exprs'))
           ([], ci.cfields, all_exprs) el
@@ -1270,7 +1289,7 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
           )
         [] init_list ci.cfields
       in
-      (typ, Cil.CompoundInit (typ, init_list))
+      (typ, Cil.CompoundInit (typ, List.rev init_list))
 (* 
  * struct A{
      int a;   single init 
