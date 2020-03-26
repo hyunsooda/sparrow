@@ -173,6 +173,11 @@ let trans_location node =
     byte = location.C.Ast.column;
   }
 
+let get_compinfo typ =
+  match Cil.unrollType typ with
+  | Cil.TComp (ci, _) -> ci
+  | _ -> failwith ("invalid type: " ^ CilHelper.s_type typ)
+
 let trans_int_kind : C.Ast.builtin_type -> Cil.ikind = function
   | C.Int | C.Bool -> Cil.IInt
   | C.Char_U | C.UChar -> Cil.IUChar
@@ -1146,8 +1151,7 @@ let rec mk_init expr scope loc fi =
   | Cil.TBuiltin_va_list _ when expr = [] -> failwith "not expected"
 
   (* for initaiized *)
-  | Cil.TComp (ci, _) when expr <> [] ->
-      (* struct in struct *)
+  | Cil.TComp (ci, _) when expr <> [] -> (* struct in struct *)
       let expr = ref expr in
       let fis = ref [] in
       let el =
@@ -1180,15 +1184,29 @@ let rec mk_init expr scope loc fi =
       let e = Option.get expr_opt in
       (Cil.SingleInit e, fi, List.tl expr)
   | Cil.TPtr (typ, _) when expr <> [] ->
-      let e = List.hd expr in
+	  let e = List.hd expr in
       let _, expr_opt = trans_expr scope None loc ADrop e in
       let e = Option.get expr_opt in
-      (Cil.SingleInit e, fi, List.tl expr)
+	  let actual_typ = Cil.unrollTypeDeep typ in
+	  let _ = Printf.printf "ptr type : %s\n" (pp_which_cil_type actual_typ) in
+	  let funcptr_fi = { fi with ftype = actual_typ } in 
+      (Cil.SingleInit e, funcptr_fi, List.tl expr) 
   | Cil.TNamed (typeinfo, _) when expr <> [] ->
-      let e = List.hd expr in
-      let _, expr_opt = trans_expr scope None loc ADrop e in
-      let e = Option.get expr_opt in
-      (Cil.SingleInit e, fi, List.tl expr)
+	  let is_struct typ = 
+	  match typ with
+	  | Cil.TComp (ci,_) -> true
+	  | _ -> false 
+	  in
+	  let origin_typ = { fi with ftype = typeinfo.ttype} in
+	  if (is_struct typeinfo.ttype) = true then (
+	    let tcomp = get_compinfo typeinfo.ttype in
+		mk_struct_init expr scope loc origin_typ tcomp)
+	  else
+        let e = List.hd expr in
+        let _, expr_opt = trans_expr scope None loc ADrop e in
+        let e = Option.get expr_opt in
+ 	    Printf.printf "Tnamed : %s %s\n" fi.Cil.fname typeinfo.tname;
+        (Cil.SingleInit e, origin_typ, List.tl expr)
   | Cil.TArray (arr_type, arr_exp, _) when expr <> [] ->
 	  (*
 		1. count length
@@ -1239,6 +1257,28 @@ let rec mk_init expr scope loc fi =
   | Cil.TVoid _ 
   | Cil.TBuiltin_va_list _ -> failwith "not expected" 
 
+and mk_struct_init expr scope loc fi ci =
+	let expr = ref expr in
+    let fis = ref [] in
+    let el =
+      List.fold_left
+        (fun (inits, idx) nfi ->
+          Printf.printf "HI@@@ %d %s\n" (List.length !expr) nfi.Cil.fname;
+          let nfi = List.nth ci.cfields idx in
+          let (init, fi', expr_remainders) = mk_init !expr scope loc nfi in
+          ignore(fis := fi' :: !fis);
+          ignore(expr := expr_remainders);
+          (init :: inits, idx + 1))
+        ([], 0) ci.cfields
+    in
+    let inits =
+      List.fold_left2
+        (fun fields_offset init fi ->
+          (Cil.Field(fi, Cil.NoOffset),init) :: fields_offset
+        )
+      [] (fst el) !fis
+    in
+    (Cil.CompoundInit(fi.Cil.ftype, inits), fi, !expr)
 
 let rec trans_global_init scope loc (e : C.Ast.expr) =
   let typ = type_of_expr e |> trans_type scope in
@@ -1360,7 +1400,8 @@ and trans_uninits ?(arr_len = 0) scope loc fi =
   | Cil.TFun (_, _, _, _) -> failwith "not expected"
   | Cil.TEnum (einfo, _) -> ([ Cil.SingleInit (Cil.integer 0) ], [ fi ])
   | Cil.TVoid _ | TBuiltin_va_list _ -> failwith "not expected"
- 
+
+(* 
 and get_total_fields scope loc fi =
   match fi.Cil.ftype with
   | Cil.TComp (ci, _) ->
@@ -1392,6 +1433,7 @@ and get_total_fields scope loc fi =
   | Cil.TFun (_, _, _, _) -> failwith "not expected"
   | Cil.TEnum (einfo, _) -> [fi]
   | Cil.TVoid _ | TBuiltin_va_list _ -> failwith "not expected"
+*)
 
 let failwith_decl (decl : C.Ast.decl) =
   match decl.C.Ast.desc with
@@ -1427,11 +1469,6 @@ let trans_function_body scope fundec body =
     Cil.battrs = [];
     bstmts = List.map (Cil.visitCilStmt vis) chunk.Chunk.stmts;
   }
-
-let get_compinfo typ =
-  match Cil.unrollType typ with
-  | Cil.TComp (ci, _) -> ci
-  | _ -> failwith ("invalid type: " ^ CilHelper.s_type typ)
 
 let trans_decl_attribute decl =
   let attrs = ref [] in
