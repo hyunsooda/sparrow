@@ -1109,10 +1109,15 @@ let pp_which_cil_type = function
   | Cil.TPtr (typ, _) -> "pointer"
   | Cil.TNamed (typeinfo, _) -> "named type"
   | Cil.TArray (arr_type, arr_exp, _) -> "array"
-  | Cil.TFun (_, _, _, _) -> "fun"
+  | Cil.TFun (_, _, _, _) -> "func"
   | Cil.TEnum (einfo, _) -> "enum"
   | Cil.TVoid _ -> "void"
   | Cil.TBuiltin_va_list _ -> "va_list"
+
+let is_struct typ = 
+  match typ with
+  | Cil.TComp (_,_) -> true
+  | _ -> false 
 
 let rec mk_init expr scope loc fi =
   (* for uninitaiized *)
@@ -1124,8 +1129,8 @@ let rec mk_init expr scope loc fi =
         List.fold_left
           (fun (inits, idx) nfi ->
             let nfi = List.nth ci.cfields idx in
-            let (init, fi', _) = mk_init expr scope loc nfi in
-            ignore(fis := fi' :: !fis);
+            let (init, _) = mk_init expr scope loc nfi in
+            ignore(fis := nfi :: !fis);
             (init :: inits, idx + 1))
           ([], 0) ci.cfields
       in
@@ -1136,77 +1141,58 @@ let rec mk_init expr scope loc fi =
           )
         [] (fst el) !fis
       in
-      (Cil.CompoundInit(fi.Cil.ftype, inits), fi, [])
+      (Cil.CompoundInit(fi.Cil.ftype, inits), [])
   | Cil.TInt (ikind, _) when expr = [] -> 
-      ((Cil.SingleInit (Cil.kinteger ikind 0)), fi, [])
+      ((Cil.SingleInit (Cil.kinteger ikind 0)), [])
   | Cil.TFloat (fkind, _) when expr = [] ->
-      ((Cil.SingleInit (Cil.Const (Cil.CReal (0., fkind, None)))), fi, [])
+      ((Cil.SingleInit (Cil.Const (Cil.CReal (0., fkind, None)))), [])
   | Cil.TPtr (typ, _) when expr = []->
-      ((Cil.SingleInit (Cil.CastE (TPtr (typ, []), Cil.integer 0))), fi, [])
+      ((Cil.SingleInit (Cil.CastE (TPtr (typ, []), Cil.integer 0))), [])
   | Cil.TNamed (typeinfo, _) when expr = [] ->
-      ((Cil.SingleInit (Cil.CastE (typeinfo.ttype, Cil.integer 0))), fi, [])
+      ((Cil.SingleInit (Cil.CastE (typeinfo.ttype, Cil.integer 0))), [])
   | Cil.TArray (arr_type, arr_exp, _) when expr = [] -> failwith "not implemented"
-  | Cil.TEnum (einfo, _) when expr = [] -> ((Cil.SingleInit (Cil.integer 0), fi, []))
+  | Cil.TEnum (einfo, _) when expr = [] -> ((Cil.SingleInit (Cil.integer 0), []))
   | Cil.TVoid _ when expr = [] -> failwith "not expected"
   | Cil.TBuiltin_va_list _ when expr = [] -> failwith "not expected"
 
   (* for initaiized *)
   | Cil.TComp (ci, _) when expr <> [] -> (* struct in struct *)
-      let expr = ref expr in
-      let fis = ref [] in
-      let el =
-        List.fold_left
-          (fun (inits, idx) nfi ->
-            Printf.printf "HI@@@ %d %s\n" (List.length !expr) nfi.Cil.fname;
-            let nfi = List.nth ci.cfields idx in
-            let (init, fi', expr_remainders) = mk_init !expr scope loc nfi in
-            ignore(fis := fi' :: !fis);
-            ignore(expr := expr_remainders);
-            (init :: inits, idx + 1))
-          ([], 0) ci.cfields
-      in
-      let inits =
-        List.fold_left2
-          (fun fields_offset init fi ->
-            (Cil.Field(fi, Cil.NoOffset),init) :: fields_offset
-          )
-        [] (fst el) !fis
-      in
-      (Cil.CompoundInit(fi.Cil.ftype, inits), fi, !expr)
+	  mk_struct_init expr scope loc fi.Cil.ftype ci
   | Cil.TInt (ikind, _) when expr <> [] ->
       let e = List.hd expr in
       let _, expr_opt = trans_expr scope None loc ADrop e in
       let e = Option.get expr_opt in
-      (Cil.SingleInit e, fi, List.tl expr)
+      (Cil.SingleInit e, List.tl expr)
   | Cil.TFloat (fkind, _) when expr <> [] ->
       let e = List.hd expr in
       let _, expr_opt = trans_expr scope None loc ADrop e in
       let e = Option.get expr_opt in
-      (Cil.SingleInit e, fi, List.tl expr)
-  | Cil.TPtr (typ, _) when expr <> [] ->
+      (Cil.SingleInit e, List.tl expr)
+  | Cil.TPtr (typ, attr) when expr <> [] ->
 	  let e = List.hd expr in
       let _, expr_opt = trans_expr scope None loc ADrop e in
       let e = Option.get expr_opt in
 	  let actual_typ = Cil.unrollTypeDeep typ in
-	  let _ = Printf.printf "ptr type : %s\n" (pp_which_cil_type actual_typ) in
-	  let funcptr_fi = { fi with ftype = actual_typ } in 
-      (Cil.SingleInit e, funcptr_fi, List.tl expr) 
-  | Cil.TNamed (typeinfo, _) when expr <> [] ->
+	  (match actual_typ with
+	  | Cil.TFun (_,_,_,_) -> (* function pointer *)
+	     (Cil.SingleInit (Cil.CastE (Cil.TPtr (actual_typ, attr), e)), List.tl expr) 
+	  | _ ->
+	     (Cil.SingleInit e, List.tl expr)) 
+  | Cil.TNamed (typeinfo, attr) when expr <> [] ->
 	  let is_struct typ = 
 	  match typ with
 	  | Cil.TComp (ci,_) -> true
 	  | _ -> false 
 	  in
-	  let origin_typ = { fi with ftype = typeinfo.ttype} in
 	  if (is_struct typeinfo.ttype) = true then (
+		Printf.printf "Tnamed!\n";
 	    let tcomp = get_compinfo typeinfo.ttype in
-		mk_struct_init expr scope loc origin_typ tcomp)
+		mk_struct_init expr scope loc typeinfo.ttype tcomp)
 	  else
         let e = List.hd expr in
         let _, expr_opt = trans_expr scope None loc ADrop e in
         let e = Option.get expr_opt in
- 	    Printf.printf "Tnamed : %s %s\n" fi.Cil.fname typeinfo.tname;
-        (Cil.SingleInit e, origin_typ, List.tl expr)
+        (Cil.SingleInit e, List.tl expr)
   | Cil.TArray (arr_type, arr_exp, _) when expr <> [] ->
 	  (*
 		1. count length
@@ -1234,14 +1220,14 @@ let rec mk_init expr scope loc fi =
 			)
 		  ([], expr, 0) empty_list
 	  in
-	  (Cil.CompoundInit(fi.Cil.ftype, List.rev inits), fi, expr_remainders)	
+	  (Cil.CompoundInit(fi.Cil.ftype, List.rev inits), expr_remainders)	
 
   | Cil.TFun (_, _, _, _) when expr <> [] -> failwith "not expected"
   | Cil.TEnum (einfo, _) when expr <> [] ->
       let e = List.hd expr in
       let _, expr_opt = trans_expr scope None loc ADrop e in
       let e = Option.get expr_opt in
-      (Cil.SingleInit e, fi, List.tl expr)
+      (Cil.SingleInit e, List.tl expr)
   | Cil.TVoid _ when expr <> [] -> failwith "not expected"
   | Cil.TBuiltin_va_list _ when expr <> [] -> failwith "not expected"
 
@@ -1257,7 +1243,7 @@ let rec mk_init expr scope loc fi =
   | Cil.TVoid _ 
   | Cil.TBuiltin_va_list _ -> failwith "not expected" 
 
-and mk_struct_init expr scope loc fi ci =
+and mk_struct_init expr scope loc typ ci =
 	let expr = ref expr in
     let fis = ref [] in
     let el =
@@ -1265,8 +1251,8 @@ and mk_struct_init expr scope loc fi ci =
         (fun (inits, idx) nfi ->
           Printf.printf "HI@@@ %d %s\n" (List.length !expr) nfi.Cil.fname;
           let nfi = List.nth ci.cfields idx in
-          let (init, fi', expr_remainders) = mk_init !expr scope loc nfi in
-          ignore(fis := fi' :: !fis);
+          let (init, expr_remainders) = mk_init !expr scope loc nfi in
+          ignore(fis := nfi :: !fis);
           ignore(expr := expr_remainders);
           (init :: inits, idx + 1))
         ([], 0) ci.cfields
@@ -1278,7 +1264,7 @@ and mk_struct_init expr scope loc fi ci =
         )
       [] (fst el) !fis
     in
-    (Cil.CompoundInit(fi.Cil.ftype, inits), fi, !expr)
+    (Cil.CompoundInit(typ, inits), !expr)
 
 let rec trans_global_init scope loc (e : C.Ast.expr) =
   let typ = type_of_expr e |> trans_type scope in
@@ -1306,30 +1292,13 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
           ([], 0) el
       in
       (typ, Cil.CompoundInit (typ, init_list))
+  | C.Ast.InitList el, Cil.TNamed (typeinfo, _) when (is_struct typeinfo.ttype) = true ->
+	  let ci = get_compinfo typeinfo.ttype in
+	  let (inits, _) = mk_struct_init el scope loc typ ci in
+      (typ, inits)
   | C.Ast.InitList el, Cil.TComp (ci, _) ->
-      let all_exprs = el in 
-      let init_list =
-        List.fold_left
-          (fun (expl, fis, all_exprs') e ->
-            if List.length fis > 0 then
-              let fi = List.nth fis 0 in
-              (* let compound_init = Cil.CompoundInit(field_typ, [(Cil.Field(fi, Cil.NoOffset), init)]) in *)
-              let (cil_init, _, exprs_remainders) = mk_init all_exprs' scope loc fi in
-              let _ = Printf.printf "%s %s \n" (pp_which_cil_type fi.Cil.ftype) fi.Cil.fname in
-              let expl' =  expl @ [ cil_init ] in
-              (expl', BatList.drop 1 fis, exprs_remainders)
-            else (expl, BatList.drop 1 fis, all_exprs'))
-          ([], ci.cfields, all_exprs) el
-      in
-      let (init_list, _, _) = init_list in
-      let init_list =
-        List.fold_left2
-          (fun inits init fi ->
-            (Cil.Field(fi, Cil.NoOffset), init) :: inits
-          )
-        [] init_list ci.cfields
-      in
-      (typ, Cil.CompoundInit (typ, List.rev init_list))
+	let (inits, _) = mk_struct_init el scope loc typ ci in
+	(typ, inits)
 (* 
  * struct A{
      int a;   single init 
@@ -1361,6 +1330,32 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
       let expr = Option.get expr_opt in
       (typ, Cil.SingleInit expr)
       (* Cil.SingleInit expr *)
+(*
+and typ el scope loc (ci:Cil.compinfo) = 
+  let all_exprs = el in 
+  let init_list =
+	List.fold_left
+	  (fun (expl, fis, all_exprs') e ->
+		if List.length fis > 0 then
+		  let fi = List.nth fis 0 in
+		  (* let compound_init = Cil.CompoundInit(field_typ, [(Cil.Field(fi, Cil.NoOffset), init)]) in *)
+		  let (cil_init, _, exprs_remainders) = mk_init all_exprs' scope loc fi in
+		  let _ = Printf.printf "%s %s \n" (pp_which_cil_type fi.Cil.ftype) fi.Cil.fname in
+		  let expl' =  expl @ [ cil_init ] in
+		  (expl', BatList.drop 1 fis, exprs_remainders)
+		else (expl, BatList.drop 1 fis, all_exprs'))
+	  ([], ci.cfields, all_exprs) el
+  in
+  let (init_list, _, _) = init_list in
+  let init_list =
+	List.fold_left2
+	  (fun inits init fi ->
+		(Cil.Field(fi, Cil.NoOffset), init) :: inits
+	  )
+	[] init_list ci.cfields
+  in
+  (typ, Cil.CompoundInit (typ, List.rev init_list))
+*)
 
 and trans_uninits ?(arr_len = 0) scope loc fi =
   match fi.Cil.ftype with
