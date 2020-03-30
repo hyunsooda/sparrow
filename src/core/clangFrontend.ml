@@ -1157,7 +1157,7 @@ let rec mk_init expr scope loc fi =
 
   (* for initaiized *)
   | Cil.TComp (ci, _) when expr <> [] -> (* struct in struct *)
-	  mk_struct_init expr scope loc fi.Cil.ftype ci
+      mk_struct_init expr scope loc fi.Cil.ftype ci
   | Cil.TInt (ikind, _) when expr <> [] ->
       let e = List.hd expr in
       let _, expr_opt = trans_expr scope None loc ADrop e in
@@ -1245,16 +1245,42 @@ let rec mk_init expr scope loc fi =
 
 and mk_struct_init expr scope loc typ ci =
 	let expr = ref expr in
+    let union_flag = ref false in
     let fis = ref [] in
     let el =
       List.fold_left
         (fun (inits, idx) nfi ->
-          Printf.printf "HI@@@ %d %s\n" (List.length !expr) nfi.Cil.fname;
           let nfi = List.nth ci.cfields idx in
+          Printf.printf "HI@@@ %d %s\n" (List.length !expr) nfi.Cil.fname;
+          Printf.printf "%b\n" nfi.fcomp.cstruct;
+
+          if !union_flag = true then (inits, idx)
+
+          (* if union *)
+          else if nfi.fcomp.cstruct = false then
+            (
+              let e = List.hd !expr in
+              let _, expr_opt = trans_expr scope None loc ADrop e in
+              let e = Option.get expr_opt in
+              let init = Cil.SingleInit e in
+              ignore(fis := nfi :: !fis);
+              ignore(expr := List.tl !expr);
+              ignore(union_flag := true);
+              (init :: inits, idx +1)
+            )
+          else (
+              let (init, expr_remainders) = mk_init !expr scope loc nfi in
+              ignore(fis := nfi :: !fis);
+              ignore(expr := expr_remainders);
+              (init :: inits, idx + 1)
+          )
+        )
+(*
           let (init, expr_remainders) = mk_init !expr scope loc nfi in
           ignore(fis := nfi :: !fis);
           ignore(expr := expr_remainders);
           (init :: inits, idx + 1))
+        *)
         ([], 0) ci.cfields
     in
     let inits =
@@ -1298,6 +1324,7 @@ let rec trans_global_init scope loc (e : C.Ast.expr) =
       (typ, inits)
   | C.Ast.InitList el, Cil.TComp (ci, _) ->
 	let (inits, _) = mk_struct_init el scope loc typ ci in
+  Printf.printf "is exsist %b %b\n" (Scope.mem_typ "_U" scope) (Scope.mem_typ "U_" scope);
 	(typ, inits)
 (* 
  * struct A{
