@@ -874,7 +874,38 @@ and trans_var_decl (scope : Scope.t) fundec loc action
   let varinfo, scope = create_local_variable scope fundec desc.var_name typ in
   match desc.var_init with
   | Some e -> (
-      match e.C.Ast.desc with
+      match (e.C.Ast.desc, typ) with
+      | C.Ast.InitList el, Cil.TArray (arr_typ, arr_exp, attr) ->
+          let len_exp = Option.get arr_exp in
+          let arr_len =
+            match len_exp with
+            | Const c -> (
+                match c with
+                | CInt64 (v, _, _) -> Int64.to_int v
+                | _ -> failwith "not expected" )
+            | _ -> failwith "not expected"
+          in
+          let el =
+            if List.length el > arr_len then BatList.take arr_len el else el
+          in
+          let sl, _ =
+            List.fold_left
+              (fun (sl, o) i ->
+                let _, expr_opt = trans_expr scope (Some fundec) loc action i in
+                let expr = get_opt "var_decl" expr_opt in
+                let var =
+                  (Cil.Var varinfo, Cil.Index (Cil.integer o, Cil.NoOffset))
+                in
+                let stmt =
+                  Cil.mkStmt (Cil.Instr [ Cil.Set (var, expr, loc) ])
+                in
+                (sl @ [ stmt ], o + 1))
+              ([], 0) el
+          in
+          (sl, scope)
+
+      (* origin source code *)
+      (*
       | C.Ast.InitList el ->
           let sl, _ =
             List.fold_left
@@ -891,6 +922,7 @@ and trans_var_decl (scope : Scope.t) fundec loc action
               ([], 0) el
           in
           (sl, scope)
+      *)
       | _ ->
           let sl_expr, expr_opt = trans_expr scope (Some fundec) loc action e in
           let expr = get_opt "var_decl" expr_opt in
