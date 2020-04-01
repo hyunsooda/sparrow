@@ -1305,28 +1305,53 @@ let rec mk_init scope loc fi expr_list =
             | _ -> failwith "not expected" )
         | _ -> failwith "not expected"
       in
-      let empty_list = List.init arr_len (fun idx -> idx) in
-      let inits, expr_remainders, _ =
-        List.fold_left
-          (fun (inits, expr_remainders, o) _ ->
-            if expr_list <> [] && List.length expr_remainders <> 0 then
-              let e = List.hd expr_remainders in
-              let _, expr_opt = trans_expr scope None loc ADrop e in
-              let e = Option.get expr_opt in
-              let init = Cil.SingleInit e in
-              let init_with_idx =
-                (Cil.Index (Cil.integer o, Cil.NoOffset), init)
-              in
-              (init_with_idx :: inits, List.tl expr_remainders, o + 1)
-            else
-              let init = Cil.SingleInit (Cil.CastE (arr_type, Cil.integer 0)) in
-              let init_with_idx =
-                (Cil.Index (Cil.integer o, Cil.NoOffset), init)
-              in
-              (init_with_idx :: inits, expr_remainders, o + 1))
-          ([], expr_list, 0) empty_list
+      let is_struct typ =
+        match typ with Cil.TComp (ci, _) -> true | _ -> false
       in
-      (Cil.CompoundInit (fi.Cil.ftype, List.rev inits), expr_remainders)
+      let final_init =
+        let empty_list = List.init arr_len (fun idx -> idx) in
+        let inits, expr_remainders, _ =
+          List.fold_left
+            (fun (inits, expr_remainders, o) _ ->
+              match arr_type with
+              | Cil.TComp (ci, _) ->
+                  let init, expr_remainders' =
+                    mk_struct_init scope loc fi.Cil.ftype ci.cfields expr_remainders
+                  in
+                  let init_with_idx =
+                    (Cil.Index (Cil.integer o, Cil.NoOffset), init)
+                  in
+                  (init_with_idx :: inits, expr_remainders', o + 1)
+              | Cil.TNamed (typeinfo, attr) when is_struct typeinfo.ttype ->
+                  let tcomp = get_compinfo typeinfo.ttype in
+                  let init, expr_remainders' =
+                    mk_struct_init scope loc typeinfo.ttype tcomp.cfields expr_remainders
+                  in
+                  let init_with_idx =
+                    (Cil.Index (Cil.integer o, Cil.NoOffset), init)
+                  in
+                  (init_with_idx :: inits, expr_remainders', o + 1)
+              | _ ->
+                if expr_list <> [] && List.length expr_remainders <> 0 then
+                  let e = List.hd expr_remainders in
+                  let _, expr_opt = trans_expr scope None loc ADrop e in
+                  let e = Option.get expr_opt in
+                  let init = Cil.SingleInit e in
+                  let init_with_idx =
+                    (Cil.Index (Cil.integer o, Cil.NoOffset), init)
+                  in
+                  (init_with_idx :: inits, List.tl expr_remainders, o + 1)
+                else
+                  let init = Cil.SingleInit (Cil.CastE (arr_type, Cil.integer 0)) in
+                  let init_with_idx =
+                    (Cil.Index (Cil.integer o, Cil.NoOffset), init)
+                  in
+                  (init_with_idx :: inits, expr_remainders, o + 1))
+          ([], expr_list, 0) empty_list
+        in
+        (Cil.CompoundInit (fi.Cil.ftype, List.rev inits), expr_remainders)
+      in
+      final_init
   | Cil.TEnum (einfo, _), e :: el ->
       let _, expr_opt = trans_expr scope None loc ADrop e in
       let e = Option.get expr_opt in
