@@ -947,8 +947,8 @@ and trans_var_decl ?(storage = Cil.NoStorage) (scope : Scope.t) fundec loc
   varinfo.vstorage <- storage;
   match desc.var_init with
   | Some e -> (
-      match e.C.Ast.desc with
-      | C.Ast.InitList el ->
+      match e.C.Ast.desc, typ with
+      | C.Ast.InitList el, Cil.TArray(arr_type, arr_exp, _) ->
           let sl, _ =
             List.fold_left
               (fun (sl, o) i ->
@@ -961,7 +961,42 @@ and trans_var_decl ?(storage = Cil.NoStorage) (scope : Scope.t) fundec loc
                 (append_instr sl instr, o + 1))
               ([], 0) el
           in
-          (sl, scope)
+	      let len_exp = Option.get arr_exp in
+		  let arr_len =
+			  match len_exp with
+			  | Const c -> (
+				  match c with
+				  | CInt64 (v, _, _) -> Int64.to_int v
+				  | _ -> failwith "not expected" )
+			  | _ -> failwith "not expected"
+		  in
+
+          (* tmp var *)
+          let vi, scope = create_local_variable scope fundec "tmp" Cil.uintType in
+          let tmp_var_lval = (Cil.Var vi, Cil.NoOffset) in
+          let tmp_var_instr = Cil.Set (tmp_var_lval, Cil.CastE (Cil.uintType, Cil.integer (List.length el)), loc) in
+          let tmp_var_stmt = Cil.mkStmt (Cil.Instr [tmp_var_instr]) in
+          let tmp_var_expr = Cil.Lval tmp_var_lval in
+
+          (* tmp++ *)
+          let one = Cil.BinOp (Cil.PlusA, tmp_var_expr, Cil.one, Cil.intType) in
+          
+          (* arr[tmp] = 0 *)
+          let var = (Cil.Var varinfo, Cil.Index (tmp_var_expr, Cil.NoOffset)) in
+          let var_instr = Cil.Instr [(Cil.Set (var, Cil.integer 0, loc))] in
+          let var_stmt = Cil.mkStmt var_instr in
+          
+          (* while *)
+          let cond_expr = Cil.BinOp (Cil.Ge, tmp_var_expr, Cil.integer arr_len, Cil.intType) in
+          let unary_plus_instr = Cil.Instr [Cil.Set (tmp_var_lval, one, loc)] in
+          let unary_plus_stmt = Cil.mkStmt unary_plus_instr in
+          (* let while_stmt = Cil.mkWhile cond_expr [var_stmt; unary_plus_stmt] in *)
+		  let while_stmt =
+			[ Cil.mkStmt (Cil.Loop (Cil.mkBlock (Cil.mkStmt (Cil.If(cond_expr,
+			  Cil.mkBlock [ Cil.mkStmt (Break loc) ],
+			  Cil.mkBlock [], loc)) :: [var_stmt; unary_plus_stmt]), loc, None, None)) ]
+		  in
+          (sl @ [tmp_var_stmt] (*@ [loop_stmt]*)  @ while_stmt, scope)
       | _ ->
           let sl_expr, expr_opt = trans_expr scope (Some fundec) loc action e in
           let expr = get_opt "var_decl" expr_opt in
