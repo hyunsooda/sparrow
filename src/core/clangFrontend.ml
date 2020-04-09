@@ -1064,7 +1064,6 @@ and mk_struct_arr_stmt scope fundec loc action varinfo arr_exp field_typ cfields
         let field_typ = add_to_index_tail origin_field_typ tmp_var_expr in
           match fi.ftype with
           | Cil.TComp (ci, _) ->
-              Printf.printf "name : \n"; 
               let field_typ = add_to_index_tail origin_field_typ tmp_var_expr in
               let field_typ = add_to_field_tail field_typ fi in
               let stmts', expr_remainders', scope =
@@ -1103,6 +1102,28 @@ and mk_struct_arr_stmt scope fundec loc action varinfo arr_exp field_typ cfields
   in
   (sl @ [tmp_var_stmt]  @ while_stmt, expr_remainders, scope)
   (* (sl @ [tmp_var_stmt]  @ while_stmt, expr_list, scope) *)
+
+and mk_while_stmt arr_len loc tmp_var_expr tmp_var_lval unary_plus_expr var_stmts =
+  let cond_expr = Cil.BinOp (Cil.Ge, tmp_var_expr, Cil.integer arr_len, Cil.intType) in
+  let unary_plus_instr = Cil.Instr [Cil.Set (tmp_var_lval, unary_plus_expr, loc)] in
+  let unary_plus_stmt = Cil.mkStmt unary_plus_instr in
+  let while_stmt =
+  [ Cil.mkStmt (Cil.Loop (Cil.mkBlock (Cil.mkStmt (Cil.If(cond_expr,
+    Cil.mkBlock [ Cil.mkStmt (Break loc) ],
+    Cil.mkBlock [], loc)) :: var_stmts @ [ unary_plus_stmt ]), loc, None, None)) ]
+  in
+  while_stmt
+
+and mk_tmp_var fundec loc varinfo expr_list_len scope =
+  let vi, scope = create_local_variable scope fundec "tmp" Cil.uintType in
+  let tmp_var_lval = (Cil.Var vi, Cil.NoOffset) in
+  let tmp_var_instr = Cil.Set (tmp_var_lval, Cil.CastE (Cil.uintType, Cil.integer expr_list_len), loc) in
+  let tmp_var_stmt = Cil.mkStmt (Cil.Instr [tmp_var_instr]) in
+  let tmp_var_expr = Cil.Lval tmp_var_lval in
+
+  (* tmp++ *)
+  let one = Cil.BinOp (Cil.PlusA, tmp_var_expr, Cil.one, Cil.intType) in
+  (tmp_var_lval, tmp_var_expr, tmp_var_stmt, one, scope)
 
 and mk_arr_stmt ?(while_skip = false) ?(idx = 0) scope fundec loc action varinfo arr_exp field_typ el =
   let len_exp = Option.get arr_exp in
@@ -1178,7 +1199,6 @@ and mk_struct_stmt field_typ scope typ cfields fundec action loc varinfo expr_li
   let rec loop scope union_flag is_exist_initialized cfields expr_list fis stmts =
     match (cfields, expr_list) with
     | f :: fl, e :: el ->
-        Printf.printf "name : %s\n" f.Cil.fname;
         if union_flag then loop scope union_flag is_exist_initialized fl expr_list fis stmts
         else if f.Cil.fcomp.cstruct then
           if is_init_list e then
@@ -1211,7 +1231,6 @@ and mk_struct_stmt field_typ scope typ cfields fundec action loc varinfo expr_li
             let instr = Cil.Set (var, expr, loc) in
             loop scope true is_exist_initialized fl el (f :: fis) (append_instr sl_expr instr))
     | f :: fl, [] ->
-        Printf.printf "name : %s\n" f.Cil.fname;
         if union_flag then loop scope union_flag is_exist_initialized fl [] fis stmts
         else if f.fcomp.cstruct then
           let stmts', expr_remainders, scope =
@@ -1235,7 +1254,6 @@ and mk_struct_stmt field_typ scope typ cfields fundec action loc varinfo expr_li
 
 and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec action fi varinfo expr_list =
   (* for uninitaiized *)
-  Printf.printf "name : %s\n" fi.Cil.fname;
   match (fi.Cil.ftype, expr_list) with
   | Cil.TInt (ikind, _), [] ->
       let field_typ = add_to_field_tail field_typ fi in
@@ -1326,6 +1344,10 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
       let is_struct typ =
         match typ with Cil.TComp (ci, _) -> true | _ -> false
       in
+      let tmp_var_lval, tmp_var_expr, tmp_var_stmt, unary_plus_expr, scope =
+        mk_tmp_var fundec loc varinfo (List.length expr_list) scope
+      in
+      let while_flag = ref false in
       let final_init =
         let empty_list = List.init arr_len (fun idx -> idx) in
         let init_stmts, expr_remainders, _, scope, _ =
@@ -1346,14 +1368,24 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                      * TODO:
                        * 1. make while loop
                        * 2. make var expr recursively
+                       *
                      * *)
+                    let field_typ = add_to_field_tail field_typ fi in
+                    let stmts', expr_remainders', scope =
+                      mk_struct_stmt field_typ scope fi.Cil.ftype ci.cfields fundec action loc varinfo expr_remainders
+                    in
+                    while_flag := true;
+                    (stmts @ stmts', expr_remainders', terminate_flag, scope, o + 1)
+
+                    (*
                     let _ = Printf.printf "PPP\n" in
                     let field_typ = add_to_field_tail field_typ fi in
                     let stmts', expr_remainders', scope =
-                      mk_struct_arr_stmt scope fundec loc action varinfo arr_exp field_typ ci.cfields expr_remainders 
+                      mk_struct_stmt field_typ scope fi.Cil.ftype ci.cfields fundec action loc varinfo expr_remainders
+                      (* mk_struct_arr_stmt scope fundec loc action varinfo arr_exp field_typ ci.cfields expr_remainders*)
                     in
                     (stmts @ stmts', expr_remainders', terminate_flag, scope, o + 1)
-                  
+            *)
               | Cil.TNamed (typeinfo, attr) when is_struct typeinfo.ttype ->
                   if expr_list <> [] && List.length expr_remainders <> 0 then
                     let _ = Printf.printf "len : %d\n" (List.length expr_remainders) in
@@ -1363,7 +1395,11 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                     let stmts', expr_remainders', scope =
                       mk_struct_stmt field_typ scope fi.Cil.ftype tcomp.cfields fundec action loc varinfo expr_remainders
                     in
-                    (stmts @ stmts', expr_remainders', terminate_flag, scope, o + 1)
+                    if (List.length expr_remainders') = 0 then 
+                      (stmts @ stmts', expr_remainders', true, scope, o + 1)
+                    else
+                      (stmts @ stmts', expr_remainders', terminate_flag, scope, o + 1)
+
                   else if is_exist_initialized then 
                     let _ = Printf.printf "NNN\n" in
                     let tcomp = get_compinfo typeinfo.ttype in
@@ -1375,7 +1411,10 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
 
                       mk_struct_stmt field_typ scope fi.Cil.ftype tcomp.cfields fundec action loc varinfo expr_remainders
                     in
-                    (stmts @ stmts', expr_remainders', terminate_flag, scope, o + 1)
+                    if (List.length expr_remainders') = 0 then 
+                      (stmts @ stmts', expr_remainders', true, scope, o + 1)
+                    else
+                      (stmts @ stmts', expr_remainders', terminate_flag, scope, o + 1)
                   else
                     (* struct array *)
                     (*
@@ -1383,18 +1422,34 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                        * 1. make while loop
                        * 2. make var expr recursively
                      * *)
+                    let tcomp = get_compinfo typeinfo.ttype in
+                    let field_typ = add_to_field_tail field_typ fi in
+                    let stmts', expr_remainders', scope =
+                      mk_struct_stmt field_typ scope fi.Cil.ftype tcomp.cfields fundec action loc varinfo expr_remainders
+                    in
+                    while_flag := true;
+                    if (List.length expr_remainders') = 0 then 
+                      (stmts @ stmts', expr_remainders', true, scope, o + 1)
+                    else
+                      (stmts @ stmts', expr_remainders', terminate_flag, scope, o + 1)
+
+                  (*
                     let _ = Printf.printf "GGG\n" in
                     let tcomp = get_compinfo typeinfo.ttype in
                     let field_typ = add_to_field_tail field_typ fi in
                     let stmts', expr_remainders', scope = 
-                      (* mk_arr_stmt scope fundec loc action varinfo arr_exp field_typ expr_remainders *) 
-                      mk_struct_arr_stmt scope fundec loc action varinfo arr_exp field_typ tcomp.cfields expr_remainders
+                      (* mk_arr_stmt scope fundec loc action varinfo arr_exp field_typ expr_remainders *)
+                      (* mk_struct_arr_stmt scope fundec loc action varinfo arr_exp field_typ tcomp.cfields expr_remainders *)
+                      mk_struct_stmt field_typ scope fi.Cil.ftype tcomp.cfields fundec action loc varinfo expr_remainders
                     in
                     (stmts @ stmts', expr_remainders', terminate_flag, scope, o + 1)
+                    *)
               | _ ->
+                  (*
                 if expr_list <> [] && List.length expr_remainders <> 0 then
                   let _ = Printf.printf "AAA %d\n" (List.length expr_remainders) in
                   let field_typ = add_to_field_tail field_typ fi in
+                  let field_typ = add_to_index_tail field_typ (Cil.integer o) in
                   let stmts', expr_remainders', scope =
                     mk_arr_stmt scope fundec loc action varinfo arr_exp field_typ expr_remainders 
                   in
@@ -1404,8 +1459,9 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                     (stmts @ stmts', expr_remainders', true, scope, o + 1)
                   else
                     (stmts @ stmts', expr_remainders', terminate_flag, scope, o + 1)
+                    *)
 
-                else
+                
                   (match terminate_flag with
                     | true -> (stmts, expr_remainders, terminate_flag, scope, o) 
                     | false -> 
@@ -1422,7 +1478,20 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
         in
         (init_stmts, expr_remainders, scope)
       in
-      final_init
+      if !while_flag  then
+        let _ = Printf.printf "WHILE!!\n" in
+        let var_stmts, expr_remainders, scope = final_init in
+        let first_half_stmts = BatList.take (List.length expr_list) var_stmts in
+        let last_half_stmts = BatList.drop (List.length expr_list) var_stmts in
+
+        let while_stmt =
+          mk_while_stmt arr_len loc tmp_var_expr tmp_var_lval unary_plus_expr last_half_stmts
+        in
+        ( first_half_stmts @ while_stmt, expr_remainders, scope )
+      else
+        final_init
+
+      (* final_init *)
   | Cil.TEnum (einfo, _), e :: el ->
       let sl_expr, expr_opt = trans_expr scope (Some fundec) loc action e in
       let expr = get_opt "var_decl" expr_opt in
