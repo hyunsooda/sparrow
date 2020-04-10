@@ -1132,7 +1132,7 @@ and mk_tmp_var fundec loc varinfo expr_list_len scope =
   let one = Cil.BinOp (Cil.PlusA, tmp_var_expr, Cil.one, Cil.intType) in
   (tmp_var_lval, tmp_var_expr, tmp_var_stmt, one, scope)
 
-and mk_arr_stmt ?(while_skip = false) ?(idx = 0) scope fundec loc action varinfo arr_exp field_typ el =
+and mk_arr_stmt scope fundec loc action varinfo arr_exp field_typ el =
   let len_exp = Option.get arr_exp in
   let arr_len =
     match len_exp with
@@ -1162,45 +1162,40 @@ and mk_arr_stmt ?(while_skip = false) ?(idx = 0) scope fundec loc action varinfo
     else
       List.init (List.length el) (fun idx -> idx)
   in
-  let sl, expr_remainders, _ = arr_init empty_list in
-  match while_skip with 
-  | true ->
-      let empty_list = List.init arr_len (fun idx -> idx) in
-      let field_typ = add_to_index_tail field_typ (Cil.integer idx) in
-      let var =
-        (Cil.Var varinfo, field_typ)
-      in
-      let instr = Cil.Set (var, Cil.integer 0, loc) in
-      (append_instr [] instr, [], scope)
+  match (List.length el) < arr_len with
   | false ->
-    (* tmp var *)
-    let vi, scope = create_local_variable scope fundec "tmp" Cil.uintType in
-    let tmp_var_lval = (Cil.Var vi, Cil.NoOffset) in
-    let tmp_var_instr = Cil.Set (tmp_var_lval, Cil.CastE (Cil.uintType, Cil.integer (List.length el)), loc) in
-    let tmp_var_stmt = Cil.mkStmt (Cil.Instr [tmp_var_instr]) in
-    let tmp_var_expr = Cil.Lval tmp_var_lval in
+      let sl, _, _ = arr_init empty_list in
+      (sl, [], scope)
+  | true ->
+      let sl, expr_remainders, _ = arr_init empty_list in
+      (* tmp var *)
+      let vi, scope = create_local_variable scope fundec "tmp" Cil.uintType in
+      let tmp_var_lval = (Cil.Var vi, Cil.NoOffset) in
+      let tmp_var_instr = Cil.Set (tmp_var_lval, Cil.CastE (Cil.uintType, Cil.integer (List.length el)), loc) in
+      let tmp_var_stmt = Cil.mkStmt (Cil.Instr [tmp_var_instr]) in
+      let tmp_var_expr = Cil.Lval tmp_var_lval in
 
-    (* tmp++ *)
-    let one = Cil.BinOp (Cil.PlusA, tmp_var_expr, Cil.one, Cil.intType) in
+      (* tmp++ *)
+      let one = Cil.BinOp (Cil.PlusA, tmp_var_expr, Cil.one, Cil.intType) in
 
-    (* arr[tmp] = 0 *)
-    let field_typ = add_to_index_tail field_typ tmp_var_expr in
-    (* let var = (Cil.Var varinfo, Cil.Index (tmp_var_expr, field_typ)) in *)
-    let var = (Cil.Var varinfo, field_typ) in
-    let var_instr = Cil.Instr [(Cil.Set (var, Cil.integer 0, loc))] in
-    let var_stmt = Cil.mkStmt var_instr in
+      (* arr[tmp] = 0 *)
+      let field_typ = add_to_index_tail field_typ tmp_var_expr in
+      (* let var = (Cil.Var varinfo, Cil.Index (tmp_var_expr, field_typ)) in *)
+      let var = (Cil.Var varinfo, field_typ) in
+      let var_instr = Cil.Instr [(Cil.Set (var, Cil.integer 0, loc))] in
+      let var_stmt = Cil.mkStmt var_instr in
 
-    (* while *)
-    let cond_expr = Cil.BinOp (Cil.Ge, tmp_var_expr, Cil.integer arr_len, Cil.intType) in
-    let unary_plus_instr = Cil.Instr [Cil.Set (tmp_var_lval, one, loc)] in
-    let unary_plus_stmt = Cil.mkStmt unary_plus_instr in
-    (* let while_stmt = Cil.mkWhile cond_expr [var_stmt; unary_plus_stmt] in *)
-    let while_stmt =
-    [ Cil.mkStmt (Cil.Loop (Cil.mkBlock (Cil.mkStmt (Cil.If(cond_expr,
-      Cil.mkBlock [ Cil.mkStmt (Break loc) ],
-      Cil.mkBlock [], loc)) :: [var_stmt; unary_plus_stmt]), loc, None, None)) ]
-    in
-    (sl @ [tmp_var_stmt] (*@ [loop_stmt]*)  @ while_stmt, expr_remainders, scope)
+      (* while *)
+      let cond_expr = Cil.BinOp (Cil.Ge, tmp_var_expr, Cil.integer arr_len, Cil.intType) in
+      let unary_plus_instr = Cil.Instr [Cil.Set (tmp_var_lval, one, loc)] in
+      let unary_plus_stmt = Cil.mkStmt unary_plus_instr in
+      (* let while_stmt = Cil.mkWhile cond_expr [var_stmt; unary_plus_stmt] in *)
+      let while_stmt =
+      [ Cil.mkStmt (Cil.Loop (Cil.mkBlock (Cil.mkStmt (Cil.If(cond_expr,
+        Cil.mkBlock [ Cil.mkStmt (Break loc) ],
+        Cil.mkBlock [], loc)) :: [var_stmt; unary_plus_stmt]), loc, None, None)) ]
+      in
+      (sl @ [tmp_var_stmt] (*@ [loop_stmt]*)  @ while_stmt, expr_remainders, scope)
 
 and mk_struct_stmt field_typ scope typ cfields fundec action loc varinfo expr_list =
   let rec loop scope union_flag is_exist_initialized cfields expr_list fis stmts =
@@ -1256,7 +1251,6 @@ and mk_struct_stmt field_typ scope typ cfields fundec action loc varinfo expr_li
     | [], _ -> (fis, stmts, expr_list, scope)
   in
   let fis, stmts, expr_list, scope = loop scope false false cfields expr_list [] [] in
-  Printf.printf "len : %d\n" (List.length stmts);
   (stmts, expr_list, scope)
   (* (Cil.CompoundInit (typ, inits), expr_list) *)
 
@@ -1356,21 +1350,25 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
       let tmp_var_cond_update = ref 0 in
       let skip_while = ref false in
       let while_flag = ref false in
+      let total_initialized_items_len = ref 0 in
       let final_init =
         let empty_list = List.init arr_len (fun idx -> idx) in
         let init_stmts, primitive_arr_remainders, expr_remainders, _, scope, tmp_var, last_idx =
           List.fold_left
             (fun (stmts, primitive_arr_remainders, expr_remainders, terminate_flag, scope, tmp_var, o) _ ->
-              Printf.printf "total %d\n" (List.length stmts) ;
               match arr_type with
               | Cil.TComp (ci, _) ->
-                  if (expr_list <> [] && List.length expr_remainders <> 0) || !skip_while = true then
+                  if (expr_list <> [] && List.length expr_remainders <> 0) || !skip_while then
                     let field_typ = add_to_field_tail field_typ fi in
                     let field_typ = add_to_index_tail field_typ (Cil.integer o) in
                     let stmts', expr_remainders', scope =
                       mk_struct_stmt field_typ scope fi.Cil.ftype ci.cfields fundec action loc varinfo expr_remainders
                     in
               Printf.printf "!! %d %b\n" (List.length stmts) terminate_flag;
+                    ignore(
+                      if expr_list <> [] && List.length expr_remainders <> 0 then 
+                        total_initialized_items_len := max !total_initialized_items_len (List.length stmts');
+                    );
                     if (List.length expr_remainders') = 0 then
                       (stmts @ stmts', primitive_arr_remainders, expr_remainders', true, scope, tmp_var, o + 1)
                     else
@@ -1402,6 +1400,7 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                         let stmts', expr_remainders', scope =
                           mk_struct_stmt field_typ scope fi.Cil.ftype ci.cfields fundec action loc varinfo expr_remainders
                         in
+                        total_initialized_items_len := max !total_initialized_items_len (List.length stmts');
                         if (List.length expr_remainders') = 0 then
                           (stmts @ stmts', primitive_arr_remainders, expr_remainders', true, scope, tmp_var, o + 1)
                         else
@@ -1426,6 +1425,10 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                       mk_struct_stmt field_typ scope fi.Cil.ftype tcomp.cfields fundec action loc varinfo expr_remainders
                     in
               Printf.printf "##(%s) %d %d %b %b\n" fi.Cil.fname (List.length stmts) (List.length stmts') terminate_flag !skip_while;
+                    ignore(
+                      if expr_list <> [] && List.length expr_remainders <> 0 then 
+                        total_initialized_items_len := max !total_initialized_items_len (List.length stmts');
+                    );
                     if (List.length expr_remainders') = 0 then 
                       (stmts @ stmts', primitive_arr_remainders, expr_remainders', true, scope, tmp_var, o + 1)
                     else
@@ -1477,6 +1480,7 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                         let stmts', expr_remainders', scope =
                           mk_struct_stmt field_typ scope fi.Cil.ftype tcomp.cfields fundec action loc varinfo expr_remainders
                         in
+                        total_initialized_items_len := max !total_initialized_items_len (List.length stmts');
                         if (List.length expr_remainders') = 0 then
                           (stmts @ stmts', primitive_arr_remainders, expr_remainders', true, scope, tmp_var, o + 1)
                         else
@@ -1508,6 +1512,8 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                   in
                   let instr = Cil.Set (var, Cil.CastE (arr_type, expr), loc) in
               Printf.printf "**  %d %b\n" (List.length stmts) terminate_flag;
+                  (* total_initialized_items_len := !total_initialized_items_len + 1; *)
+                  total_initialized_items_len := max !total_initialized_items_len 1;
 
                   if (List.length (List.tl expr_remainders) = 0) then
                     (
@@ -1515,6 +1521,7 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                       mk_tmp_var fundec loc varinfo (o+1) scope
                     in
                     Printf.printf "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\n";
+                    (*
                     let remainders = List.init (arr_len - (o+1)) (fun idx -> idx) in
                     let stmt_remainders =
                       List.fold_left
@@ -1528,10 +1535,18 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
                           (arr_stmts @ (append_instr [] instr)))
                       [] remainders
                     in
-                    let while_stmt =
-                      mk_while_stmt arr_len loc tmp_var_expr tmp_var_lval unary_plus_expr stmt_remainders
+                    *)
+                    let field_typ = add_to_field_tail origin_field_typ fi in
+                    let field_typ = add_to_index_tail field_typ tmp_var_expr in
+                    let var =
+                      (Cil.Var varinfo, field_typ)
                     in
-                    (stmts @ (append_instr [] instr), [tmp_var_stmt] @ while_stmt, [], true, scope, tmp_var, o + 1))
+                    let instr_remainder = Cil.Set (var, Cil.integer 0, loc) in
+                    let stmt_remainder = append_instr [] instr_remainder in
+                    let while_stmt =
+                      mk_while_stmt arr_len loc tmp_var_expr tmp_var_lval unary_plus_expr stmt_remainder
+                    in
+                    (stmts @ (append_instr [] instr), [tmp_var_stmt] @ while_stmt, List.tl expr_remainders, true, scope, tmp_var, o + 1))
                   else
                     (stmts @ (append_instr [] instr),primitive_arr_remainders, List.tl expr_remainders, terminate_flag, scope, tmp_var, o + 1)
 
@@ -1556,10 +1571,15 @@ and mk_init_stmt ?(is_exist_initialized = false) field_typ scope loc fundec acti
       in
       let var_stmts, primitive_arr_remainders, expr_remainders, scope, tmp_var, last_idx = final_init in
       if !while_flag  then
+        (*
         let first_half_stmts = BatList.take (last_idx + (List.length expr_list)) var_stmts in
         let last_half_stmts = BatList.drop (last_idx + (List.length expr_list)) var_stmts in
+        *)
+        let first_half_stmts = BatList.take ( !total_initialized_items_len) var_stmts in
+        let last_half_stmts = BatList.drop !total_initialized_items_len var_stmts in
         let _ = Printf.printf "WHILE %d %d %d!!\n" last_idx (List.length var_stmts) (List.length last_half_stmts) in
-
+        let _ = Printf.printf "total len %d!!\n" (!total_initialized_items_len ) in
+        let _ = Printf.printf "summary %d %d!!\n" (List.length var_stmts - !total_initialized_items_len) !total_initialized_items_len in
 
         let tmp_var_lval, tmp_var_expr, tmp_var_stmt, unary_plus_expr =
           match Option.get tmp_var with
