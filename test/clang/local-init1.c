@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 #include <stdio.h>
 
+=======
+>>>>>>> [Clang] Remove standard header files in test cases
 typedef int (*FuncPtr) (int, int);
 
 union U {

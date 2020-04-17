@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 #include <stdio.h>
 
+=======
+>>>>>>> [Clang] Remove standard header files in test cases
 struct Base {
     float f;
 };
