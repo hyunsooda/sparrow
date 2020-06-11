@@ -319,7 +319,34 @@ let type_of_decoration decoration =
   | C.Ast.Cursor c -> C.get_cursor_type c
   | _ -> failwith "Invalid cursor for type"
 
+let grab_matching_field cfields f (expr : C.Ast.expr) =
+  List.fold_left
+    (fun (fi', find, idx) fi ->
+      let fi'', find, idx =
+        match expr.C.Ast.desc with
+        | C.Ast.DesignatedInit d ->
+            List.fold_left
+              (fun (fi', find, idx) designator ->
+                match designator with
+                | C.Ast.FieldDesignator f ->
+                    if f = fi.Cil.fname then ([ fi ], idx, idx)
+                    else (fi', find, idx)
+                | C.Ast.ArrayDesignator _ -> (fi', find, idx)
+                | C.Ast.ArrayRangeDesignator (_, _) -> (fi', find, idx))
+              (fi', find, idx) d.designators
+        | _ ->
+            if List.length fi' <> 0 then (fi', find, idx)
+            else ([ f ], find, -10000)
+      in
+      (fi'', find, idx + 1))
+    ([], 0, 0) cfields
+
 let type_of_expr expr = C.Type.of_node expr
+
+let sort_list_with_index data_list idx_list =
+  List.combine data_list idx_list
+  |> List.sort (fun (_, idx1) (_, idx2) -> if idx1 > idx2 then 1 else 0)
+  |> List.split |> fst |> List.rev
 
 let trans_decl_ref scope allow_undef idref =
   let name = name_of_ident_ref idref in
@@ -566,6 +593,8 @@ and trans_expr ?(allow_undef = false) ?(skip_lhs = false) scope fundec_opt loc
       (* StmtExpr is not supported yet *)
       L.warn "StmtExpr at %s\n" (CilHelper.s_location loc);
       ([], Some Cil.zero)
+  | C.Ast.DesignatedInit d ->
+      trans_expr scope fundec_opt loc action d.init
   | C.Ast.UnknownExpr (_, _) -> ([], Some Cil.zero)
   | _ -> failwith "unknown trans_expr"
 
@@ -1088,24 +1117,67 @@ and trans_var_decl ?(storage = Cil.NoStorage) (scope : Scope.t) fundec loc
 
 and handle_stmt_init scope typ fundec loc action field_offset varinfo
     (e : C.Ast.expr) =
+  let is_primitive_typ typ =
+    match Cil.unrollType typ with Cil.TComp (_, _) -> false | _ -> true
+  in
+  let is_struct_typ typ = not (is_primitive_typ typ) in
   match (e.C.Ast.desc, Cil.unrollType typ) with
   | C.Ast.InitList _, Cil.TArray (_, None, _) | C.Ast.InitList _, Cil.TPtr _ ->
       ([], scope)
-  | C.Ast.InitList el, Cil.TArray (_, Some arr_exp, _) ->
+  (* primitive array *)
+  | C.Ast.InitList el, Cil.TArray (arr_typ, Some arr_exp, _)
+    when is_primitive_typ arr_typ ->
       let stmts, _, scope =
         mk_arr_stmt scope fundec loc action varinfo arr_exp field_offset el
       in
       (stmts, scope)
+  (* struct array *)
+  | C.Ast.InitList el, Cil.TArray (arr_typ, Some arr_exp, _)
+    when is_struct_typ arr_typ ->
+      let unroll_nested_init e =
+        let ci =
+          match Cil.unrollType arr_typ with
+          | Cil.TComp (ci, _) -> ci
+          | _ -> failwith "expected only struct type"
+        in
+        if is_init_list e then
+          handle_stmt_init scope typ fundec loc action field_offset varinfo e
+        else
+          let stmts, _, scope =
+            mk_array_stmt el field_offset (List.hd ci.cfields) loc fundec action
+              varinfo scope arr_typ (Some arr_exp) false
+          in
+          (stmts, scope)
+      in
+      List.fold_left
+        (fun _ e ->
+          let stmts, scope = unroll_nested_init e in
+          (stmts, scope))
+        ([], scope) el
+  (* struct *)
   | C.Ast.InitList el, Cil.TComp (ci, _) ->
       let stmts, _, scope =
         mk_struct_stmt field_offset scope ci.cfields fundec action loc varinfo
           el
       in
       (stmts, scope)
+  (* primitive init list (contains only one element) *)
+  | C.Ast.InitList el, _ ->
+      let e =
+        if List.length el <> 1 then
+          failwith "primitive literal init list should be only one element"
+        else List.hd el
+      in
+      let sl_expr, expr_opt = trans_expr scope (Some fundec) loc action e in
+      let expr = get_opt "var_decl" expr_opt in
+      let var = (Cil.Var varinfo, field_offset) in
+      let instr = Cil.Set (var, expr, loc) in
+      (append_instr sl_expr instr, scope)
+  (* primitive *)
   | _ ->
       let sl_expr, expr_opt = trans_expr scope (Some fundec) loc action e in
       let expr = get_opt "var_decl" expr_opt in
-      let var = (Cil.Var varinfo, Cil.NoOffset) in
+      let var = (Cil.Var varinfo, field_offset) in
       let instr = Cil.Set (var, expr, loc) in
       (append_instr sl_expr instr, scope)
 
@@ -1236,10 +1308,13 @@ and mk_arr_stmt scope fundec loc action varinfo len_exp field_offset el =
 
 and mk_struct_stmt field_offset scope cfields fundec action loc varinfo
     expr_list =
-  let rec loop scope union_flag cfields expr_list fis stmts =
+  let origin_cfields = cfields in
+  let rec loop scope union_flag cfields expr_list fis stmts idx_list idx =
     match (cfields, expr_list) with
     | f :: fl, e :: el -> (
-        if union_flag then loop scope union_flag fl expr_list fis stmts
+        if union_flag then
+          loop scope union_flag fl expr_list fis stmts ((idx + 1) :: idx_list)
+            (idx + 1)
         else if f.Cil.fcomp.cstruct then
           if is_init_list e then
             let field_offset = CilHelper.add_field_offset field_offset f in
@@ -1248,12 +1323,17 @@ and mk_struct_stmt field_offset scope cfields fundec action loc varinfo
                 varinfo e
             in
             loop scope union_flag fl el (f :: fis) (stmts @ stmts')
+              ((idx + 1) :: idx_list) (idx + 1)
           else
+            let field, i, is_find = grab_matching_field origin_cfields f e in
+            let f = List.hd field in
+            let i = if is_find >= 0 then i else idx + 1 in
             let stmts', expr_remainders, scope =
               mk_init_stmt field_offset scope loc fundec action f varinfo
                 expr_list
             in
             loop scope union_flag fl expr_remainders (f :: fis) (stmts @ stmts')
+              (i :: idx_list) i
         else
           match is_init_list e with
           | true ->
@@ -1263,6 +1343,7 @@ and mk_struct_stmt field_offset scope cfields fundec action loc varinfo
                   varinfo e
               in
               loop scope true fl el (f :: fis) (stmts @ stmts')
+                ((idx + 1) :: idx_list) (idx + 1)
           | false ->
               (* union *)
               let sl_expr, expr_opt =
@@ -1272,26 +1353,37 @@ and mk_struct_stmt field_offset scope cfields fundec action loc varinfo
               let field_offset = CilHelper.add_field_offset field_offset f in
               let var = (Cil.Var varinfo, field_offset) in
               let instr = Cil.Set (var, expr, loc) in
-              loop scope true fl el (f :: fis) (append_instr sl_expr instr) )
+              loop scope true fl el (f :: fis)
+                (append_instr sl_expr instr)
+                ((idx + 1) :: idx_list) (idx + 1) )
     | f :: fl, [] ->
-        if union_flag then loop scope union_flag fl [] fis stmts
+        if union_flag then
+          loop scope union_flag fl [] fis stmts ((idx + 1) :: idx_list) (idx + 1)
         else if f.fcomp.cstruct then
           let stmts', expr_remainders, scope =
             mk_init_stmt field_offset scope loc fundec action f varinfo
               expr_list
           in
           loop scope union_flag fl expr_remainders (f :: fis) (stmts @ stmts')
+            ((idx + 1) :: idx_list) (idx + 1)
         else
           let expr = Cil.integer 0 in
           let field_offset = CilHelper.add_field_offset field_offset f in
           let var = (Cil.Var varinfo, field_offset) in
           let instr = Cil.Set (var, expr, loc) in
           let stmt = Cil.mkStmt (Cil.Instr [ instr ]) in
-          loop scope true fl [] (f :: fis) (stmts @ [ stmt ])
-    | [], _ -> (stmts, expr_list, scope)
+          loop scope true fl [] (f :: fis)
+            (stmts @ [ stmt ])
+            ((idx + 1) :: idx_list) (idx + 1)
+    | [], _ -> (stmts, expr_list, scope, idx_list, idx)
   in
-  let stmts, expr_list, scope = loop scope false cfields expr_list [] [] in
-  (stmts, expr_list, scope)
+  let stmts, expr_list, scope, idx_list, _ =
+    loop scope false cfields expr_list [] [] [] 0
+  in
+  if List.length stmts = List.length idx_list then
+    let stmts = sort_list_with_index (List.rev stmts) idx_list |> List.rev in
+    (stmts, expr_list, scope)
+  else (stmts, expr_list, scope)
 
 and mk_init_stmt field_offset scope loc fundec action fi varinfo expr_list =
   (* for uninitaiized *)
@@ -1357,7 +1449,7 @@ and mk_init_stmt field_offset scope loc fundec action fi varinfo expr_list =
         expr_list
   | Cil.TArray (arr_type, arr_exp, _), _ ->
       mk_array_stmt expr_list field_offset fi loc fundec action varinfo scope
-        arr_type arr_exp
+        arr_type arr_exp true
   | Cil.TEnum (_, _), e :: el ->
       let sl_expr, expr_opt = trans_expr scope (Some fundec) loc action e in
       let expr = get_opt "var_decl" expr_opt in
@@ -1368,13 +1460,16 @@ and mk_init_stmt field_offset scope loc fundec action fi varinfo expr_list =
   | _ -> failwith "not expected"
 
 and mk_tcomp_array_stmt stmts expr_list expr_remainders o ci field_offset fi
-    fundec action loc tmp_var varinfo flags primitive_arr_remainders scope =
+    fundec action loc tmp_var varinfo flags primitive_arr_remainders scope
+    attach_flag =
   let stmts', expr_remainders', tmp_var, flags, scope =
     if (expr_list <> [] && List.length expr_remainders <> 0) || flags.skip_while
     then
-      let field_offset = CilHelper.add_field_offset field_offset fi in
       let field_offset =
-        CilHelper.add_index_offset field_offset (Cil.integer o)
+        if attach_flag then
+          let field_offset = CilHelper.add_field_offset field_offset fi in
+          CilHelper.add_index_offset field_offset (Cil.integer o)
+        else CilHelper.add_index_offset field_offset (Cil.integer o)
       in
       let stmts', expr_remainders', scope =
         mk_struct_stmt field_offset scope ci.Cil.cfields fundec action loc
@@ -1402,9 +1497,11 @@ and mk_tcomp_array_stmt stmts expr_list expr_remainders o ci field_offset fi
         let tmp_var =
           Some { tmp_var_lval; tmp_var_expr; tmp_var_stmt; unary_plus_expr }
         in
-        let field_offset = CilHelper.add_field_offset field_offset fi in
         let field_offset =
-          CilHelper.add_index_offset field_offset tmp_var_expr
+          if attach_flag then
+            let field_offset = CilHelper.add_field_offset field_offset fi in
+            CilHelper.add_index_offset field_offset tmp_var_expr
+          else CilHelper.add_index_offset field_offset tmp_var_expr
         in
         let flags =
           { flags with tmp_var_cond_update = flags.tmp_var_cond_update + 1 }
@@ -1422,9 +1519,11 @@ and mk_tcomp_array_stmt stmts expr_list expr_remainders o ci field_offset fi
         in
         (stmts', expr_remainders', tmp_var, flags, scope)
       else
-        let field_offset = CilHelper.add_field_offset field_offset fi in
         let field_offset =
-          CilHelper.add_index_offset field_offset (Cil.integer o)
+          if attach_flag then
+            let field_offset = CilHelper.add_field_offset field_offset fi in
+            CilHelper.add_index_offset field_offset (Cil.integer o)
+          else CilHelper.add_index_offset field_offset (Cil.integer o)
         in
         let stmts', expr_remainders', scope =
           mk_struct_stmt field_offset scope ci.cfields fundec action loc varinfo
@@ -1509,7 +1608,7 @@ and mk_primitive_array_stmt stmts expr_list expr_remainders o arr_type arr_len
       o + 1 )
 
 and mk_array_stmt expr_list field_offset fi loc fundec action varinfo scope
-    arr_type arr_exp =
+    arr_type arr_exp attach_flag =
   let len_exp = Option.get arr_exp in
   let arr_len =
     match len_exp with
@@ -1548,7 +1647,7 @@ and mk_array_stmt expr_list field_offset fi loc fundec action varinfo scope
         | Cil.TComp (ci, _) ->
             mk_tcomp_array_stmt stmts expr_list expr_remainders o ci
               field_offset fi fundec action loc tmp_var varinfo flags
-              primitive_arr_remainders scope
+              primitive_arr_remainders scope attach_flag
         | _ ->
             mk_primitive_array_stmt stmts expr_list expr_remainders o arr_type
               arr_len field_offset fi fundec action loc tmp_var varinfo flags
@@ -2069,40 +2168,60 @@ and mk_init scope loc fitype expr_list =
   | _ -> failwith "not expected"
 
 and mk_struct_init scope loc typ cfields expr_list =
-  let rec loop union_flag cfields expr_list fis inits =
+  let origin_cfields = cfields in
+  let rec loop union_flag cfields expr_list fis inits idx_list idx =
     match (cfields, expr_list) with
     | f :: fl, e :: el -> (
-        if union_flag then loop union_flag fl expr_list fis inits
+        if union_flag then
+          loop union_flag fl expr_list fis inits ((idx + 1) :: idx_list)
+            (idx + 1)
         else if f.Cil.fcomp.cstruct then
           if is_init_list e then
             let init = trans_global_init scope loc e in
             loop union_flag fl el (f :: fis) (init :: inits)
+              ((idx + 1) :: idx_list) (idx + 1)
           else
+            let field, i, is_find = grab_matching_field origin_cfields f e in
+            let f = List.hd field in
+            let i = if is_find >= 0 then i else idx + 1 in
             let init, expr_remainders =
               mk_init scope loc f.Cil.ftype expr_list
             in
             loop union_flag fl expr_remainders (f :: fis) (init :: inits)
+              (i :: idx_list) i
         else
           match is_init_list e with
           | true ->
               let init = trans_global_init scope loc e in
-              loop true fl el (f :: fis) (init :: inits)
+              loop true fl el (f :: fis) (init :: inits) ((idx + 1) :: idx_list)
+                (idx + 1)
           | false ->
               let _, expr_opt = trans_expr scope None loc ADrop e in
               let e = Option.get expr_opt in
               let init = Cil.SingleInit e in
-              loop true fl el (f :: fis) (init :: inits) )
+              loop true fl el (f :: fis) (init :: inits) ((idx + 1) :: idx_list)
+                (idx + 1) )
     | f :: fl, [] ->
-        if union_flag then loop union_flag fl [] fis inits
+        if union_flag then
+          loop union_flag fl [] fis inits ((idx + 1) :: idx_list) (idx + 1)
         else if f.fcomp.cstruct then
           let init, _ = mk_init scope loc f.Cil.ftype [] in
           loop union_flag fl [] (f :: fis) (init :: inits)
+            ((idx + 1) :: idx_list) (idx + 1)
         else
           let init = Cil.SingleInit (Cil.integer 0) in
-          loop true fl [] (f :: fis) (init :: inits)
-    | [], _ -> (fis, inits, expr_list)
+          loop true fl [] (f :: fis) (init :: inits) ((idx + 1) :: idx_list)
+            (idx + 1)
+    | [], _ -> (fis, inits, expr_list, idx_list, idx)
   in
-  let fis, inits, expr_list = loop false cfields expr_list [] [] in
+  let fis, inits, expr_list, idx_list, _ =
+    loop false cfields expr_list [] [] [] 0
+  in
+  let inits =
+    if List.length inits = List.length idx_list then
+      sort_list_with_index inits idx_list
+    else inits
+  in
   let inits =
     List.fold_left2
       (fun fields_offset fi init ->

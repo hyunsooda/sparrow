@@ -125,6 +125,12 @@ let test_suites =
           "clang/array-subscript0.c";
           "clang/array-init0.c";
           "clang/incomplete-array0.c";
+          "clang/local-init6.c";
+          "clang/local-init7.c";
+          "clang/local-init8.c";
+          "clang/local-init9.c";
+          "clang/designated_init0.c";
+          "clang/designated_init1.c";
         ];
     };
   ]
